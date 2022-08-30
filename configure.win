@@ -1,0 +1,54 @@
+#!/bin/sh
+
+if test -z "${MAKE}"; then MAKE=`which make` 2> /dev/null; fi
+if test -z "${MAKE}"; then MAKE=`which /Applications/Xcode.app/Contents/Developer/usr/bin/make` 2> /dev/null; fi
+
+
+if test -z "${CMAKE_EXE}"; then CMAKE_EXE=`which cmake4` 2> /dev/null; fi
+if test -z "${CMAKE_EXE}"; then CMAKE_EXE=`which cmake3` 2> /dev/null; fi
+if test -z "${CMAKE_EXE}"; then CMAKE_EXE=`which cmake2` 2> /dev/null; fi
+if test -z "${CMAKE_EXE}"; then CMAKE_EXE=`which cmake` 2> /dev/null; fi
+if test -z "${CMAKE_EXE}"; then CMAKE_EXE=`which /Applications/CMake.app/Contents/bin/cmake` 2> /dev/null; fi
+
+
+if test -z "${CMAKE_EXE}"; then
+    echo "Could not find 'cmake'!"
+    exit 1
+fi
+
+
+# MinGW produces an error which based on the available documentation
+# it should not when "-std=gnu++11" is set. 
+# Since we do not use this functionality we just deactivate it.
+#
+# READER_CPP=inst/HiGHS/extern/filereaderlp/reader.cpp
+# sed -e "s|.*strdup|// strdup|" ${READER_CPP} > inst/HiGHS/extern/filereaderlp/reader_mod.cpp
+
+# export VERBOSE=1
+
+if test -z "${RHIGHS_LIB_DIR}"; then
+    cp -f inst/patches/CMakeLists_win-static.txt inst/HiGHS/CMakeLists.txt
+
+    R_HIGHS_PKG_HOME=`pwd`
+    R_HIGHS_SRC_DIR=${R_HIGHS_PKG_HOME}/inst/HiGHS
+    R_HIGHS_BUILD_DIR=${R_HIGHS_SRC_DIR}/build
+    R_HIGHS_LIB_DIR=${R_HIGHS_PKG_HOME}/src/highslib
+
+
+    mkdir -p ${R_HIGHS_BUILD_DIR}
+    mkdir -p ${R_HIGHS_LIB_DIR}
+    cd ${R_HIGHS_BUILD_DIR}
+    ${CMAKE_EXE} -DCMAKE_INSTALL_PREFIX=${R_HIGHS_LIB_DIR} ..
+    ${MAKE} install
+    rm -rf ${R_HIGHS_SRC_DIR}
+    cd ${R_HIGHS_PKG_HOME}
+fi
+
+
+sed -e "s|@RHIGHS_LIB_DIR@|$R_HIGHS_LIB_DIR|g" src/Makevars.in > src/Makevars.win
+
+
+if [ -z "$(ls ${R_HIGHS_LIB_DIR} | grep 'include')" ]; then
+    echo "'HiGHS' libraries could not be found!"
+    exit 1
+fi

@@ -1,0 +1,38 @@
+#!/bin/sh
+
+: ${R_HOME=`R RHOME`}
+if test -z "${R_HOME}"; then
+    echo "'R_HOME' could not be found!"
+    exit 1
+fi
+
+# RHIGHS_LIB_DIR=/home/f/bin/highs/highs-gcc-static-2
+# RHIGHS_LIB_DIR=/home/f/bin/highs/highs-clang-static-2
+
+# export VERBOSE=1
+# echo ""
+# echo "CXX: `R CMD config CXX`"
+# echo "clang++: " `whereis clang++`
+# echo ""
+# echo "/Library/Developer/CommandLineTools/usr/bin/clang++:"
+# echo "`/Library/Developer/CommandLineTools/usr/bin/clang++ --version`"
+# echo " /usr/bin/clang++:"
+# echo "`/usr/bin/clang++ --version`"
+
+
+if test -z "${RHIGHS_LIB_DIR}"; then
+    R_HIGHS_PKG_HOME=`pwd`
+    bash inst/build_highs.sh
+    cd ${R_HIGHS_PKG_HOME}
+    rm -rf inst/HiGHS
+    R_HIGHS_LIB_DIR=${R_HIGHS_PKG_HOME}/src/highslib
+fi
+
+
+sed -e "s|@RHIGHS_LIB_DIR@|$R_HIGHS_LIB_DIR|g" src/Makevars.in > src/Makevars
+
+
+if [ -z "$(ls ${R_HIGHS_LIB_DIR} | grep 'include')" ]; then
+    echo "'HiGHS' libraries could not be found!"
+    exit 1
+fi

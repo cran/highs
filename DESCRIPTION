@@ -1,0 +1,30 @@
+Package: highs
+Type: Package
+Title: 'HiGHS' Optimization Solver
+Version: 0.1-2
+Authors@R: c(person("Florian", "Schwendinger", email = "florianschwendinger@gmx.at", role = c("aut", "cre")),
+             person("Dirk", "Schumacher", role = "aut"),
+             person("Julian", "Hall", role = "cph"),
+             person("Ivet", "Galabova", role = "cph"),
+             person("Leona", "Gottwald", role = "cph"),
+             person("Michael", "Feldmeier", role = "cph"))
+Description: R interface to 'HiGHS', an optimization solver for solving mixed integer 
+        optimization problems with quadratic or linear objective and linear constraints.
+License: GPL (>= 2)
+Imports: Rcpp (>= 1.0.7), checkmate
+SystemRequirements: Bash, PkgConfig, ZLIB (>=1.2.3), CMAKE (>=3.15),
+        C++11
+Suggests: tinytest
+LinkingTo: Rcpp
+RoxygenNote: 7.2.0
+NeedsCompilation: yes
+Packaged: 2022-08-29 18:31:54 UTC; florian
+Author: Florian Schwendinger [aut, cre],
+  Dirk Schumacher [aut],
+  Julian Hall [cph],
+  Ivet Galabova [cph],
+  Leona Gottwald [cph],
+  Michael Feldmeier [cph]
+Maintainer: Florian Schwendinger <florianschwendinger@gmx.at>
+Repository: CRAN
+Date/Publication: 2022-08-30 15:00:02 UTC
