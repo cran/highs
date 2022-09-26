@@ -18,6 +18,9 @@
 #include "HConfig.h"  // for ZLIB_FOUND
 #ifdef ZLIB_FOUND
 #include "zstr.hpp"
+#else
+#define _POSIX_C_SOURCE 200809L
+#include <string.h>
 #endif
 
 enum class RawTokenType {
@@ -173,7 +176,7 @@ struct ProcessedToken {
 
    ProcessedToken(ProcessedTokenType t, const std::string& s) : type(t) {
       assert(t == ProcessedTokenType::CONID || t == ProcessedTokenType::VARID);
-      // name = s.c_str();
+      name = strdup(s.c_str());
    };
 
    ProcessedToken(double v) : type(ProcessedTokenType::CONST), value(v) {};

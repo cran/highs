@@ -2,7 +2,9 @@
 # means, adding the subdirectories for all CMake projects in this tree, and
 # finding external libraries and turning them into imported targets.
 
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.16)
+# set(CMAKE_CXX_COMPILER_FORCED TRUE)
+# set(CMAKE_CXX_COMPILER_WORKS TRUE)
 
 # set preference for clang compiler and intel compiler over gcc and other compilers
 include(Platform/${CMAKE_SYSTEM_NAME}-Determine-C OPTIONAL)
@@ -122,6 +124,9 @@ enable_cxx_compiler_flag_if_supported("-Wall")
 enable_cxx_compiler_flag_if_supported("-Wextra")
 enable_cxx_compiler_flag_if_supported("-Wno-unused-parameter")
 enable_cxx_compiler_flag_if_supported("-Wno-format-truncation")
+enable_cxx_compiler_flag_if_supported("-Wno-unused-variable")
+enable_cxx_compiler_flag_if_supported("-Wno-switch")
+enable_cxx_compiler_flag_if_supported("-Wno-return-type")
 enable_cxx_compiler_flag_if_supported("-pedantic")
 endif()
 
@@ -186,7 +191,7 @@ endif()
 # set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined")
 
 # if zlib is found, then we can enable reading zlib-compressed input
-find_package(ZLIB 1.2.3)
+# find_package(ZLIB 1.2.3)
 
 include(CPack)
 set(CPACK_RESOURCE_FILE_LICENSE "${HIGHS_SOURCE_DIR}/COPYING")
@@ -195,17 +200,17 @@ set(CPACK_PACKAGE_VERSION_MINOR "${HIGHS_VERSION_MINOR}")
 set(CPACK_PACKAGE_VERSION_PATCH "${HIGHS_VERSION_PATCH}")
 set(CPACK_PACKAGE_VENDOR "University of Edinburgh")
 
-find_program(GIT git)
-if((GIT) AND (EXISTS ${HIGHS_SOURCE_DIR}/.git))
-    execute_process(
-        COMMAND ${GIT} describe --always --dirty
-        WORKING_DIRECTORY ${HIGHS_SOURCE_DIR}
-        OUTPUT_VARIABLE GITHASH OUTPUT_STRIP_TRAILING_WHITESPACE)
-    string(REGEX REPLACE "^.*-g" "" GITHASH ${GITHASH})
-else()
+# find_program(GIT git)
+# if((GIT) AND (EXISTS ${HIGHS_SOURCE_DIR}/.git))
+#     execute_process(
+#         COMMAND ${GIT} describe --always --dirty
+#         WORKING_DIRECTORY ${HIGHS_SOURCE_DIR}
+#         OUTPUT_VARIABLE GITHASH OUTPUT_STRIP_TRAILING_WHITESPACE)
+#     string(REGEX REPLACE "^.*-g" "" GITHASH ${GITHASH})
+# else()
     set(GITHASH "n/a")
-endif()
-message(STATUS "Git hash: " ${GITHASH})
+# endif()
+# message(STATUS "Git hash: " ${GITHASH})
 
 string(TIMESTAMP TODAY "%Y-%m-%d")
 message(STATUS "Compilation date: " ${TODAY})
@@ -213,7 +218,7 @@ message(STATUS "Compilation date: " ${TODAY})
 if (NOT FAST_BUILD)
 
 # For the moment keep above coverage part in case we are testing at CI.
-option(CI "CI extended tests" ON)
+option(CI "CI extended tests" OFF)
 
 # Coverage part
 # 'make coverage' to start the coverage process
@@ -314,7 +319,7 @@ if(CMAKE_BUILD_TYPE STREQUAL RELEASE)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-configure_file(${HIGHS_SOURCE_DIR}/src/HConfig.h.in ${HIGHS_BINARY_DIR}/HConfig.h)
+configure_file(${HIGHS_SOURCE_DIR}/src/HConfig.h.in ${HIGHS_BINARY_DIR}/HConfig.h @ONLY NEWLINE_STYLE UNIX)
 include_directories(
     ${HIGHS_BINARY_DIR}
     ${HIGHS_SOURCE_DIR}/app
@@ -377,7 +382,7 @@ if(CMAKE_BUILD_TYPE STREQUAL RELEASE)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-configure_file(${HIGHS_SOURCE_DIR}/src/HConfig.h.in ${HIGHS_BINARY_DIR}/HConfig.h)
+configure_file(${HIGHS_SOURCE_DIR}/src/HConfig.h.in ${HIGHS_BINARY_DIR}/HConfig.h @ONLY NEWLINE_STYLE UNIX)
 
 set(CMAKE_PLATFORM_USES_PATH_WHEN_NO_SONAME FALSE)
 
@@ -480,6 +485,16 @@ foreach(instance ${${instances}})
 endforeach(instance)
 
 endfunction()
+
+
+message(STATUS "Check Passed Options:")
+message(STATUS "  FAST_BUILD: '${FAST_BUILD}'")
+message(STATUS "  SHARED: '${SHARED}'")
+message(STATUS "  BUILD_TESTING: '${BUILD_TESTING}'")
+message(STATUS "  CMAKE_CXX_FLAGS: '${CMAKE_CXX_FLAGS}'")
+message(STATUS "  CMAKE_C_COMPILER: '${CMAKE_C_COMPILER}'")
+message(STATUS "  CMAKE_CXX_COMPILER: '${CMAKE_CXX_COMPILER}'")
+
 
 if (NOT JULIA)
     # add tests for success and fail instances

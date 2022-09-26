@@ -282,9 +282,18 @@ int32_t solver_status(SEXP hi) {
 
 
 // [[Rcpp::export]]
-double_t  solver_infinity(SEXP hi) {
-    Rcpp::XPtr<Highs>highs(hi);
-    return highs->getInfinity();
+double_t  solver_infinity() {
+    Highs highs;
+    double_t dbl_inf = highs.getInfinity();
+    return dbl_inf;
+}
+
+
+// [[Rcpp::export]]
+SEXP reset_global_scheduler(bool blocking) {
+    Highs highs;
+    highs.resetGlobalScheduler(blocking);
+    return R_NilValue;
 }
 
 

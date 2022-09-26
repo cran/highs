@@ -1,21 +1,59 @@
+**R** HIGHS Interface
+================
+Florian Schwendinger</br>
+Updated: 2022-09-09
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
+<!-- badges: start -->
 
-# **R** HIGHS Interface
+[![CRAN
+status](https://www.r-pkg.org/badges/version/highs)](https://CRAN.R-project.org/package=highs)
+[![Licence](https://img.shields.io/cran/l/highs)](https://www.gnu.org/licenses/gpl-2.0.en.html)
+<!-- badges: end -->
 
-This repository contains an **R** interface to the **HiGHS** solver. The
-[HiGHS](https://github.com/ERGO-Code/HiGHS) solver, is a
+This repository contains an **R** interface to the
+[**HiGHS**](https://github.com/ERGO-Code/HiGHS) solver. The
+[**HiGHS**](https://github.com/ERGO-Code/HiGHS) solver, is a
 **high**-performance open-source **solver** for solving linear
 programming (LP), mixed-integer programming (MIP) and quadratic
 programming (QP) optimization problems.
 
-## Installation
+# 1 Installation
+
+The package can be installed from
+[**CRAN**](https://CRAN.R-project.org/package=highs)
+
+``` r
+install.packages("highs")
+```
+
+or [**GitLab**](https://gitlab.com/roigrp/solver/highs).
 
 ``` r
 remotes::install_gitlab("roigrp/solver/highs")
 ```
 
-## Basic usage
+### 1.0.1 Using a preinstalled HiGHS library
+
+It is possible to use a precompile HiGHS library by providing the system
+variable `R_HIGHS_LIB_DIR`. For example I used
+
+``` sh
+mkdir build
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=/Z/bin/highslib -DCMAKE_POSITION_INDEPENDENT_CODE:bool=ON -DSHARED:bool=OFF -DBUILD_TESTING:bool=OFF
+make install
+```
+
+to install the **HiGHS** library to `/Z/bin/highslib`
+
+``` r
+Sys.setenv(R_HIGHS_LIB_DIR = "/Z/bin/highslib")
+install.packages("highs")
+# or 
+# remotes::install_gitlab("roigrp/solver/highs")
+```
+
+# 2 Basic usage
 
 ``` r
 library("highs")
@@ -26,7 +64,7 @@ args(highs_solve)
 #> NULL
 ```
 
-### LP
+## 2.1 LP
 
 ``` r
 # Minimize
@@ -75,7 +113,7 @@ str(s)
 #>   ..$ sum_dual_infeasibilities  : num 0
 ```
 
-## QP
+## 2.2 QP
 
 ``` r
 # Minimize
@@ -123,7 +161,7 @@ str(s)
 #>   ..$ sum_dual_infeasibilities  : num 0
 ```
 
-## Options
+# 3 Options
 
 The function `highs_available_solver_options` lists the available solver
 options
@@ -135,13 +173,14 @@ knitr::kable(d, row.names = FALSE)
 ```
 
 | option                                          | type    | category |
-| :---------------------------------------------- | :------ | :------- |
+|:------------------------------------------------|:--------|:---------|
 | `allow_unbounded_or_infeasible`                 | bool    | advanced |
 | `allowed_cost_scale_factor`                     | integer | advanced |
 | `allowed_matrix_scale_factor`                   | integer | advanced |
 | `cost_scale_factor`                             | integer | advanced |
 | `dual_simplex_cost_perturbation_multiplier`     | double  | advanced |
 | `dual_simplex_pivot_growth_tolerance`           | double  | advanced |
+| `dual_steepest_edge_weight_error_tolerance`     | double  | advanced |
 | `dual_steepest_edge_weight_log_error_threshold` | double  | advanced |
 | `factor_pivot_threshold`                        | double  | advanced |
 | `factor_pivot_tolerance`                        | double  | advanced |
@@ -155,6 +194,8 @@ knitr::kable(d, row.names = FALSE)
 | `mps_parser_type_free`                          | bool    | advanced |
 | `no_unnecessary_rebuild_refactor`               | bool    | advanced |
 | `presolve_pivot_threshold`                      | double  | advanced |
+| `presolve_rule_logging`                         | bool    | advanced |
+| `presolve_rule_off`                             | integer | advanced |
 | `presolve_substitution_maxfillin`               | integer | advanced |
 | `primal_simplex_bound_perturbation_multiplier`  | double  | advanced |
 | `rebuild_refactor_solution_error_tolerance`     | double  | advanced |
@@ -169,6 +210,7 @@ knitr::kable(d, row.names = FALSE)
 | `use_implied_bounds_from_presolve`              | bool    | advanced |
 | `use_original_HFactor_logic`                    | bool    | advanced |
 | `dual_feasibility_tolerance`                    | double  | file     |
+| `glpsol_cost_row_location`                      | integer | file     |
 | `highs_analysis_level`                          | integer | file     |
 | `highs_debug_level`                             | integer | file     |
 | `infinite_bound`                                | double  | file     |
@@ -193,20 +235,34 @@ knitr::kable(d, row.names = FALSE)
 | `small_matrix_value`                            | double  | file     |
 | `solution_file`                                 | string  | file     |
 | `threads`                                       | integer | file     |
+| `write_model_file`                              | string  | file     |
+| `write_model_to_file`                           | bool    | file     |
 | `write_solution_style`                          | integer | file     |
 | `write_solution_to_file`                        | bool    | file     |
+| `icrash`                                        | bool    | icrash   |
+| `icrash_approx_iter`                            | integer | icrash   |
+| `icrash_breakpoints`                            | bool    | icrash   |
+| `icrash_dualize`                                | bool    | icrash   |
+| `icrash_exact`                                  | bool    | icrash   |
+| `icrash_iterations`                             | integer | icrash   |
+| `icrash_starting_weight`                        | double  | icrash   |
+| `icrash_strategy`                               | string  | icrash   |
 | `log_to_console`                                | bool    | logging  |
 | `output_flag`                                   | bool    | logging  |
+| `mip_abs_gap`                                   | double  | mip      |
 | `mip_detect_symmetry`                           | bool    | mip      |
 | `mip_feasibility_tolerance`                     | double  | mip      |
 | `mip_heuristic_effort`                          | double  | mip      |
 | `mip_lp_age_limit`                              | integer | mip      |
+| `mip_max_improving_sols`                        | integer | mip      |
 | `mip_max_leaves`                                | integer | mip      |
 | `mip_max_nodes`                                 | integer | mip      |
 | `mip_max_stall_nodes`                           | integer | mip      |
+| `mip_min_cliquetable_entries_for_parallelism`   | integer | mip      |
 | `mip_pool_age_limit`                            | integer | mip      |
 | `mip_pool_soft_limit`                           | integer | mip      |
 | `mip_pscost_minreliable`                        | integer | mip      |
+| `mip_rel_gap`                                   | double  | mip      |
 | `mip_report_level`                              | integer | mip      |
 | `parallel`                                      | string  | run-time |
 | `presolve`                                      | string  | run-time |
@@ -216,12 +272,12 @@ knitr::kable(d, row.names = FALSE)
 
 for additional information see the [HiGHS homepage](https://highs.dev/).
 
-## Status codes
+# 4 Status codes
 
 HiGHS currently has the following status codes defined in `HConst.h"`.
 
 | enumerator               | status | message                            |
-| ------------------------ | -----: | ---------------------------------- |
+|--------------------------|-------:|------------------------------------|
 | `kNotset`                |      0 | `"Not Set"`                        |
 | `kLoadError`             |      1 | `"Load error"`                     |
 | `kModelError`            |      2 | `"Model error"`                    |

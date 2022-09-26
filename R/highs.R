@@ -6,6 +6,39 @@
 NULL
 
 
+highs_globals <- local({
+    globals <- list(threads = NA_integer_)
+    function(key, value) {
+        if (missing(key)) return(globals)
+        if (missing(value))
+            globals[[key]]
+        else
+            globals[[key]] <<- value
+    }
+})
+
+
+highs_infinity <- function() {
+    if (is.null(highs_globals("Inf"))) {
+        highs_globals("Inf", solver_infinity())
+    }
+    highs_globals("Inf")
+}
+
+
+get_number_of_threads <- function() {
+    highs_globals("threads")
+}
+
+
+set_number_of_threads <- function(threads) {
+    if (!isTRUE(highs_globals("threads") == threads)) {
+        reset_global_scheduler(TRUE)
+        highs_globals("threads", threads)
+    }
+}
+
+
 csc_to_matrix <- function(start, index, value, nrow = max(index + 1L), ncol = length(start) - 1L) {
     stopifnot(length(index) == length(value))
     ind <- index + 1L
@@ -87,8 +120,12 @@ csc_to_matrix <- function(start, index, value, nrow = max(index + 1L), ncol = le
 highs_solve <- function(Q = NULL, L, lower, upper, A, lhs, rhs, types, maximum = FALSE,
                         offset = 0, control = list(), dry_run = FALSE) {
     assert_numeric(L, any.missing = FALSE)
-    default_control <- list(log_to_console = FALSE)
+    default_control <- list(log_to_console = FALSE, threads = 1L, parallel = "off")
     control <- modifyList(default_control, control)
+    checkmate::assert_integerish(control$threads, len = 1L, any.missing = FALSE)
+    set_number_of_threads(control$threads)
+    control$parallel <- if (control$threads > 1) "on" else "off"
+
     nvars <- length(L)
     if (missing(A) || NROW(A) == 0L) {
         A <- lhs <- rhs <- NULL
@@ -99,7 +136,7 @@ highs_solve <- function(Q = NULL, L, lower, upper, A, lhs, rhs, types, maximum =
         ncons <- cscA[["nrow"]]
     }
     model <- new_model()
-    INF <- solver_infinity(model)
+    INF <- highs_infinity()
     model_set_ncol(model, nvars)
     model_set_nrow(model, ncons)
     model_set_sense(model, maximum)

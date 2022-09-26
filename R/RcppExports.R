@@ -105,8 +105,12 @@ solver_status <- function(hi) {
     .Call(`_highs_solver_status`, hi)
 }
 
-solver_infinity <- function(hi) {
-    .Call(`_highs_solver_infinity`, hi)
+solver_infinity <- function() {
+    .Call(`_highs_solver_infinity`)
+}
+
+reset_global_scheduler <- function(blocking) {
+    .Call(`_highs_reset_global_scheduler`, blocking)
 }
 
 solver_info <- function(hi) {

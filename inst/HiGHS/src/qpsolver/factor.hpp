@@ -20,7 +20,7 @@ class CholeskyFactor {
   Basis& basis;
 
   HighsInt current_k = 0;
-  HighsInt current_k_max;
+  HighsInt current_k_max = 0;
   std::vector<double> L;
 
   bool has_negative_eigenvalue = false;
@@ -71,11 +71,13 @@ class CholeskyFactor {
   }
 
   void resize(HighsInt new_k_max) {
+    if (new_k_max == current_k_max) return;
     std::vector<double> L_old = L;
     L.clear();
     L.resize((new_k_max) * (new_k_max));
-    for (HighsInt i = 0; i < current_k_max; i++) {
-      for (HighsInt j = 0; j < current_k_max; j++) {
+    HighsInt min_k_max = min(new_k_max, current_k_max);
+    for (HighsInt i = 0; i < min_k_max; i++) {
+      for (HighsInt j = 0; j < min_k_max; j++) {
         L[i * (new_k_max) + j] = L_old[i * current_k_max + j];
       }
     }
