@@ -2673,12 +2673,18 @@ void HEkk::initialiseBound(const SimplexAlgorithm algorithm,
   const HighsInt num_tot = lp_.num_col_ + lp_.num_row_;
   for (HighsInt iCol = 0; iCol < num_tot; iCol++) {
     if (info_.workLower_[iCol] == -inf && info_.workUpper_[iCol] == inf) {
-      // Don't change for row variables: they should never become
-      // nonbasic when starting from a logical basis, and no crash
-      // should make a free row nonbasic, but could an advanced basis
-      // make a free row nonbasic.
-      // But what it it happened?
-      if (iCol >= lp_.num_col_) continue;
+      // Phase 1 bounds were not modified for free rows in hsol. Why?
+      // To reduce the number of free variables on the assumption that
+      // free rows should never be nonbasic? This is normally true
+      // when starting from a logical basis or crash - unless
+      // singularity makes a free logical nonbasic - but what about an
+      // advanced basis start? It doesn't happen with the HiGHS MIP
+      // solver. However, SCIP cut handling can lead to a nonbasic row
+      // with nonzero dual being made free and, particularly if it's
+      // (then) the only dual infeasibility, phase 1 fails to remove
+      // it.
+      //
+      // if (iCol >= lp_.num_col_) continue;
       info_.workLower_[iCol] = -1000,
       info_.workUpper_[iCol] = 1000;  // FREE
     } else if (info_.workLower_[iCol] == -inf) {
@@ -3908,19 +3914,26 @@ void HEkk::clearBadBasisChange(const BadBasisChangeReason reason) {
   if (reason == BadBasisChangeReason::kAll) {
     bad_basis_change_.clear();
   } else {
-    const HighsInt num_bad_basis_change = bad_basis_change_.size();
-    HighsInt new_num_bad_basis_change = 0;
-    for (HighsInt Ix = 0; Ix < num_bad_basis_change; Ix++) {
-      HighsSimplexBadBasisChangeRecord& record = bad_basis_change_[Ix];
-      if (record.reason == reason) continue;
-      bad_basis_change_[new_num_bad_basis_change++] = record;
-    }
-    // Windows doesn't like to resize to zero?
-    if (new_num_bad_basis_change > 0) {
-      bad_basis_change_.resize(new_num_bad_basis_change);
-    } else {
-      bad_basis_change_.clear();
-    }
+    bad_basis_change_.erase(
+        std::remove_if(
+            bad_basis_change_.begin(), bad_basis_change_.end(),
+            [reason](const HighsSimplexBadBasisChangeRecord& record) {
+              return record.reason == reason;
+            }),
+        bad_basis_change_.end());
+  }
+}
+
+void HEkk::updateBadBasisChange(const HVector& col_aq, double theta_primal) {
+  if (!bad_basis_change_.empty()) {
+    bad_basis_change_.erase(
+        std::remove_if(bad_basis_change_.begin(), bad_basis_change_.end(),
+                       [&](const HighsSimplexBadBasisChangeRecord& record) {
+                         return std::fabs(col_aq.array[record.row_out] *
+                                          theta_primal) >=
+                                options_->primal_feasibility_tolerance;
+                       }),
+        bad_basis_change_.end());
   }
 }
 
@@ -4248,7 +4261,7 @@ double HEkk::getValueScale(const HighsInt count, const vector<double>& value) {
 double HEkk::getMaxAbsRowValue(HighsInt row) {
   if (!status_.has_ar_matrix) initialisePartitionedRowwiseMatrix();
 
-  double val = 0.0;
+  double val = -1.0;
   for (HighsInt i = ar_matrix_.start_[row]; i < ar_matrix_.start_[row + 1]; ++i)
     val = std::max(val, std::abs(ar_matrix_.value_[i]));
 

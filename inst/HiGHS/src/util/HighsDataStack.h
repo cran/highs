@@ -24,7 +24,7 @@
 #include "util/HighsInt.h"
 
 #if __GNUG__ && __GNUC__ < 5
-#define IS_TRIVIALLY_COPYABLE(T) __has_trivial_copy(T)
+#define IS_TRIVIALLY_COPYABLE(T) __is_trivially_copyable(T)
 #else
 #define IS_TRIVIALLY_COPYABLE(T) std::is_trivially_copyable<T>::value
 #endif
@@ -39,7 +39,7 @@ class HighsDataStack {
   template <typename T,
             typename std::enable_if<IS_TRIVIALLY_COPYABLE(T), int>::type = 0>
   void push(const T& r) {
-    HighsInt dataSize = data.size();
+    std::size_t dataSize = data.size();
     data.resize(dataSize + sizeof(T));
     std::memcpy(data.data() + dataSize, &r, sizeof(T));
   }
@@ -80,7 +80,7 @@ class HighsDataStack {
     }
   }
 
-  void setPosition(HighsInt position) { this->position = position; }
+  void setPosition(HighsInt position_) { this->position = position_; }
 
   HighsInt getCurrentDataSize() const { return data.size(); }
 };

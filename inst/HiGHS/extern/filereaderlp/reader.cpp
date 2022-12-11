@@ -2,6 +2,7 @@
 
 #include "builder.hpp"
 
+#include <cstring>
 #include <cassert>
 #include <iostream>
 #include <fstream>
@@ -17,7 +18,7 @@
 
 #include "HConfig.h"  // for ZLIB_FOUND
 #ifdef ZLIB_FOUND
-#include "zstr.hpp"
+#include "zstr/zstr.hpp"
 #else
 #define _POSIX_C_SOURCE 200809L
 #include <string.h>
@@ -194,6 +195,7 @@ struct ProcessedToken {
 // set to how many tokens we may need to look ahead
 #define NRAWTOKEN 3
 
+const double kHighsInf = std::numeric_limits<double>::infinity();
 class Reader {
 private:
 #ifdef ZLIB_FOUND
@@ -323,6 +325,7 @@ void Reader::parseexpression(std::vector<ProcessedToken>::iterator& it, std::vec
          std::shared_ptr<LinTerm> linterm = std::shared_ptr<LinTerm>(new LinTerm());
          linterm->coef = it->value;
          linterm->var = builder.getvarbyname(name);
+	 //	 printf("LpReader: Term   %+g %s\n", linterm->coef, name.c_str());
          expr->linterms.push_back(linterm);
 
          ++it;
@@ -332,6 +335,7 @@ void Reader::parseexpression(std::vector<ProcessedToken>::iterator& it, std::vec
 
       // const
       if (it->type == ProcessedTokenType::CONST) {
+	//	printf("LpReader: Offset change from %+g by %+g\n", expr->offset, it->value);
          expr->offset += it->value;
          ++it;
          continue;
@@ -344,6 +348,7 @@ void Reader::parseexpression(std::vector<ProcessedToken>::iterator& it, std::vec
          std::shared_ptr<LinTerm> linterm = std::shared_ptr<LinTerm>(new LinTerm());
          linterm->coef = 1.0;
          linterm->var = builder.getvarbyname(name);
+	 //	 printf("LpReader: Term   %+g %s\n", linterm->coef, name.c_str());
          expr->linterms.push_back(linterm);
 
          ++it;
@@ -530,8 +535,8 @@ void Reader::processboundssec() {
          && next1->type == ProcessedTokenType::FREE) {
          std::string name = begin->name;
          std::shared_ptr<Variable> var = builder.getvarbyname(name);
-         var->lowerbound = -std::numeric_limits<double>::infinity(); 
-         var->upperbound = std::numeric_limits<double>::infinity();
+         var->lowerbound = -kHighsInf; 
+         var->upperbound = kHighsInf;
          begin = ++next1;
 		 continue;
       }
@@ -638,8 +643,8 @@ void Reader::processbinsec() {
       std::string name = begin->name;
       std::shared_ptr<Variable> var = builder.getvarbyname(name);
       var->type = VariableType::BINARY;
-      var->lowerbound = 0.0;
-      var->upperbound = 1.0;
+      // Respect any bounds already declared
+      if (var->upperbound == kHighsInf) var->upperbound = 1.0;
    }
 }
 
@@ -849,7 +854,7 @@ void Reader::processtokens() {
 
       // check if infinity
       if (rawtokens[0].istype(RawTokenType::STR) && iskeyword(svalue_lc, LP_KEYWORD_INF, LP_KEYWORD_INF_N)) {
-         processedtokens.emplace_back(std::numeric_limits<double>::infinity());
+         processedtokens.emplace_back(kHighsInf);
          nextrawtoken();
          continue;
       }
@@ -861,49 +866,48 @@ void Reader::processtokens() {
          continue;
       }
 
-      // + Constant
-      if (rawtokens[0].istype(RawTokenType::PLUS) && rawtokens[1].istype(RawTokenType::CONS)) {
-         processedtokens.emplace_back(rawtokens[1].dvalue);
-         nextrawtoken(2);
-         continue;
-      }
+      // + or -
+      if (rawtokens[0].istype(RawTokenType::PLUS) || rawtokens[0].istype(RawTokenType::MINUS)) {
+         double sign = rawtokens[0].istype(RawTokenType::PLUS) ? 1.0 : -1.0;
+         nextrawtoken();
 
-      // - constant
-      if (rawtokens[0].istype(RawTokenType::MINUS) && rawtokens[1].istype(RawTokenType::CONS)) {
-         processedtokens.emplace_back(-rawtokens[1].dvalue);
-         nextrawtoken(2);
-         continue;
-      }
+         // another + or - for #948, #950
+         if( rawtokens[0].istype(RawTokenType::PLUS) || rawtokens[0].istype(RawTokenType::MINUS) ) {
+            sign *= rawtokens[0].istype(RawTokenType::PLUS) ? 1.0 : -1.0;
+            nextrawtoken();
+         }
 
-      // + [
-      if (rawtokens[0].istype(RawTokenType::PLUS) && rawtokens[1].istype(RawTokenType::BRKOP)) {
-         processedtokens.emplace_back(ProcessedTokenType::BRKOP);
-         nextrawtoken(2);
-         continue;
-      }
+         // +/- Constant
+         if (rawtokens[0].istype(RawTokenType::CONS)) {
+            processedtokens.emplace_back(sign * rawtokens[0].dvalue);
+            nextrawtoken();
+            continue;
+         }
 
-      // - [
-      if (rawtokens[0].istype(RawTokenType::MINUS) && rawtokens[1].istype(RawTokenType::BRKOP)) {
+         // + [, + + [, - - [
+         if (rawtokens[0].istype(RawTokenType::BRKOP) && sign == 1.0) {
+            processedtokens.emplace_back(ProcessedTokenType::BRKOP);
+            nextrawtoken();
+            continue;
+         }
+
+         // - [, + - [, - + [
+         if (rawtokens[0].istype(RawTokenType::BRKOP))
+            lpassert(false);
+
+         // +/- variable name
+         if (rawtokens[0].istype(RawTokenType::STR)) {
+            processedtokens.emplace_back(sign);
+            continue;
+         }
+
+         // +/- (possibly twice) followed by something that isn't a constant, opening bracket, or string (variable name)
          lpassert(false);
       }
 
       // constant [
       if (rawtokens[0].istype(RawTokenType::CONS) && rawtokens[1].istype(RawTokenType::BRKOP)) {
          lpassert(false);
-      }
-
-      // +
-      if (rawtokens[0].istype(RawTokenType::PLUS)) {
-         processedtokens.emplace_back(1.0);
-         nextrawtoken();
-         continue;
-      }
-
-      // -
-      if (rawtokens[0].istype(RawTokenType::MINUS)) {
-         processedtokens.emplace_back(-1.0);
-         nextrawtoken();
-         continue;
       }
 
       // constant

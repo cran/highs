@@ -56,11 +56,12 @@ csc_to_matrix <- function(start, index, value, nrow = max(index + 1L), ncol = le
 #'
 #' Solve linear and quadratic mixed integer optimization problems.
 #'
-#' @param Q a numeric symatric matrix giving the quadratic part of the objective.
+#' @param Q a numeric symmetric matrix giving the quadratic part of the objective.
 #' @param L a numeric vector giving the linear part of the objective function.
 #' @param lower a numeric vector giving the lower bounds of the variables.
 #' @param upper a numeric vector giving the upper bounds of the variables.
-#' @param A a numeric matrix giving the quadratic part of the objective.
+#' @param A a numeric matrix giving the linear part of the constraints. Rows are
+#'   constraints, and columns are decision variables.
 #' @param lhs a numeric vector giving the left hand-side of the linear constraints.
 #' @param rhs a numeric vector giving the right hand-side of the linear constraints.
 #' @param types a integer vector or character vector giving the variable types.
@@ -82,7 +83,7 @@ csc_to_matrix <- function(start, index, value, nrow = max(index + 1L), ncol = le
 #' \item{\code{primal_solution}}{a numeric vector giving the primal solution.}
 #' \item{\code{objective_value}}{a numeric giving the objective value.}
 #' \item{\code{status}}{an integer giving the status code}
-#' \item{\code{status_message}}{a character string giving the status message (explaination of the \code{status_code}).}
+#' \item{\code{status_message}}{a character string giving the status message (explanation of the \code{status_code}).}
 #' \item{\code{solver_msg}}{a list giving the original (not canonicalized) solver message.}
 #' \item{\code{info}}{a list giving additional information provided by the solver.}
 #'

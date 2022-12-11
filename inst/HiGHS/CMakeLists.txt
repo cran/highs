@@ -20,8 +20,8 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RELEASE)
 endif()
 
-project(HIGHS VERSION 1.2 LANGUAGES CXX C)
-set(HIGHS_VERSION_PATCH 2)
+project(HIGHS VERSION 1.4 LANGUAGES CXX C)
+set(HIGHS_VERSION_PATCH 1)
 
 # use C++11 standard
 set(CMAKE_CXX_STANDARD 11)
@@ -38,7 +38,7 @@ endif()
 
 option(BUILD_TESTING "Build Tests" ON)
 
-if(LINUX AND NOT MSVC)
+if(LINUX AND (NOT MSVC) AND (NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
     include(CheckIPOSupported)
     check_ipo_supported(RESULT ipo_supported OUTPUT error)
 
@@ -128,6 +128,14 @@ enable_cxx_compiler_flag_if_supported("-Wno-unused-variable")
 enable_cxx_compiler_flag_if_supported("-Wno-switch")
 enable_cxx_compiler_flag_if_supported("-Wno-return-type")
 enable_cxx_compiler_flag_if_supported("-pedantic")
+endif()
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86\_64|i686)")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mpopcnt")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ppc64|powerpc64)")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mpopcntd")
+else()
+  message("FLAG_MPOPCNT_SUPPORTED is not available on this architecture")
 endif()
 
 option(DEBUGSOL "check the debug solution" OFF)

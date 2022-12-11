@@ -17,10 +17,11 @@
 #include "io/FilereaderLp.h"
 
 #include <cstdarg>
+#include <cstdio>
 #include <exception>
 #include <map>
 
-#include "../extern/filereaderlp/reader.hpp"
+#include "filereaderlp/reader.hpp"
 #include "lp_data/HighsLpUtils.h"
 
 const bool original_double_format = false;
@@ -69,6 +70,8 @@ FilereaderRetcode FilereaderLp::readModelFromFile(const HighsOptions& options,
     if (num_continuous == m.variables.size()) lp.integrality_.clear();
     // get objective
     lp.objective_name_ = m.objective->name;
+    // ToDo: Fix m.objective->offset and then use it here
+    //
     lp.offset_ = m.objective->offset;
     lp.col_cost_.resize(lp.num_col_, 0.0);
     for (HighsUInt i = 0; i < m.objective->linterms.size(); i++) {
@@ -209,7 +212,7 @@ void FilereaderLp::writeToFile(FILE* file, const char* format, ...) {
   va_list argptr;
   va_start(argptr, format);
   char stringbuffer[LP_MAX_LINE_LENGTH + 1];
-  HighsInt tokenlength = vsprintf(stringbuffer, format, argptr);
+  HighsInt tokenlength = vsnprintf(stringbuffer, sizeof stringbuffer, format, argptr);
   if (this->linelength + tokenlength >= LP_MAX_LINE_LENGTH) {
     fprintf(file, "\n");
     fprintf(file, "%s", stringbuffer);
@@ -389,26 +392,42 @@ HighsStatus FilereaderLp::writeModelToFile(const HighsOptions& options,
   this->writeToFileLineend(file);
   for (HighsInt iCol = 0; iCol < lp.num_col_; iCol++) {
     if (lp.col_lower_[iCol] <= -kHighsInf && lp.col_upper_[iCol] >= kHighsInf) {
+      // Free variable
       if (has_col_names) {
         this->writeToFileVar(file, lp.col_names_[iCol]);
       } else {
         this->writeToFileVar(file, iCol);
       }
       this->writeToFile(file, " free");
-    } else {
-      this->writeToFileValue(file, lp.col_lower_[iCol], false);
-      this->writeToFile(file, " <=");
+    } else if (lp.col_lower_[iCol] == lp.col_upper_[iCol]) {
+      // Fixed variable
       if (has_col_names) {
         this->writeToFileVar(file, lp.col_names_[iCol]);
       } else {
         this->writeToFileVar(file, iCol);
       }
-      this->writeToFile(file, " <=");
+      this->writeToFile(file, " =");
       this->writeToFileValue(file, lp.col_upper_[iCol], false);
+    } else if (lp.col_lower_[iCol] != 0 || lp.col_upper_[iCol] < kHighsInf) {
+      // Non-default bound
+      if (lp.col_lower_[iCol] != 0) {
+        // Nonzero lower bound
+        this->writeToFileValue(file, lp.col_lower_[iCol], false);
+        this->writeToFile(file, " <=");
+      }
+      if (has_col_names) {
+        this->writeToFileVar(file, lp.col_names_[iCol]);
+      } else {
+        this->writeToFileVar(file, iCol);
+      }
+      if (lp.col_upper_[iCol] < kHighsInf) {
+        // Finite upper bound
+        this->writeToFile(file, " <=");
+        this->writeToFileValue(file, lp.col_upper_[iCol], false);
+      }
     }
     this->writeToFileLineend(file);
   }
-
   if (lp.integrality_.size() > 0) {
     // write binary section
     this->writeToFile(file, "bin");

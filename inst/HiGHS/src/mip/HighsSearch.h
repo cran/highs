@@ -35,13 +35,14 @@ class HighsSearch {
   HighsMipSolver& mipsolver;
   HighsLpRelaxation* lp;
   HighsDomain localdom;
-  HighsPseudocost pseudocost;
+  HighsPseudocost& pseudocost;
   HighsRandom random;
   int64_t nnodes;
   int64_t lpiterations;
   int64_t heurlpiterations;
   int64_t sblpiterations;
   double upper_limit;
+  HighsCDouble treeweight;
   std::vector<HighsInt> inds;
   std::vector<double> vals;
   HighsInt depthoffset;
@@ -73,8 +74,6 @@ class HighsSearch {
 
  private:
   ChildSelectionRule childselrule;
-
-  HighsCDouble treeweight;
 
   struct NodeData {
     double lower_bound;
@@ -143,7 +142,7 @@ class HighsSearch {
   bool orbitsValidInChildNode(const HighsDomainChange& branchChg) const;
 
  public:
-  HighsSearch(HighsMipSolver& mipsolver, const HighsPseudocost& pseudocost);
+  HighsSearch(HighsMipSolver& mipsolver, HighsPseudocost& pseudocost);
 
   void setRINSNeighbourhood(const std::vector<double>& basesol,
                             const std::vector<double>& relaxsol);

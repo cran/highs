@@ -20,8 +20,8 @@
 
 #include "io/HighsIO.h"
 #include "ipm/IpxSolution.h"
-#include "ipm/ipx/include/ipx_status.h"
-#include "ipm/ipx/src/lp_solver.h"
+#include "ipm/ipx/ipx_status.h"
+#include "ipm/ipx/lp_solver.h"
 #include "lp_data/HighsLpUtils.h"
 #include "lp_data/HighsModelUtils.h"
 #include "lp_data/HighsSolutionDebug.h"
@@ -1254,6 +1254,8 @@ void accommodateAlienBasis(HighsLpSolverObject& solver_object) {
                       kDefaultPivotThreshold, kDefaultPivotTolerance,
                       kHighsDebugLevelMin, &options.log_options);
   HighsInt rank_deficiency = factor.build();
+  // Must not have timed out
+  assert(rank_deficiency >= 0);
   // Deduce the basis from basic_index
   //
   // Set all basic variables to nonbasic

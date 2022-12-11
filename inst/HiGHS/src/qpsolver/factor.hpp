@@ -77,7 +77,7 @@ class CholeskyFactor {
     L.resize((new_k_max) * (new_k_max));
     HighsInt min_k_max = min(new_k_max, current_k_max);
     for (HighsInt i = 0; i < min_k_max; i++) {
-      for (HighsInt j = 0; j < min_k_max; j++) {
+      for (HighsInt j = 0; j < current_k_max; j++) {
         L[i * (new_k_max) + j] = L_old[i * current_k_max + j];
       }
     }
