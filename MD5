@@ -1,4 +1,4 @@
-763b54fcdaeafa12a99fe6c345613d49 *DESCRIPTION
+41d02dfedcabbd3dde6e0999e1ffff27 *DESCRIPTION
 ad9aceb18914e0159340424735558f2c *NAMESPACE
 0f1bb787c54ebf55c41f3dccbd951652 *R/RcppExports.R
 887a176fd3f744b6858cff5575b4a6c0 *R/highs.R
@@ -327,7 +327,7 @@ de194ae7f49e3ab654dc02bfa1429744 *inst/HiGHS/src/qpsolver/dantzigpricing.hpp
 733029e7dfd4dca55bba6f6b5751bc55 *inst/HiGHS/src/qpsolver/devexharrispricing.hpp
 daabc55f27eda92562f3becc7c56a3fa *inst/HiGHS/src/qpsolver/devexpricing.hpp
 3a4df2dd5b662e4515c3c62663b27b15 *inst/HiGHS/src/qpsolver/eventhandler.hpp
-e2bef378a88cd9f4c862eafd0ec41780 *inst/HiGHS/src/qpsolver/factor.hpp
+02ef1706637ea129423cd063b38f3f28 *inst/HiGHS/src/qpsolver/factor.hpp
 b445268a39e77766a2e452a9a52f6ab5 *inst/HiGHS/src/qpsolver/feasibility.hpp
 02ccad655a3d6ce7e4ffda0eabaaba6f *inst/HiGHS/src/qpsolver/feasibility_highs.hpp
 15d18926d876bfbf7c0651391a4d9d8f *inst/HiGHS/src/qpsolver/feasibility_quass.hpp
