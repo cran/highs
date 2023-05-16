@@ -6,10 +6,14 @@ target_sources(highs PRIVATE RunHighs.cpp)
 if (UNIX)
         target_compile_options(highs PUBLIC "-Wno-unused-variable")
         target_compile_options(highs PUBLIC "-Wno-unused-const-variable")
-        target_compile_options(highs PUBLIC "-Wno-sign-compare")
 endif()
 
 target_link_libraries(highs libhighs)
+
+if(EMSCRIPTEN AND EMSCRIPTEN_HTML)
+        set(CMAKE_EXECUTABLE_SUFFIX ".html")
+        set_target_properties(highs PROPERTIES LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/highs_webdemo_shell.html)
+endif()
 
 target_include_directories(highs PRIVATE
         $<BUILD_INTERFACE:${HIGHS_SOURCE_DIR}/app>  

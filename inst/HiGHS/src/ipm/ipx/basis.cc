@@ -514,15 +514,15 @@ void Basis::CrashBasis(const double* colweights) {
     // rank revealing factorization, but it detects many dependencies in
     // practice.
     std::vector<Int> cols_guessed = GuessBasis(control_, model_, colweights);
-    assert(cols_guessed.size() <= m);
-    assert(cols_guessed.size() == m); // at the moment
+    assert((Int)cols_guessed.size() <= m);
+    assert((Int)cols_guessed.size() == m); // at the moment
 
     // Initialize the Basis object and factorize the (partial) basis. If
     // basis_[p] is negative, the p-th column of the basis matrix is zero,
     // and a slack column will be inserted by CrashFacorize().
     std::fill(basis_.begin(), basis_.end(), -1);
     std::fill(map2basis_.begin(), map2basis_.end(), -1);
-    for (Int k = 0; k < cols_guessed.size(); k++) {
+    for (size_t k = 0; k < cols_guessed.size(); k++) {
         basis_[k] = cols_guessed[k];
         assert(map2basis_[basis_[k]] == -1); // must not have duplicates
         map2basis_[basis_[k]] = k;
@@ -787,11 +787,22 @@ void Basis::PivotFreeVariablesIntoBasis(const double* colweights, Info* info) {
 void Basis::PivotFixedVariablesOutOfBasis(const double* colweights, Info* info){
     const Int m = model_.rows();
     const Int n = model_.cols();
+    const SparseMatrix& AI = model_.AI();
+    const Vector& lb = model_.lb();
+    const Vector& ub = model_.ub();
     IndexedVector btran(m), row(n+m);
     const double dependency_tol = std::max(0.0, control_.dependency_tol());
     info->errflag = 0;
     info->dependent_rows = 0;
     Int stability_pivots = 0;
+
+    // Build model right-hand side after subtracting fixed columns.
+    // Needed for dual unboundedness test.
+    Vector b_minus_fixed_columns(model_.b());
+    for (Int j = 0; j < n+m; j++) {
+        if (lb[j] == ub[j] && lb[j] != 0.0)
+            ScatterColumn(AI, j, -lb[j], b_minus_fixed_columns);
+    }
 
     // Maintain stack of fixed basic variables.
     std::vector<Int> remaining;
@@ -859,7 +870,9 @@ void Basis::PivotFixedVariablesOutOfBasis(const double* colweights, Info* info){
                 // unit increase of y[jb-n] with corresponding adjustment of the
                 // remaining y[i].
                 if (!info->rows_inconsistent) {
-                    double delta_obj = Dot(btran, model_.b());
+		  // Fix for #280 replaces this line by next
+		  // double delta_obj = Dot(btran, model_.b());
+                    double delta_obj = Dot(btran, b_minus_fixed_columns);
                     if (std::abs(delta_obj) > dependency_tol) {
                         control_.Debug()
                             << Textline(

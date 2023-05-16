@@ -3,8 +3,6 @@
 # finding external libraries and turning them into imported targets.
 
 cmake_minimum_required(VERSION 3.16)
-# set(CMAKE_CXX_COMPILER_FORCED TRUE)
-# set(CMAKE_CXX_COMPILER_WORKS TRUE)
 
 # set preference for clang compiler and intel compiler over gcc and other compilers
 include(Platform/${CMAKE_SYSTEM_NAME}-Determine-C OPTIONAL)
@@ -20,8 +18,8 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RELEASE)
 endif()
 
-project(HIGHS VERSION 1.4 LANGUAGES CXX C)
-set(HIGHS_VERSION_PATCH 1)
+project(HIGHS VERSION 1.5 LANGUAGES CXX C)
+set(HIGHS_VERSION_PATCH 0)
 
 # use C++11 standard
 set(CMAKE_CXX_STANDARD 11)
@@ -36,9 +34,11 @@ if(EXISTS "${LOC_PATH}")
     Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
 endif()
 
-option(BUILD_TESTING "Build Tests" ON)
+option(BUILD_TESTING "Build Tests" OFF)
 
-if(LINUX AND (NOT MSVC) AND (NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+if(DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+    message(STATUS "IPO / LTO as requested by user: ${CMAKE_INTERPROCEDURAL_OPTIMIZATION}")
+elseif(LINUX AND (NOT MSVC) AND (NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
     include(CheckIPOSupported)
     check_ipo_supported(RESULT ipo_supported OUTPUT error)
 
@@ -50,19 +50,22 @@ if(LINUX AND (NOT MSVC) AND (NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
     endif()
 endif()
 
-# Fast build: No interfaces (apart from c); No ipx; New (short) ctest instances,
+# Fast build: No interfaces (apart from c); New (short) ctest instances,
 # static library and exe without PIC. Used for gradually updating the CMake
 # targets build and install / export.
 
-# Note: ON by default yet
 option(FAST_BUILD "Fast build: only build static lib and exe and quick test." OFF)
+# interfaces
+option(PYTHON "Build Python interface" OFF)
 option(FORTRAN "Build Fortran interface" OFF)
 option(CSHARP "Build CSharp interface" OFF)
+# emscripten
+option(EMSCRIPTEN_HTML "Emscripten HTML output" OFF)
 
 # set the correct rpath for OS X
 set(CMAKE_MACOSX_RPATH ON)
 
-option(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS "Export all symbols into the DLL" ON)
+option(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS "Export all symbols into the DLL" OFF)
 
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${HIGHS_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
@@ -165,7 +168,7 @@ if(NOT MSVC)
 endif()
 if(CMAKE_Fortran_COMPILER)
     enable_language(Fortran)
-    set(FORTRAN_FOUND ON)
+    set(FORTRAN_FOUND OFF)
 else()
     set(FORTRAN_FOUND OFF)
 endif(CMAKE_Fortran_COMPILER)
@@ -291,31 +294,31 @@ if (HIGHS_COVERAGE)
                     COMMAND ${LCOV_PATH} --capture --initial --directory ${CMAKE_BINARY_DIR}/bin --output-file ${CMAKE_BINARY_DIR}/coverage.info
                     COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_BINARY_DIR} ${CMAKE_CTEST_COMMAND} -LE "(LONG|FAIL)" || true
                     COMMAND ${LCOV_PATH} --capture --directory ${CMAKE_BINARY_DIR}/bin --directory ${CMAKE_BINARY_DIR}/src --directory ${CMAKE_BINARY_DIR}/app --directory ${CMAKE_BINARY_DIR}/check --output-file ${CMAKE_BINARY_DIR}/coverage.info
-		    VERBATIM
+            VERBATIM
                     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
                     COMMENT "Resetting code coverage counters to zero.")
   endif()
 endif ()
 
-if(NOT MSVC)
-    set(OSI_ROOT "" CACHE PATH "Osi root folder.")
-    if (NOT "${OSI_ROOT}" STREQUAL "")
-        # if OSI_ROOT is set, then overwrite PKG_CONFIG_PATH
-        message(STATUS "OSI root folder set: " ${OSI_ROOT})
-        set(ENV{PKG_CONFIG_PATH}  "${OSI_ROOT}/${CMAKE_INSTALL_LIBDIR}/pkgconfig")
-    endif ()
-    unset(OSI_ROOT CACHE)
-    find_package(PkgConfig)
-
-    if(PKG_CONFIG_FOUND)
-        pkg_check_modules(OSI osi)
-        if (OSI_FOUND)
-            # need to come before adding any targets (add_executable, add_library)
-            link_directories(${OSI_LIBRARY_DIRS})
-            include_directories(${OSITEST_INCLUDE_DIRS})
-        endif (OSI_FOUND)
-    endif()
-endif()
+# if(NOT MSVC)
+#     set(OSI_ROOT "" CACHE PATH "Osi root folder.")
+#     if (NOT "${OSI_ROOT}" STREQUAL "")
+#         # if OSI_ROOT is set, then overwrite PKG_CONFIG_PATH
+#         message(STATUS "OSI root folder set: " ${OSI_ROOT})
+#         set(ENV{PKG_CONFIG_PATH}  "${OSI_ROOT}/${CMAKE_INSTALL_LIBDIR}/pkgconfig")
+#     endif ()
+#     unset(OSI_ROOT CACHE)
+#     find_package(PkgConfig)
+# 
+#     if(PKG_CONFIG_FOUND)
+#         pkg_check_modules(OSI osi)
+#         if (OSI_FOUND)
+#             # need to come before adding any targets (add_executable, add_library)
+#             link_directories(${OSI_LIBRARY_DIRS})
+#             include_directories(${OSITEST_INCLUDE_DIRS})
+#         endif (OSI_FOUND)
+#     endif()
+# endif()
 
 # whether to use shared or static libraries
 option(SHARED "Build shared libraries" ON)
@@ -392,7 +395,81 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 configure_file(${HIGHS_SOURCE_DIR}/src/HConfig.h.in ${HIGHS_BINARY_DIR}/HConfig.h @ONLY NEWLINE_STYLE UNIX)
 
-set(CMAKE_PLATFORM_USES_PATH_WHEN_NO_SONAME FALSE)
+# set(CMAKE_PLATFORM_USES_PATH_WHEN_NO_SONAME FALSE)
+
+
+# static build for windows
+if (NOT UNIX)
+option(BUILD_SHARED_LIBS "Build shared libraries (.dll)." OFF)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
+# for multi-config builds (e.g. msvc)
+foreach(OUTPUTCONFIG IN LISTS CMAKE_CONFIGURATION_TYPES)
+  string(TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG)
+  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}/${CMAKE_INSTALL_BINDIR})
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}/${CMAKE_INSTALL_BINDIR})
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}/${CMAKE_INSTALL_BINDIR})
+endforeach()
+endif()
+
+
+if(BUILD_SHARED_LIBS AND MSVC)
+  set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
+
+# If wrapper are built, we need to have the install rpath in BINARY_DIR to package
+if(BUILD_PYTHON)
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+endif()
+
+include(CMakeDependentOption)
+
+option(BUILD_EXAMPLES "Build examples" ON)
+message(STATUS "Build examples: ${BUILD_EXAMPLES}")
+
+CMAKE_DEPENDENT_OPTION(BUILD_CXX_EX "Build cxx example" ON "BUILD_EXAMPLES;BUILD_CXX" OFF)
+message(STATUS "Build C++: ${BUILD_CXX_EX}")
+CMAKE_DEPENDENT_OPTION(BUILD_C_EX "Build c example" ON "BUILD_EXAMPLES;BUILD_C" OFF)
+message(STATUS "Build C: ${BUILD_C_EX}")
+CMAKE_DEPENDENT_OPTION(BUILD_PYTHON_EX "Build python example" ON "BUILD_EXAMPLES;BUILD_PYTHON" OFF)
+message(STATUS "Build Python: ${BUILD_PYTHON_EX}")
+
+# By default all dependencies are NOT built (i.e. BUILD_DEPS=OFF),
+# BUT if building any wrappers (Python, Java or .Net) then BUILD_DEPS=ON.
+if(BUILD_PYTHON)
+  option(BUILD_DEPS /"Build all dependencies" ON)
+else()
+  option(BUILD_DEPS "Build all dependencies" OFF)
+endif()
+message(STATUS "Build all dependencies: ${BUILD_DEPS}")
+# Install built dependencies if any,
+option(INSTALL_BUILD_DEPS "Install build all dependencies" ON)
+
+# IF BUILD_DEPS=ON THEN Force all BUILD_*=ON
+CMAKE_DEPENDENT_OPTION(BUILD_ZLIB "Build the ZLIB dependency Library" OFF
+  "NOT BUILD_DEPS" ON)
+message(STATUS "Build ZLIB: ${BUILD_ZLIB}")
+
+
+if(BUILD_PYTHON)
+  CMAKE_DEPENDENT_OPTION(BUILD_pybind11 "Build the pybind11 dependency Library" OFF
+    "NOT BUILD_DEPS" ON)
+  message(STATUS "Python: Build pybind11: ${BUILD_pybind11}")
+
+  CMAKE_DEPENDENT_OPTION(BUILD_VENV "Create Python venv in BINARY_DIR/python/venv" OFF
+    "NOT BUILD_TESTING" ON)
+  message(STATUS "Python: Create venv: ${BUILD_VENV}")
+
+  option(VENV_USE_SYSTEM_SITE_PACKAGES "Python venv can use system site packages" OFF)
+  message(STATUS "Python: Allow venv to use system site packages: ${VENV_USE_SYSTEM_SITE_PACKAGES}")
+
+  option(FETCH_PYTHON_DEPS "Install python required modules if not available" ${BUILD_DEPS})
+  message(STATUS "Python: Fetch dependencies: ${FETCH_PYTHON_DEPS}")
+endif()
+
+# Add tests in examples/tests
+add_subdirectory(examples/tests)
 
 # condition added to src/CMakeLists.txt
 add_subdirectory(src)
@@ -493,8 +570,6 @@ foreach(instance ${${instances}})
 endforeach(instance)
 
 endfunction()
-
-
 message(STATUS "Check Passed Options:")
 message(STATUS "  FAST_BUILD: '${FAST_BUILD}'")
 message(STATUS "  SHARED: '${SHARED}'")
@@ -502,7 +577,6 @@ message(STATUS "  BUILD_TESTING: '${BUILD_TESTING}'")
 message(STATUS "  CMAKE_CXX_FLAGS: '${CMAKE_CXX_FLAGS}'")
 message(STATUS "  CMAKE_C_COMPILER: '${CMAKE_C_COMPILER}'")
 message(STATUS "  CMAKE_CXX_COMPILER: '${CMAKE_CXX_COMPILER}'")
-
 
 if (NOT JULIA)
     # add tests for success and fail instances

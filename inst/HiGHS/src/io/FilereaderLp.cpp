@@ -67,7 +67,7 @@ FilereaderRetcode FilereaderLp::readModelFromFile(const HighsOptions& options,
       }
     }
     // Clear lp.integrality_ if problem is pure LP
-    if (num_continuous == m.variables.size()) lp.integrality_.clear();
+    if ((size_t)num_continuous == m.variables.size()) lp.integrality_.clear();
     // get objective
     lp.objective_name_ = m.objective->name;
     // ToDo: Fix m.objective->offset and then use it here
@@ -212,7 +212,8 @@ void FilereaderLp::writeToFile(FILE* file, const char* format, ...) {
   va_list argptr;
   va_start(argptr, format);
   char stringbuffer[LP_MAX_LINE_LENGTH + 1];
-  HighsInt tokenlength = vsnprintf(stringbuffer, sizeof stringbuffer, format, argptr);
+  HighsInt tokenlength =
+      vsnprintf(stringbuffer, sizeof stringbuffer, format, argptr);
   if (this->linelength + tokenlength >= LP_MAX_LINE_LENGTH) {
     fprintf(file, "\n");
     fprintf(file, "%s", stringbuffer);
@@ -391,6 +392,9 @@ HighsStatus FilereaderLp::writeModelToFile(const HighsOptions& options,
   this->writeToFile(file, "bounds");
   this->writeToFileLineend(file);
   for (HighsInt iCol = 0; iCol < lp.num_col_; iCol++) {
+    const bool default_bounds =
+        lp.col_lower_[iCol] == 0 && lp.col_upper_[iCol] == kHighsInf;
+    if (default_bounds) continue;
     if (lp.col_lower_[iCol] <= -kHighsInf && lp.col_upper_[iCol] >= kHighsInf) {
       // Free variable
       if (has_col_names) {
@@ -408,7 +412,8 @@ HighsStatus FilereaderLp::writeModelToFile(const HighsOptions& options,
       }
       this->writeToFile(file, " =");
       this->writeToFileValue(file, lp.col_upper_[iCol], false);
-    } else if (lp.col_lower_[iCol] != 0 || lp.col_upper_[iCol] < kHighsInf) {
+    } else {
+      assert(!default_bounds);
       // Non-default bound
       if (lp.col_lower_[iCol] != 0) {
         // Nonzero lower bound
@@ -428,6 +433,7 @@ HighsStatus FilereaderLp::writeModelToFile(const HighsOptions& options,
     }
     this->writeToFileLineend(file);
   }
+
   if (lp.integrality_.size() > 0) {
     // write binary section
     this->writeToFile(file, "bin");

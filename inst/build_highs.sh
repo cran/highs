@@ -32,6 +32,7 @@ R_HIGHS_PKG_HOME=`pwd`
 HIGHS_SRC_DIR=${R_HIGHS_PKG_HOME}/inst/HiGHS
 R_HIGHS_BUILD_DIR=${HIGHS_SRC_DIR}/build
 R_HIGHS_LIB_DIR=${R_HIGHS_PKG_HOME}/src/highslib
+# R_HIGHS_LIB_DIR=~/lib/highslib
 
 mkdir -p ${R_HIGHS_BUILD_DIR}
 mkdir -p ${R_HIGHS_LIB_DIR}

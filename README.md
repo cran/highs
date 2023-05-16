@@ -1,7 +1,7 @@
 **R** HIGHS Interface
 ================
 Florian Schwendinger</br>
-Updated: 2022-09-09
+Updated: 2023-01-21
 
 <!-- badges: start -->
 
@@ -161,7 +161,65 @@ str(s)
 #>   ..$ sum_dual_infeasibilities  : num 0
 ```
 
-# 3 Options
+# 3 Additional information
+
+## 3.1 Sparse matrices
+
+The **HiGHs** **C++** library internally supports the matrix formats csc
+(compressed sparse column matrix) and csr (compressed Sparse Row array).
+The **highs** package currently supports the following matrix classes:
+
+1.  `"matrix"` dense matrices,  
+2.  `"dgCMatrix"` compressed sparse column matrix from the **Matrix**
+    package,  
+3.  `"dgRMatrix"` compressed sparse row matrix from the **Matrix**
+    package,  
+4.  `"matrix.csc"` compressed sparse column matrix from the **SparseM**
+    package,  
+5.  `"matrix.csr"` compressed sparse row matrix from the **SparseM**
+    package,  
+6.  `"simple_triplet_matrix"` coordinate format from the **slam**
+    package.
+
+If the constraint matrix `A` is provided as `dgCMatrix`, `dgRMatrix`,
+`matrix.csc` or `matrix.csr` the underlying data is directly passed to
+**HiGHs** otherwise it is first transformed into the csc format an
+afterwards passed to **HiGHs**
+
+``` r
+library("Matrix")
+
+A <- rbind(c(0, 1), c(1, 2), c(3, 2))
+csc <- as(A, "CsparseMatrix")  # dgCMatrix
+s0 <- highs_solve(L = c(1.0, 1), lower = c(0, 1), upper = c(4, Inf),
+                  A = csc, lhs = c(-Inf, 5, 6), rhs = c(7, 15, Inf),
+                  offset = 3)
+
+csr <- as(A, "RsparseMatrix")  # dgRMatrix
+s1 <- highs_solve(L = c(1.0, 1), lower = c(0, 1), upper = c(4, Inf),
+                  A = csr, lhs = c(-Inf, 5, 6), rhs = c(7, 15, Inf),
+                  offset = 3)
+
+library("SparseM")
+
+csc <- as.matrix.csc(A)
+s2 <- highs_solve(L = c(1.0, 1), lower = c(0, 1), upper = c(4, Inf),
+                  A = csc, lhs = c(-Inf, 5, 6), rhs = c(7, 15, Inf),
+                  offset = 3)
+
+csr <- as.matrix.csr(A)
+s3 <- highs_solve(L = c(1.0, 1), lower = c(0, 1), upper = c(4, Inf),
+                  A = csr, lhs = c(-Inf, 5, 6), rhs = c(7, 15, Inf),
+                  offset = 3)
+
+library("slam")
+stm <- as.simple_triplet_matrix(A)
+s4 <- highs_solve(L = c(1.0, 1), lower = c(0, 1), upper = c(4, Inf),
+                  A = stm, lhs = c(-Inf, 5, 6), rhs = c(7, 15, Inf),
+                  offset = 3)
+```
+
+# 4 Options
 
 The function `highs_available_solver_options` lists the available solver
 options
@@ -173,7 +231,7 @@ knitr::kable(d, row.names = FALSE)
 ```
 
 | option                                          | type    | category |
-|:------------------------------------------------|:--------|:---------|
+| :---------------------------------------------- | :------ | :------- |
 | `allow_unbounded_or_infeasible`                 | bool    | advanced |
 | `allowed_cost_scale_factor`                     | integer | advanced |
 | `allowed_matrix_scale_factor`                   | integer | advanced |
@@ -272,12 +330,12 @@ knitr::kable(d, row.names = FALSE)
 
 for additional information see the [HiGHS homepage](https://highs.dev/).
 
-# 4 Status codes
+# 5 Status codes
 
 HiGHS currently has the following status codes defined in `HConst.h"`.
 
 | enumerator               | status | message                            |
-|--------------------------|-------:|------------------------------------|
+| :----------------------- | -----: | :--------------------------------- |
 | `kNotset`                |      0 | `"Not Set"`                        |
 | `kLoadError`             |      1 | `"Load error"`                     |
 | `kModelError`            |      2 | `"Model error"`                    |

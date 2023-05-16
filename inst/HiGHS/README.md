@@ -1,6 +1,8 @@
 # HiGHS - Linear optimization software
 
 [![Build Status](https://github.com/ERGO-Code/HiGHS/workflows/build/badge.svg)](https://github.com/ERGO-Code/HiGHS/actions?query=workflow%3Abuild+branch%3Amaster)
+[![PyPi](https://img.shields.io/pypi/v/highspy.svg)](https://pypi.python.org/pypi/highspy)
+[![PyPi](https://img.shields.io/pypi/dm/highspy.svg)](https://pypi.python.org/pypi/highspy)
 
 HiGHS is a high performance serial and parallel solver for large scale sparse
 linear optimization problems of the form
@@ -31,7 +33,7 @@ The project has an entry on Wikipedia: https://en.wikipedia.org/wiki/HiGHS_optim
 Documentation
 -------------
 
-The rest of this file gives brief documentation for HiGHS. Comprehensive documentation is available via https://www.highs.dev.
+The rest of this file gives brief documentation for HiGHS. Comprehensive documentation is available from [ergo-code.github.io](https://ergo-code.github.io/HiGHS/dev/).
 
 Download
 --------
@@ -70,11 +72,11 @@ a build folder and call CMake as follows
 
     mkdir build
     cd build
-    cmake ..
+    cmake -DFAST_BUILD=ON ..
 
 Then compile the code using
 
-    make
+    cmake --build . 
 
 This installs the executable `bin/highs`.
 The minimum CMake version required is 3.15.
@@ -112,14 +114,14 @@ Usage:
       --solution_file arg     File for writing out model solution.
       --write_model_file arg  File for writing out model.
       --random_seed arg       Seed to initialize random number generation.
-      --ranging arg           Compute cost, bound, RHS and basic solution ranging.
-      --read_solution_file    File of solution to be read 
+      --ranging arg           Report cost, bound, RHS and basic solution ranging in any solution file: "off" by default - "on" is alternatives.
+      --read_solution_file    File of solution to be read
       
-  -h, --help                 Print help.
+      --version               Print version number      
+  -h, --help                  Print help.
   
   Note:
   
-  * If the file constrains some variables to take integer values (so the problem is a MIP) and "simplex" or "ipm" is selected for the solver option, then the integrality constraint will be ignored.
   * If the file defines a quadratic term in the objective (so the problem is a QP or MIQP) and "simplex" or "ipm" is selected for the solver option, then the quadratic term will be ignored.
   * If the file constrains some variables to take integer values and defines a quadratic term in the objective, then the problem is MIQP and cannot be solved by HiGHS
 
@@ -202,6 +204,24 @@ Javascript
 ----------
 
 HiGHS can be used from javascript directly inside a web browser thanks to [highs-js](https://github.com/lovasoa/highs-js). See the [demo](https://lovasoa.github.io/highs-js/) and the [npm package](https://www.npmjs.com/package/highs).
+
+Alternatively, HiGHS can directly be compiled into a single HTML file and used
+in a browser. This requires `emscripten` to be installed from their website
+(unfortunately, e.g. `sudo apt install emscripten` in Ubuntu Linux is broken):
+
+    https://emscripten.org/docs/getting_started/downloads.html
+
+Then, run
+
+    sh build_webdemo.sh
+
+This will create the file `build_webdemo/bin/highs.html`. For fast edit
+iterations run
+
+    find src app | entr -rs 'make -C build_webdemo highs; echo'
+
+This will rebuild `highs.html` every time a source file is modified (e.g.
+from Visual Studio Code).
 
 Python
 ------

@@ -170,7 +170,8 @@ set(sources
     util/HSet.cpp
     util/HVectorBase.cpp
     util/stringutil.cpp
-    interfaces/highs_c_api.cpp)
+    #interfaces/highs_c_api.cpp
+)
 
 set(headers
     ../extern/filereaderlp/builder.hpp
@@ -298,7 +299,7 @@ set(headers
     util/HVectorBase.h
     util/stringutil.h
     Highs.h
-    interfaces/highs_c_api.h
+    #interfaces/highs_c_api.h
 )
 
 set(headers ${headers} ipm/IpxWrapper.h ${basiclu_headers}
@@ -329,8 +330,8 @@ set_target_properties(libhighs PROPERTIES
     MACOSX_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
 
 if (OSI_FOUND)
-    add_library(OsiHighs interfaces/OsiHiGHSSolverInterface.cpp)
-    set(headers ${headers} interfaces/OsiHiGHSSolverInterface.hpp)
+    # add_library(OsiHighs interfaces/OsiHiGHSSolverInterface.cpp)
+    # set(headers ${headers} interfaces/OsiHiGHSSolverInterface.hpp)
 
     target_include_directories(OsiHighs PUBLIC ${OSI_INCLUDE_DIRS})
     target_link_libraries(OsiHighs PUBLIC libhighs ${OSI_LIBRARIES})
@@ -387,7 +388,7 @@ if (UNIX)
 
     target_compile_options(libhighs PRIVATE "-Wno-unused-variable")
     target_compile_options(libhighs PRIVATE "-Wno-unused-const-variable")
-    target_compile_options(libhighs PRIVATE "-Wno-sign-compare")
+    #target_compile_options(libhighs PRIVATE "-Wno-sign-compare")
     #target_compile_options(libhighs PRIVATE "-Wno-logical-op-parentheses")
 
     #target_compile_options(libipx PRIVATE "-Wno-defaulted-function-deleted")
@@ -445,10 +446,9 @@ else()
 # No interfaces (apart from c); No ipx; New (short) ctest instances.
 add_library(libhighs)
 
-if (NOT ${BUILD_SHARED_LIBS})
-    set_target_properties(libhighs PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    target_compile_definitions(libhighs PUBLIC LIBHIGHS_STATIC_DEFINE)
-endif()
+set_target_properties(libhighs PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_definitions(libhighs PUBLIC LIBHIGHS_STATIC_DEFINE)
+
 
 if(${BUILD_SHARED_LIBS})
     # put version information into shared library file
@@ -560,7 +560,8 @@ target_sources(libhighs PRIVATE
     util/HSet.cpp
     util/HVectorBase.cpp
     util/stringutil.cpp
-    interfaces/highs_c_api.cpp)
+    #interfaces/highs_c_api.cpp
+)
   
 target_include_directories(libhighs PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>  
@@ -569,7 +570,7 @@ target_include_directories(libhighs PUBLIC
     )
 
 target_include_directories(libhighs PRIVATE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/interfaces>  
+    # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/interfaces>  
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/io>  
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ipm>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ipm/ipx>
@@ -604,10 +605,10 @@ set_target_properties(libhighs PROPERTIES
     OUTPUT_NAME "highs"
     MACOSX_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
 
-if (UNIX)
-    set_target_properties(libhighs PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY "${HIGHS_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
-endif()
+# if (UNIX)
+#     set_target_properties(libhighs PROPERTIES
+#         LIBRARY_OUTPUT_DIRECTORY "${HIGHS_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
+# endif()
 
 set(headers_fast_build_
     ../extern/filereaderlp/builder.hpp
@@ -735,7 +736,7 @@ set(headers_fast_build_
     util/HVectorBase.h
     util/stringutil.h
     Highs.h
-    interfaces/highs_c_api.h
+    #interfaces/highs_c_api.h
 )
 
 set(headers_fast_build_ ${headers_fast_build_} ipm/IpxWrapper.h ${basiclu_headers}
@@ -744,8 +745,8 @@ set(headers_fast_build_ ${headers_fast_build_} ipm/IpxWrapper.h ${basiclu_header
 #set_target_properties(libhighs PROPERTIES PUBLIC_HEADER "src/Highs.h;src/lp_data/HighsLp.h;src/lp_data/HighsLpSolverObject.h")
 
 # set the install rpath to the installed destination
-set_target_properties(libhighs PROPERTIES INSTALL_RPATH
-    "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+# set_target_properties(libhighs PROPERTIES INSTALL_RPATH
+#     "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
 
 # install the header files of highs
 foreach ( file ${headers_fast_build_} )
@@ -764,14 +765,12 @@ install(FILES ${HIGHS_BINARY_DIR}/HConfig.h DESTINATION ${CMAKE_INSTALL_INCLUDED
 target_sources(libhighs PRIVATE ${basiclu_sources} ${ipx_sources} ipm/IpxWrapper.cpp)
 
 if (UNIX)
-    target_compile_options(libhighs PRIVATE "-Wno-return-type" "-Wno-switch")
     target_compile_options(libhighs PRIVATE "-Wno-unused-variable")
     target_compile_options(libhighs PRIVATE "-Wno-unused-const-variable")
-    target_compile_options(libhighs PRIVATE "-Wno-sign-compare")
 endif()
 
-set_target_properties(libhighs PROPERTIES INSTALL_RPATH
-    "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+# set_target_properties(libhighs PROPERTIES INSTALL_RPATH
+#     "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
 
 endif()
 

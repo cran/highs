@@ -171,23 +171,23 @@ solver_get_options <- function(solver, keys = NULL) {
 
 
 force_type <- function(obj, type) {
-    force <- list(bool = as.logical, integer = as.integer, 
+    force <- list(bool = as.logical, integer = as.integer,
                   double = as.double, string = as.character)[[type]]
     force(obj)
 }
 
 
-assert_type <- function(obj, type) {
+test_type <- function(obj, type) {
     if (type == "bool") {
-        checkmate::assert_logical(obj, len = 1L, any.missing = FALSE)
+        checkmate::test_logical(obj, len = 1L, any.missing = FALSE)
     } else if (type == "integer") {
-        checkmate::assert_integer(obj, len = 1L, any.missing = FALSE)
+        checkmate::test_integer(obj, len = 1L, any.missing = FALSE)
     } else if (type == "double") {
-        checkmate::assert_double(obj, len = 1L, any.missing = FALSE)
+        checkmate::test_double(obj, len = 1L, any.missing = FALSE)
     } else if (type == "string") {
-        checkmate::assert_string(obj)
+        checkmate::test_string(obj)
     } else {
-        stop("unallowed type")
+        stop(sprintf("type '%s' is not allowed", type))
     }
 }
 
@@ -200,14 +200,18 @@ solver_set_options <- function(solver, kwargs = list()) {
     if (anyNA(m)) {
         stop("unknown option")
     }
-    option_names <- option_names[m,]
+    option_names <- option_names[m, ]
     option_types <- setNames(option_names[["type"]], option_names[["option"]])
     for (i in seq_along(kwargs)) {
         key <- names(kwargs)[i]
         value <- kwargs[[i]]
         dtype <- option_types[key]
         val <- force_type(value, dtype)
-        assert_type(val, dtype)
+        if (!test_type(val, dtype)) {
+            msg <- sprintf("option '%s' expects object of class '%s' got '%s'",
+                           key, dtype, paste(class(val), collapse = "."))
+            stop(msg)
+        }
         solver_set_option(solver, key, val)
     }
     return(invisible(NULL))

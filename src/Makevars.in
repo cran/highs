@@ -1,4 +1,2 @@
-CXX_STD=CXX11
-
 PKG_LIBS= -L@RHIGHS_LIB_DIR@/lib -L@RHIGHS_LIB_DIR@/lib64 -lhighs
 PKG_CPPFLAGS=-I@RHIGHS_LIB_DIR@/include -I@RHIGHS_LIB_DIR@/include/highs

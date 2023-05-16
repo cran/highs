@@ -8,6 +8,15 @@
 is_dgc <- function(x) inherits(x, "dgCMatrix")
 
 
+is_csc <- function(x) inherits(x, "matrix.csc")
+
+
+is_dgr <- function(x) inherits(x, "dgRMatrix")
+
+
+is_csr <- function(x) inherits(x, "matrix.csr")
+
+
 # Test if Simple Triplet Matrix
 #
 # Test if the object is a \code{"simple_triplet_matrix"}.
