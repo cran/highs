@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file presolve/HPresolveAnalysis.h
@@ -39,6 +37,9 @@ class HPresolveAnalysis {
   HighsPresolveLog presolve_log_;
 
   // for LP presolve
+  //
+  // Transform options->presolve_rule_off into logical settings in
+  // allow_rule_[*], commenting on the rules switched off
   void setup(const HighsLp* model_, const HighsOptions* options_,
              const HighsInt& numDeletedRows_, const HighsInt& numDeletedCols_);
   void resetNumDeleted();

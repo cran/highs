@@ -19,11 +19,14 @@ void Crossover::PushAll(Basis* basis, Vector& x, Vector& y, Vector& z,
     const Vector& ub = model.ub();
     std::vector<Int> perm = Sortperm(n+m, weights, false);
 
-    control_.Log()
-        << Textline("Primal residual before push phase:")
-        << sci2(PrimalResidual(model, x)) << '\n'
-        << Textline("Dual residual before push phase:")
-        << sci2(DualResidual(model, y, z)) << '\n';
+    std::stringstream h_logging_stream;
+    h_logging_stream.str(std::string());
+    h_logging_stream
+      << Textline("Primal residual before push phase:")
+      << sci2(PrimalResidual(model, x)) << '\n'
+      << Textline("Dual residual before push phase:")
+      << sci2(DualResidual(model, y, z)) << '\n';
+    control_.hLog(h_logging_stream);
 
     // Run dual push phase.
     std::vector<Int> dual_superbasics;
@@ -32,9 +35,10 @@ void Crossover::PushAll(Basis* basis, Vector& x, Vector& y, Vector& z,
         if (basis->IsBasic(j) && z[j] != 0.0)
             dual_superbasics.push_back(j);
     }
-    control_.Log()
+    h_logging_stream
         << Textline("Number of dual pushes required:")
         << dual_superbasics.size() << '\n';
+	control_.hLog(h_logging_stream);
     PushDual(basis, y, z, dual_superbasics, x, info);
     assert(DualInfeasibility(model, x, z) == 0.0);
     if (info->status_crossover != IPX_STATUS_optimal)
@@ -43,15 +47,16 @@ void Crossover::PushAll(Basis* basis, Vector& x, Vector& y, Vector& z,
     // Run primal push phase. Because z[j]==0 for all basic variables, none of
     // the primal variables is fixed at its bound.
     std::vector<Int> primal_superbasics;
-    for (Int p = perm.size()-1; p >= 0; p--) {
-        Int j = perm[p];
+    for (size_t p = perm.size(); p > 0; p--) {
+        Int j = perm[p - 1];
         if (basis->IsNonbasic(j) && x[j] != lb[j] && x[j] != ub[j] &&
             !(std::isinf(lb[j]) && std::isinf(ub[j]) && x[j] == 0.0))
             primal_superbasics.push_back(j);
     }
-    control_.Log()
+    h_logging_stream
         << Textline("Number of primal pushes required:")
         << primal_superbasics.size() << '\n';
+	control_.hLog(h_logging_stream);
     PushPrimal(basis, x, primal_superbasics, nullptr, info);
     assert(PrimalInfeasibility(model, x) == 0.0);
     if (info->status_crossover != IPX_STATUS_optimal)
@@ -110,8 +115,8 @@ void Crossover::PushPrimal(Basis* basis, Vector& x,
     }
 
     control_.ResetPrintInterval();
-    Int next = 0;
-    while (next < (Int)variables.size()) {
+    size_t next = 0;
+    while (next < variables.size()) {
         if ((info->errflag = control_.InterruptCheck()) != 0)
             break;
 
@@ -194,16 +199,22 @@ void Crossover::PushPrimal(Basis* basis, Vector& x,
 
         primal_pushes_++;
         next++;
-        control_.IntervalLog()
-            << " " << Format(static_cast<Int>(variables.size()-next), 8)
-            << " primal pushes remaining"
-            << " (" << Format(primal_pivots_, 7) << " pivots)\n";
+	std::stringstream h_logging_stream;
+	h_logging_stream.str(std::string());
+	h_logging_stream
+	  << " " << Format(static_cast<Int>(variables.size()-next), 8)
+	  << " primal pushes remaining"
+	  << " (" << Format(primal_pivots_, 7) << " pivots)\n";
+	control_.hIntervalLog(h_logging_stream);
     }
     for (Int p = 0; p < m; p++)
         x[(*basis)[p]] = xbasic[p];
 
     // Set status flag.
-    if (info->errflag == IPX_ERROR_interrupt_time) {
+    if (info->errflag == IPX_ERROR_user_interrupt) {
+        info->errflag = 0;
+	info->status_ipm = IPX_STATUS_user_interrupt;
+    } else if (info->errflag == IPX_ERROR_time_interrupt) {
         info->errflag = 0;
         info->status_crossover = IPX_STATUS_time_limit;
     } else if (info->errflag != 0) {
@@ -247,8 +258,8 @@ void Crossover::PushDual(Basis* basis, Vector& y, Vector& z,
     }
 
     control_.ResetPrintInterval();
-    Int next = 0;
-    while (next < (Int)variables.size()) {
+    size_t next = 0;
+    while (next < variables.size()) {
         if ((info->errflag = control_.InterruptCheck()) != 0)
             break;
 
@@ -316,14 +327,20 @@ void Crossover::PushDual(Basis* basis, Vector& y, Vector& z,
 
         dual_pushes_++;
         next++;
-        control_.IntervalLog()
+	std::stringstream h_logging_stream;
+	h_logging_stream.str(std::string());
+	h_logging_stream
             << " " << Format(static_cast<Int>(variables.size()-next), 8)
             << " dual pushes remaining"
             << " (" << Format(dual_pivots_, 7) << " pivots)\n";
+	control_.hIntervalLog(h_logging_stream);
     }
 
     // Set status flag.
-    if (info->errflag == IPX_ERROR_interrupt_time) {
+    if (info->errflag == IPX_ERROR_user_interrupt) {
+        info->errflag = 0;
+        info->status_ipm = IPX_STATUS_user_interrupt;
+    } else if (info->errflag == IPX_ERROR_time_interrupt) {
         info->errflag = 0;
         info->status_crossover = IPX_STATUS_time_limit;
     } else if (info->errflag != 0) {

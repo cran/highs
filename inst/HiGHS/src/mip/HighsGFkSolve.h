@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file mip/HighsGFkLU.h
@@ -25,7 +23,7 @@
 
 #include "lp_data/HConst.h"
 
-// helper struct to compute the multipicative inverse by using fermats
+// helper struct to compute the multiplicative inverse by using fermats
 // theorem and recursive repeated squaring.
 // Under the assumption that k is a small prime and an 32bit HighsInt is enough
 // to hold the number (k-1)^(k-2) good compilers should be able to optimize this
@@ -41,7 +39,7 @@ struct HighsGFk;
 template <>
 struct HighsGFk<2> {
   static constexpr unsigned int powk(unsigned int a) { return a * a; }
-  static constexpr unsigned int inverse(unsigned int a) { return 1; }
+  static constexpr unsigned int inverse(unsigned int) { return 1; }
 };
 
 template <>
@@ -319,7 +317,7 @@ class HighsGFkSolve {
 
     // check if a solution exists by scanning the linearly dependent rows for
     // nonzero right hand sides
-    bool hasSolution[kNumRhs];
+    std::array<bool, kNumRhs> hasSolution;
     HighsInt numRhsWithSolution = 0;
     for (int rhsIndex = 0; rhsIndex < kNumRhs; ++rhsIndex) {
       hasSolution[rhsIndex] = true;
@@ -343,7 +341,7 @@ class HighsGFkSolve {
     // now iterate a subset of the basic solutions.
     // When a column leaves the basis we do not allow it to enter again so that
     // we iterate at most one solution for each nonbasic column
-    std::vector<SolutionEntry> solution[kNumRhs];
+    std::array<std::vector<SolutionEntry>, kNumRhs> solution;
     for (int rhsIndex = 0; rhsIndex < kNumRhs; ++rhsIndex)
       if (hasSolution[rhsIndex]) solution[rhsIndex].reserve(numCol);
 
@@ -386,7 +384,7 @@ class HighsGFkSolve {
       for (HighsInt i = numFactorRows - 1; i >= 0; --i) {
         HighsInt row = factorRowPerm[i];
 
-        unsigned int solval[kNumRhs];
+        std::array<unsigned int, kNumRhs> solval;
 
         for (int rhsIndex = 0; rhsIndex < kNumRhs; ++rhsIndex) {
           if (!hasSolution[rhsIndex]) continue;

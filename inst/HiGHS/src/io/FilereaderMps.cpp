@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file io/FilereaderMps.cpp
@@ -80,5 +78,6 @@ HighsStatus FilereaderMps::writeModelToFile(const HighsOptions& options,
                                             const std::string filename,
                                             const HighsModel& model) {
   assert(model.lp_.a_matrix_.isColwise());
-  return writeModelAsMps(options, filename, model);
+  return writeModelAsMps(options, filename, model,
+                         options.mps_parser_type_free);
 }

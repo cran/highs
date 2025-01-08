@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #ifndef HIGHS_LP_RELAXATION_H_
@@ -97,6 +95,11 @@ class HighsLpRelaxation {
   HighsLpRelaxation(const HighsMipSolver& mip);
 
   HighsLpRelaxation(const HighsLpRelaxation& other);
+
+  void getCutPool(HighsInt& num_col, HighsInt& num_cut,
+                  std::vector<double>& cut_lower,
+                  std::vector<double>& cut_upper,
+                  HighsSparseMatrix& cut_matrix) const;
 
   class Playground {
     friend class HighsLpRelaxation;

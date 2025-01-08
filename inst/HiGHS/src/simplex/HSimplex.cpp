@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file lp_data/HSimplex.cpp
@@ -96,7 +94,7 @@ void appendNonbasicColsToBasis(HighsLp& lp, SimplexBasis& basis,
     basis.nonbasicFlag_[iCol] = kNonbasicFlagTrue;
     double lower = lp.col_lower_[iCol];
     double upper = lp.col_upper_[iCol];
-    HighsInt move = kIllegalMoveValue;
+    int8_t move = kIllegalMoveValue;
     if (lower == upper) {
       // Fixed
       move = kNonbasicMoveZe;
@@ -159,17 +157,6 @@ void appendBasicRowsToBasis(HighsLp& lp, SimplexBasis& basis,
   }
 }
 
-void unscaleSolution(HighsSolution& solution, const HighsScale scale) {
-  for (HighsInt iCol = 0; iCol < scale.num_col; iCol++) {
-    solution.col_value[iCol] *= scale.col[iCol];
-    solution.col_dual[iCol] /= (scale.col[iCol] / scale.cost);
-  }
-  for (HighsInt iRow = 0; iRow < scale.num_row; iRow++) {
-    solution.row_value[iRow] /= scale.row[iRow];
-    solution.row_dual[iRow] *= (scale.row[iRow] * scale.cost);
-  }
-}
-
 void getUnscaledInfeasibilities(const HighsOptions& options,
                                 const HighsScale& scale,
                                 const SimplexBasis& basis,
@@ -200,7 +187,7 @@ void getUnscaledInfeasibilities(const HighsOptions& options,
   for (HighsInt iVar = 0; iVar < scale.num_col + scale.num_row; iVar++) {
     // Look at the dual infeasibilities of nonbasic variables
     if (basis.nonbasicFlag_[iVar] == kNonbasicFlagFalse) continue;
-    // No dual infeasiblity for fixed rows and columns
+    // No dual infeasibility for fixed rows and columns
     if (info.workLower_[iVar] == info.workUpper_[iVar]) continue;
     bool col = iVar < scale.num_col;
     HighsInt iCol = 0;

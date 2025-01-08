@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #ifndef HIGHS_UTIL_INTEGERS_H_
@@ -31,8 +29,7 @@ class HighsIntegers {
   }
 
   static double mod(double a, double m) {
-    int64_t r = std::fmod(a, m);
-    return r + (a < 0) * m;
+    return std::trunc(std::fmod(a, m)) + (a < 0) * m;
   }
 
   static int64_t nearestInteger(double x) {
@@ -40,7 +37,7 @@ class HighsIntegers {
   }
 
   static bool isIntegral(double x, double eps) {
-    double y = std::fabs(x - (int64_t)x);
+    double y = std::fabs(x - std::trunc(x));
     return std::min(y, 1.0 - y) <= eps;
   }
 
@@ -120,8 +117,8 @@ class HighsIntegers {
     m[1] += m[0] * ai;
     m[3] += m[2] * ai;
 
-    double x0 = m[0] / (double)m[2];
-    double x1 = m[1] / (double)m[3];
+    double x0 = static_cast<double>(m[0]) / static_cast<double>(m[2]);
+    double x1 = static_cast<double>(m[1]) / static_cast<double>(m[3]);
     x = std::abs(x);
     double err0 = std::abs(x - x0);
     double err1 = std::abs(x - x1);
@@ -149,7 +146,7 @@ class HighsIntegers {
     expshift = std::max(-expshift, 0) + 3;
 
     // guard against making the largest value too big which may cause overflows
-    // with intermdediate gcd values
+    // with intermediate gcd values
     int expMaxVal;
     std::frexp(maxval, &expMaxVal);
     expMaxVal = std::min(expMaxVal, 32);
@@ -197,7 +194,7 @@ class HighsIntegers {
         currgcd = gcd(currgcd, (int64_t) double(downval));
 
         // if the denominator is large, divide by the current gcd to prevent
-        // unecessary overflows
+        // unnecessary overflows
         if (denom > std::numeric_limits<unsigned int>::max()) {
           denom /= currgcd;
           if (startdenom != 1) startdenom /= gcd(currgcd, startdenom);
@@ -206,7 +203,7 @@ class HighsIntegers {
       }
     }
 
-    return denom / (double)currgcd;
+    return static_cast<double>(denom) / static_cast<double>(currgcd);
   }
 
   static double integralScale(const std::vector<double>& vals, double deltadown,

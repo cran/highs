@@ -174,22 +174,66 @@ allowed_matrix_classes <- function() {
 #' m <- highs_model(Q = Q, L = L, lower = 0, A = A, rhs = 2)
 #' m
 #' @export
-highs_model <- function(Q = NULL, L, lower, upper, A, lhs, rhs, types,
+highs_model <- function(Q = NULL, L, lower, upper,
+                        A = NULL, lhs = NULL, rhs = NULL,
+                        types = rep.int(1L, length(L)),
                         maximum = FALSE, offset = 0) {
     assert_numeric(L, any.missing = FALSE)
-    checkmate::assert_multi_class(A, allowed_matrix_classes(), null.ok = TRUE)
-    checkmate::assert_multi_class(Q, allowed_matrix_classes(), null.ok = TRUE)
-
+    assert_multi_class(Q, allowed_matrix_classes(), null.ok = TRUE)
+    assert_multi_class(A, allowed_matrix_classes(), null.ok = TRUE)
+    
     nvars <- length(L)
-    if (missing(A) || NROW(A) == 0L) {
+
+    INF <- highs_infinity()
+    if (missing(lower) || length(lower) == 0L) {
+        lower <- rep.int(-INF, nvars)
+    } else if (length(lower) == 1L) {
+        lower <- rep.int(lower, nvars)
+    }
+    assert_numeric(lower, any.missing = FALSE, len = nvars)
+    if (missing(upper) || length(upper) == 0L) {
+        upper <- rep.int(INF, nvars)
+    } else if (length(upper) == 1L) {
+        upper <- rep.int(upper, nvars)
+    }
+    assert_numeric(upper, any.missing = FALSE, len = nvars)
+
+    if (NROW(A) == 0L) {
         A <- lhs <- rhs <- NULL
         ncons <- 0L
     } else {
-        stopifnot(is.vector(L), !(missing(lhs) & missing(rhs)))
         ncons <- number_or_rows(A)
     }
+
+    if (ncons > 0L) {
+        if (length(lhs) == 0L) {
+            lhs <- rep.int(-INF, ncons)
+        } else {
+            lhs <- replace(lhs, lhs == -Inf, -INF)
+        }
+        assert_numeric(lhs, any.missing = FALSE, len = ncons)
+        if (length(rhs) == 0L) {
+            rhs <- rep.int(INF, ncons)
+        } else {
+            rhs <- replace(rhs, rhs ==  Inf, INF)
+        }
+        assert_numeric(rhs, any.missing = FALSE, len = ncons)
+    }
+
+    all_types_continuous <- NA
+    if (length(types) == 0L) {
+        types <- rep.int(0L, nvars)
+        all_types_continuous <- TRUE
+    } else {
+        if (is.character(types)) {
+            types <- match(types, highs_variable_types()) - 1L
+        } else {
+            types <- types - 1L
+        }
+        assert_integerish(types, lower = 0, upper = 4L, any.missing = FALSE, len = nvars)
+    }
+    
     model <- new_model()
-    INF <- highs_infinity()
     model_set_ncol(model, nvars)
     model_set_nrow(model, ncons)
     model_set_sense(model, maximum)
@@ -197,26 +241,9 @@ highs_model <- function(Q = NULL, L, lower, upper, A, lhs, rhs, types,
     if (!is.null(Q)) {
         model_set_hessian(model, Q)
     }
-    if (missing(types) || length(types) == 0L) {
-        types <- rep.int(0L, nvars)
-    } else {
-        if (is.character(types)) {
-            types <- match(types, highs_variable_types()) - 1L
-        } else {
-            types <- types - 1L
-        }
-        assert_integerish(types, lower = 0, upper = 4L, any.missing = FALSE)
+   
+    if (!isTRUE(all_types_continuous) || any(types != 0)) {
         model_set_vartype(model, as.integer(types))
-    }
-    if (missing(lower) || length(lower) == 0L) {
-        lower <- rep.int(-INF, nvars)
-    } else if (length(lower) == 1L) {
-        lower <- rep.int(lower, nvars)
-    }
-    if (missing(upper) || length(upper) == 0L) {
-        upper <- rep.int(INF, nvars)
-    } else if (length(upper) == 1L) {
-        upper <- rep.int(upper, nvars)
     }
 
     lower <- replace(lower, lower == -Inf, -INF)
@@ -225,14 +252,6 @@ highs_model <- function(Q = NULL, L, lower, upper, A, lhs, rhs, types,
     model_set_upper(model, upper)
     if (ncons > 0L) {
         model_set_constraint_matrix(model, A)
-        if (missing(lhs) || length(lhs) == 0L) {
-            lhs <- rep.int(-INF, ncons)
-        }
-        if (missing(rhs) || length(rhs) == 0L) {
-            rhs <- rep.int(INF, ncons)
-        }
-        lhs <- replace(lhs, lhs == -Inf, -INF)
-        rhs <- replace(rhs, rhs ==  Inf, INF)
         model_set_lhs(model, lhs)
         model_set_rhs(model, rhs)
     }
@@ -309,7 +328,9 @@ highs_model <- function(Q = NULL, L, lower, upper, A, lhs, rhs, types,
 #' s[["objective_value"]]
 #' s[["primal_solution"]]
 #' @export
-highs_solve <- function(Q = NULL, L, lower, upper, A, lhs, rhs, types,
+highs_solve <- function(Q = NULL, L, lower, upper,
+                        A = NULL, lhs = NULL, rhs = NULL,
+                        types = rep.int(1L, length(L)),
                         maximum = FALSE, offset = 0, control = highs_control()) {
     checkmate::assert_list(control)
     if (!inherits(control, "highs_control")) {

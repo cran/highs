@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file lp_data/HStruct.h
@@ -16,6 +14,7 @@
 #ifndef LP_DATA_HSTRUCT_H_
 #define LP_DATA_HSTRUCT_H_
 
+#include <unordered_map>
 #include <vector>
 
 #include "lp_data/HConst.h"
@@ -34,7 +33,14 @@ struct HighsSolution {
   std::vector<double> col_dual;
   std::vector<double> row_value;
   std::vector<double> row_dual;
+  bool hasUndefined();
   void invalidate();
+  void clear();
+};
+
+struct HighsObjectiveSolution {
+  double objective;
+  std::vector<double> col_value;
   void clear();
 };
 
@@ -78,12 +84,43 @@ struct HighsScale {
 };
 
 struct HighsLpMods {
-  std::vector<HighsInt> save_semi_variable_lower_bound_index;
-  std::vector<double> save_semi_variable_lower_bound_value;
-  std::vector<HighsInt> save_semi_variable_upper_bound_index;
-  std::vector<double> save_semi_variable_upper_bound_value;
+  // Semi-variables with zero lower bound that are treated as non-semi
+  std::vector<HighsInt> save_non_semi_variable_index;
+
+  // Semi-variables with inconsistent bounds that are fixed at zero
+  std::vector<HighsInt> save_inconsistent_semi_variable_index;
+  std::vector<double> save_inconsistent_semi_variable_lower_bound_value;
+  std::vector<double> save_inconsistent_semi_variable_upper_bound_value;
+  std::vector<HighsVarType> save_inconsistent_semi_variable_type;
+
+  // Semi-variables whose lower bound is ignored when solving the
+  // relaxation
+  std::vector<HighsInt> save_relaxed_semi_variable_lower_bound_index;
+  std::vector<double> save_relaxed_semi_variable_lower_bound_value;
+
+  // Semi-variables whose upper bound is too large to be used as a
+  // big-M when converting them to an integer variables plus an
+  // integer/continuous variables as appropriate
+  std::vector<HighsInt> save_tightened_semi_variable_upper_bound_index;
+  std::vector<double> save_tightened_semi_variable_upper_bound_value;
+
+  // Variables with infinite costs that are fixed during solve
+  std::vector<HighsInt> save_inf_cost_variable_index;
+  std::vector<double> save_inf_cost_variable_cost;
+  std::vector<double> save_inf_cost_variable_lower;
+  std::vector<double> save_inf_cost_variable_upper;
+
   void clear();
   bool isClear();
+};
+
+struct HighsNameHash {
+  std::unordered_map<std::string, int> name2index;
+  void form(const std::vector<std::string>& name);
+  bool hasDuplicate(const std::vector<std::string>& name);
+  void update(int index, const std::string& old_name,
+              const std::string& new_name);
+  void clear();
 };
 
 struct HighsPresolveRuleLog {
@@ -95,6 +132,40 @@ struct HighsPresolveRuleLog {
 struct HighsPresolveLog {
   std::vector<HighsPresolveRuleLog> rule;
   void clear();
+};
+
+struct HighsIllConditioningRecord {
+  HighsInt index;
+  double multiplier;
+};
+
+struct HighsIllConditioning {
+  std::vector<HighsIllConditioningRecord> record;
+  void clear();
+};
+
+struct HighsLinearObjective {
+  double weight;
+  double offset;
+  std::vector<double> coefficients;
+  double abs_tolerance;
+  double rel_tolerance;
+  HighsInt priority;
+  void clear();
+};
+
+struct HighsSimplexStats {
+  bool valid;
+  HighsInt iteration_count;
+  HighsInt num_invert;
+  HighsInt last_invert_num_el;
+  HighsInt last_factored_basis_num_el;
+  double col_aq_density;
+  double row_ep_density;
+  double row_ap_density;
+  double row_DSE_density;
+  void report(FILE* file, const std::string message = "") const;
+  void initialise(const HighsInt iteration_count_ = 0);
 };
 
 #endif /* LP_DATA_HSTRUCT_H_ */

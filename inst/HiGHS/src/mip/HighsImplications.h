@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #ifndef HIGHS_IMPLICATIONS_H_
@@ -56,7 +54,7 @@ class HighsImplications {
   std::vector<uint8_t> colsubstituted;
   HighsImplications(const HighsMipSolver& mipsolver) : mipsolver(mipsolver) {
     HighsInt numcol = mipsolver.numCol();
-    implications.resize(2 * numcol);
+    implications.resize(2 * static_cast<size_t>(numcol));
     colsubstituted.resize(numcol);
     vubs.resize(numcol);
     vlbs.resize(numcol);
@@ -71,7 +69,7 @@ class HighsImplications {
     implications.shrink_to_fit();
 
     HighsInt numcol = mipsolver.numCol();
-    implications.resize(2 * numcol);
+    implications.resize(2 * static_cast<size_t>(numcol));
     colsubstituted.resize(numcol);
     numImplications = 0;
     vubs.clear();
@@ -111,6 +109,7 @@ class HighsImplications {
               double vlbconstant);
 
   void columnTransformed(HighsInt col, double scale, double constant) {
+    // Update variable bounds affected by transformation
     if (scale < 0) std::swap(vubs[col], vlbs[col]);
 
     auto transformVbd = [&](HighsInt, VarBound& vbd) {
@@ -121,6 +120,15 @@ class HighsImplications {
 
     vlbs[col].for_each(transformVbd);
     vubs[col].for_each(transformVbd);
+
+    // Update substitutions affected by transformation
+    for (auto& substitution : substitutions) {
+      if (substitution.substcol == col) {
+        substitution.offset -= constant;
+        substitution.offset /= scale;
+        substitution.scale /= scale;
+      }
+    }
   }
 
   std::pair<HighsInt, VarBound> getBestVub(HighsInt col,

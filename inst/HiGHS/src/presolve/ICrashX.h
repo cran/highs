@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #ifndef PRESOLVE_ICRASHX_H_
@@ -22,7 +20,7 @@
 HighsStatus callCrossover(const HighsOptions& options, const HighsLp& lp,
                           HighsBasis& highs_basis,
                           HighsSolution& highs_solution,
-                          HighsModelStatus& model_status,
-                          HighsInfo& highs_info);
+                          HighsModelStatus& model_status, HighsInfo& highs_info,
+                          HighsCallback& highs_callback);
 
 #endif

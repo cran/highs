@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file ../app/RunHighs.cpp
@@ -15,7 +13,10 @@
  */
 #include "Highs.h"
 // #include "io/HighsIO.h"
-#include "lp_data/HighsRuntimeOptions.h"
+#include "HighsRuntimeOptions.h"
+
+// uncomment if we will be shutting down task executor from exe
+// #include "parallel/HighsParallel.h"
 
 void reportModelStatsOrError(const HighsLogOptions& log_options,
                              const HighsStatus read_status,
@@ -48,6 +49,7 @@ int main(int argc, char** argv) {
   // call this first so that printHighsVersionCopyright uses reporting
   // settings defined in any options file.
   highs.passOptions(loaded_options);
+  //  highs.writeOptions("Options.md");
 
   // Load the model from model_file
   HighsStatus read_status = highs.readModel(model_file);
@@ -63,15 +65,32 @@ int main(int argc, char** argv) {
       return (int)read_solution_status;
     }
   }
+  if (options.write_presolved_model_to_file) {
+    // Run presolve and write the presolved model to a file
+    HighsStatus status = highs.presolve();
+    if (status == HighsStatus::kError) return int(status);
+    HighsPresolveStatus model_presolve_status = highs.getModelPresolveStatus();
+    const bool ok_to_write =
+        model_presolve_status == HighsPresolveStatus::kNotReduced ||
+        model_presolve_status == HighsPresolveStatus::kReduced ||
+        model_presolve_status == HighsPresolveStatus::kReducedToEmpty ||
+        model_presolve_status == HighsPresolveStatus::kTimeout;
+    if (!ok_to_write) {
+      highsLogUser(log_options, HighsLogType::kInfo,
+                   "No presolved model to write to file\n");
+      return int(status);
+    }
+    status = highs.writePresolvedModel(options.write_presolved_model_file);
+    return int(status);
+  }
   // Solve the model
   HighsStatus run_status = highs.run();
-  if (run_status == HighsStatus::kError) return (int)run_status;
+  if (run_status == HighsStatus::kError) return int(run_status);
 
-  // Possibly compute the ranging information
-  if (options.ranging == kHighsOnString) highs.getRanging();
+  // highs.writeInfo("Info.md");
 
   // Possibly write the solution to a file
-  if (options.write_solution_to_file)
+  if (options.write_solution_to_file || options.solution_file != "")
     highs.writeSolution(options.solution_file, options.write_solution_style);
 
   // Possibly write the model to a file
@@ -80,6 +99,10 @@ int main(int argc, char** argv) {
     if (write_model_status == HighsStatus::kError)
       return (int)write_model_status;  // todo: change to write model error
   }
+
+  // Shut down task executor: optional and wip
+  // HighsTaskExecutor::shutdown(true);
+
   return (int)run_status;
 }
 
@@ -145,13 +168,13 @@ void reportModelStatsOrError(const HighsLogOptions& log_options,
       }
       if (num_integer)
         highsLogDev(log_options, HighsLogType::kInfo,
-                    "Integer  : %" HIGHSINT_FORMAT "\n", num_integer);
+                    "Integer   : %" HIGHSINT_FORMAT "\n", num_integer);
       if (num_semi_continuous)
         highsLogDev(log_options, HighsLogType::kInfo,
-                    "SemiConts: %" HIGHSINT_FORMAT "\n", num_semi_continuous);
+                    "SemiConts : %" HIGHSINT_FORMAT "\n", num_semi_continuous);
       if (num_semi_integer)
         highsLogDev(log_options, HighsLogType::kInfo,
-                    "SemiInt  : %" HIGHSINT_FORMAT "\n", num_semi_integer);
+                    "SemiInt   : %" HIGHSINT_FORMAT "\n", num_semi_integer);
     } else {
       highsLogUser(log_options, HighsLogType::kInfo, "%s",
                    problem_type.c_str());

@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #ifndef HIGHS_PRIMAL_HEURISTICS_H_
@@ -24,6 +22,9 @@ class HighsMipSolver;
 class HighsPrimalHeuristics {
  private:
   HighsMipSolver& mipsolver;
+  size_t total_repair_lp;
+  size_t total_repair_lp_feasible;
+  size_t total_repair_lp_iterations;
   size_t lp_iterations;
 
   double successObservations;
@@ -59,10 +60,12 @@ class HighsPrimalHeuristics {
 
   void flushStatistics();
 
-  bool tryRoundedPoint(const std::vector<double>& point, char source);
+  bool tryRoundedPoint(const std::vector<double>& point,
+                       const int solution_source);
 
   bool linesearchRounding(const std::vector<double>& point1,
-                          const std::vector<double>& point2, char source);
+                          const std::vector<double>& point2,
+                          const int solution_source);
 
   void randomizedRounding(const std::vector<double>& relaxationsol);
 };

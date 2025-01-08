@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file lp_data/HighsDeprecated.cpp
@@ -15,6 +13,15 @@
  */
 #include "HConfig.h"
 #include "Highs.h"
+
+HighsStatus Highs::setLogCallback(void (*user_log_callback)(HighsLogType,
+                                                            const char*, void*),
+                                  void* user_log_callback_data) {
+  // deprecationMessage("setLogCallback", "setCallback");
+  options_.log_options.user_log_callback = user_log_callback;
+  options_.log_options.user_log_callback_data = user_log_callback_data;
+  return HighsStatus::kOk;
+}
 
 HighsStatus Highs::setHighsOptionValue(const std::string& option,
                                        const bool value) {
@@ -151,8 +158,8 @@ HighsStatus Highs::writeSolution(const std::string& filename,
   HighsStatus return_status = HighsStatus::kOk;
   HighsStatus call_status;
   FILE* file;
-  bool html;
-  call_status = openWriteFile(filename, "writeSolution", file, html);
+  HighsFileType file_type;
+  call_status = openWriteFile(filename, "writeSolution", file, file_type);
   return_status =
       interpretCallStatus(call_status, return_status, "openWriteFile");
   if (return_status == HighsStatus::kError) return return_status;
@@ -170,7 +177,7 @@ HighsStatus Highs::writeSolution(const std::string& filename,
 }
 #endif
 
-const HighsModelStatus& Highs::getModelStatus(const bool scaled_model) const {
+const HighsModelStatus& Highs::getModelStatus(const bool) const {
   deprecationMessage("getModelStatus(const bool scaled_model)",
                      "getModelStatus()");
   return model_status_;

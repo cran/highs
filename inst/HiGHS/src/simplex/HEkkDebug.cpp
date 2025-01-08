@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file lp_data/HEkkDebug.cpp
@@ -180,7 +178,7 @@ void HEkk::timeReporting(const HighsInt save_mod_recover) {
       bool output_flag = true;
       bool log_to_console = false;
       HighsInt log_dev_level = kHighsLogDevLevelVerbose;
-      log_options.log_file_stream = stdout;
+      log_options.log_stream = stdout;
       log_options.output_flag = &output_flag;
       log_options.log_to_console = &log_to_console;
       log_options.log_dev_level = &log_dev_level;
@@ -356,7 +354,7 @@ HighsDebugStatus HEkk::debugSimplex(const std::string message,
       assert(!nonbasicFlag_error);
       return HighsDebugStatus::kLogicalError;
     }
-    bool nonbasicMove_error = basis.nonbasicMove_[iVar];
+    bool nonbasicMove_error = (basis.nonbasicMove_[iVar] != 0);
     if (nonbasicMove_error) {
       highsLogDev(options.log_options, HighsLogType::kError,
                   "HEkk::debugSimplex - %s: Iteration %" HIGHSINT_FORMAT
@@ -399,7 +397,7 @@ HighsDebugStatus HEkk::debugSimplex(const std::string message,
     if (algorithm == SimplexAlgorithm::kPrimal && phase == 1) {
       double primal_phase1_cost = bound_violated;
       if (base) primal_phase1_cost *= 1 + base * info.numTotRandomValue_[iRow];
-      bool primal_phase1_cost_error = abs(cost - primal_phase1_cost);
+      bool primal_phase1_cost_error = (abs(cost - primal_phase1_cost) != 0.0);
       if (primal_phase1_cost_error) {
         highsLogDev(options.log_options, HighsLogType::kError,
                     "HEkk::debugSimplex - %s: Iteration %" HIGHSINT_FORMAT
@@ -955,7 +953,7 @@ HighsDebugStatus HEkk::debugNonbasicMove(const HighsLp* pass_lp) const {
   HighsInt num_fixed_variable_move_errors = 0;
   HighsInt num_col;
   HighsInt num_row;
-  const bool use_pass_lp = pass_lp;
+  const bool use_pass_lp = (pass_lp != nullptr);
   if (use_pass_lp) {
     num_col = pass_lp->num_col_;
     num_row = pass_lp->num_row_;

@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file simplex/HEkkDualRHS.h
@@ -51,10 +49,9 @@ class HEkkDualRHS {
    * @brief Choose a set of row indices of good variables to leave the basis
    * (Multiple CHUZR)
    */
-  void chooseMultiGlobal(
-      HighsInt* chIndex,  //!< Set of indices of chosen rows
-      HighsInt* chCount,  //!< Number of chosen rows
-      HighsInt chLimit    //!< Limit on number of of chosen rows
+  void chooseMultiGlobal(HighsInt* chIndex,  //!< Set of indices of chosen rows
+                         HighsInt* chCount,  //!< Number of chosen rows
+                         HighsInt chLimit    //!< Limit on number of chosen rows
   );
 
   /**
@@ -64,7 +61,7 @@ class HEkkDualRHS {
   void chooseMultiHyperGraphAuto(
       HighsInt* chIndex,  //!< Set of indices of chosen rows
       HighsInt* chCount,  //!< Number of chosen rows
-      HighsInt chLimit    //!< Limit on number of of chosen rows
+      HighsInt chLimit    //!< Limit on number of chosen rows
   );
 
   /**
@@ -74,13 +71,14 @@ class HEkkDualRHS {
   void chooseMultiHyperGraphPart(
       HighsInt* chIndex,  //!< Set of indices of chosen rows
       HighsInt* chCount,  //!< Number of chosen rows
-      HighsInt chLimit    //!< Limit on number of of chosen rows
+      HighsInt chLimit    //!< Limit on number of chosen rows
   );
 
   /**
-   * @brief Update the primal values by adding a multiple of a given std::vector
+   * @brief Update the primal values by adding a multiple of a given
+   * std::vector, returning false if infinite values are created
    */
-  void updatePrimal(
+  bool updatePrimal(
       HVector* column,  //!< Column to add into primal values
       double theta      //!< Multiple of column to add into primal values
   );

@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file mip/HighsCutGeneration.h
@@ -74,6 +72,19 @@ class HighsCutGeneration {
 
   bool preprocessBaseInequality(bool& hasUnboundedInts, bool& hasGeneralInts,
                                 bool& hasContinuous);
+
+  void flipComplementation(HighsInt index);
+
+  void removeComplementation();
+
+  void updateViolationAndNorm(HighsInt index, double aj, double& violation,
+                              double& norm) const;
+
+  bool tryGenerateCut(std::vector<HighsInt>& inds, std::vector<double>& vals,
+                      bool hasUnboundedInts, bool hasGeneralInts,
+                      bool hasContinuous, double minEfficacy,
+                      bool onlyInitialCMIRScale = false,
+                      bool allowRejectCut = true, bool lpSol = true);
 
  public:
   HighsCutGeneration(const HighsLpRelaxation& lpRelaxation,

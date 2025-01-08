@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file util/HighsDataStack.h
@@ -23,15 +21,15 @@
 
 #include "util/HighsInt.h"
 
-#if __GNUG__ && __GNUC__ < 5
-#define IS_TRIVIALLY_COPYABLE(T) __is_trivially_copyable(T)
+#if __GNUG__ && __GNUC__ < 5 && !defined(__clang__)
+#define IS_TRIVIALLY_COPYABLE(T) __has_trivial_copy(T)
 #else
 #define IS_TRIVIALLY_COPYABLE(T) std::is_trivially_copyable<T>::value
 #endif
 
 class HighsDataStack {
   std::vector<char> data;
-  HighsInt position;
+  std::size_t position;
 
  public:
   void resetPosition() { position = data.size(); }
@@ -80,9 +78,9 @@ class HighsDataStack {
     }
   }
 
-  void setPosition(HighsInt position_) { this->position = position_; }
+  void setPosition(size_t position_) { this->position = position_; }
 
-  HighsInt getCurrentDataSize() const { return data.size(); }
+  size_t getCurrentDataSize() const { return data.size(); }
 };
 
 #endif

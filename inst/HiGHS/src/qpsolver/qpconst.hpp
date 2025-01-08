@@ -4,4 +4,24 @@
 
 enum class QpSolverStatus { OK, NOTPOSITIVDEFINITE, DEGENERATE };
 
+enum class QpModelStatus {
+  kNotset,  // 0
+  kUndetermined,
+  kOptimal,
+  kUnbounded,
+  kInfeasible,
+  kIterationLimit,
+  kTimeLimit,
+  kLargeNullspace,
+  kInterrupt,
+  kError
+};
+
+enum class BasisStatus {
+  kInactive,
+  kActiveAtLower = 1,
+  kActiveAtUpper,
+  kInactiveInBasis
+};
+
 #endif

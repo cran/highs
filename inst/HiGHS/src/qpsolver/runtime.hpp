@@ -1,46 +1,38 @@
 #ifndef __SRC_LIB_RUNTIME_HPP__
 #define __SRC_LIB_RUNTIME_HPP__
 
-#include "util/HighsTimer.h"
-#include "eventhandler.hpp"
 #include "instance.hpp"
+#include "qpsolver/qpconst.hpp"
 #include "settings.hpp"
 #include "statistics.hpp"
-
-enum class ProblemStatus {
-  INDETERMINED,
-  OPTIMAL,
-  UNBOUNDED,
-  INFEASIBLE,
-  ITERATIONLIMIT,
-  TIMELIMIT,
-  ERROR
-};
+#include "util/HighsTimer.h"
 
 struct Runtime {
   Instance instance;
+  Instance relaxed_for_ratiotest;
   Instance scaled;
   Instance perturbed;
   Settings settings;
-  Statistics statistics;
+  Statistics& statistics;
 
-  HighsTimer& timer;
+  QpVector primal;
+  QpVector rowactivity;
+  QpVector dualvar;
+  QpVector dualcon;
+  QpModelStatus status = QpModelStatus::kUndetermined;
 
-  Eventhandler<Runtime&> endofiterationevent;
+  std::vector<BasisStatus> status_var;
+  std::vector<BasisStatus> status_con;
 
-  Vector primal;
-  Vector rowactivity;
-  Vector dualvar;
-  Vector dualcon;
-  ProblemStatus status = ProblemStatus::INDETERMINED;
-
-  Runtime(Instance& inst, HighsTimer& ht)
+  Runtime(Instance& inst, Statistics& stats)
       : instance(inst),
-        timer(ht),
-        primal(Vector(instance.num_var)),
-        rowactivity(Vector(instance.num_con)),
+        statistics(stats),
+        primal(QpVector(instance.num_var)),
+        rowactivity(QpVector(instance.num_con)),
         dualvar(instance.num_var),
-        dualcon(instance.num_con) {}
+        dualcon(instance.num_con),
+        status_var(instance.num_var),
+        status_con(instance.num_con) {}
 };
 
 #endif

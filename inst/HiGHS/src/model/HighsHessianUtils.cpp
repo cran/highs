@@ -28,18 +28,16 @@ HighsStatus assessHessian(HighsHessian& hessian, const HighsOptions& options) {
   HighsStatus return_status = HighsStatus::kOk;
   HighsStatus call_status;
 
-  // Assess the Hessian dimensions and vector sizes, returning on error
-  vector<HighsInt> hessian_p_end;
-  const bool partitioned = false;
-  call_status = assessMatrixDimensions(
-      options.log_options, hessian.dim_, partitioned, hessian.start_,
-      hessian_p_end, hessian.index_, hessian.value_);
-  return_status = interpretCallStatus(options.log_options, call_status,
-                                      return_status, "assessMatrixDimensions");
+  return_status = interpretCallStatus(options.log_options,
+                                      assessHessianDimensions(options, hessian),
+                                      return_status, "assessHessianDimensions");
   if (return_status == HighsStatus::kError) return return_status;
 
   // If the Hessian has no columns there is nothing left to test
-  if (hessian.dim_ == 0) return HighsStatus::kOk;
+  if (hessian.dim_ == 0) {
+    hessian.clear();
+    return HighsStatus::kOk;
+  }
 
   // Assess the Hessian matrix
   //
@@ -105,6 +103,18 @@ HighsStatus assessHessian(HighsHessian& hessian, const HighsOptions& options) {
                 "assessHessian returns HighsStatus = %s\n",
                 highsStatusToString(return_status).c_str());
   return return_status;
+}
+
+HighsStatus assessHessianDimensions(const HighsOptions& options,
+                                    HighsHessian& hessian) {
+  if (hessian.dim_ == 0) return HighsStatus::kOk;
+
+  // Assess the Hessian dimensions and vector sizes
+  vector<HighsInt> hessian_p_end;
+  const bool partitioned = false;
+  return assessMatrixDimensions(options.log_options, hessian.dim_, partitioned,
+                                hessian.start_, hessian_p_end, hessian.index_,
+                                hessian.value_);
 }
 
 void completeHessianDiagonal(const HighsOptions& options,
@@ -221,7 +231,6 @@ HighsStatus extractTriangularHessian(const HighsOptions& options,
   const HighsInt dim = hessian.dim_;
   HighsInt nnz = 0;
   for (HighsInt iCol = 0; iCol < dim; iCol++) {
-    double diagonal_value = 0;
     const HighsInt nnz0 = nnz;
     for (HighsInt iEl = hessian.start_[iCol]; iEl < hessian.start_[iCol + 1];
          iEl++) {
@@ -471,6 +480,24 @@ HighsStatus normaliseHessian(const HighsOptions& options,
     return_status = HighsStatus::kOk;
 
   return return_status;
+}
+
+void completeHessian(const HighsInt full_dim, HighsHessian& hessian) {
+  // Ensure that any non-zero Hessian of dimension less than the
+  // number of columns in the model is completed with explicit zero
+  // diagonal entries
+  assert(hessian.dim_ <= full_dim);
+  if (hessian.dim_ == full_dim) return;
+  HighsInt nnz = hessian.numNz();
+  hessian.exactResize();
+  for (HighsInt iCol = hessian.dim_; iCol < full_dim; iCol++) {
+    hessian.index_.push_back(iCol);
+    hessian.value_.push_back(0);
+    nnz++;
+    hessian.start_.push_back(nnz);
+  }
+  hessian.dim_ = full_dim;
+  assert(HighsInt(hessian.start_.size()) == hessian.dim_ + 1);
 }
 
 void reportHessian(const HighsLogOptions& log_options, const HighsInt dim,

@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file util/HighsUtils.cpp
@@ -23,36 +21,43 @@
 
 #include "util/HighsSort.h"
 
-bool create(HighsIndexCollection& index_collection, const HighsInt from_col,
-            const HighsInt to_col, const HighsInt dimension) {
-  if (from_col < 0) return false;
-  if (to_col >= dimension) return false;
+HighsInt create(HighsIndexCollection& index_collection, const HighsInt from_col,
+                const HighsInt to_col, const HighsInt dimension) {
+  if (from_col < 0) return kIndexCollectionCreateIllegalInterval;
+  if (to_col >= dimension) return kIndexCollectionCreateIllegalInterval;
   index_collection.dimension_ = dimension;
   index_collection.is_interval_ = true;
   index_collection.from_ = from_col;
   index_collection.to_ = to_col;
-  return true;
+  return kIndexCollectionCreateOk;
 }
 
-bool create(HighsIndexCollection& index_collection,
-            const HighsInt num_set_entries, const HighsInt* set,
-            const HighsInt dimension) {
+HighsInt create(HighsIndexCollection& index_collection,
+                const HighsInt num_set_entries, const HighsInt* set,
+                const HighsInt dimension) {
   // Create an index collection for the given set - so long as it is strictly
   // ordered
+  if (num_set_entries < 0) return kIndexCollectionCreateIllegalSetSize;
+  if (dimension < 0) return kIndexCollectionCreateIllegalSetDimension;
   index_collection.dimension_ = dimension;
   index_collection.is_set_ = true;
   index_collection.set_ = {set, set + num_set_entries};
   index_collection.set_num_entries_ = num_set_entries;
-  if (!increasingSetOk(index_collection.set_, 1, 0, true)) return false;
-  return true;
+  if (!increasingSetOk(index_collection.set_, 1, 0, true))
+    return kIndexCollectionCreateIllegalSetOrder;
+  for (HighsInt ix = 0; ix < num_set_entries; ix++)
+    if (set[ix] < 0 || set[ix] >= dimension) return -(ix + 1);
+  return kIndexCollectionCreateOk;
 }
 
-void create(HighsIndexCollection& index_collection, const HighsInt* mask,
-            const HighsInt dimension) {
+HighsInt create(HighsIndexCollection& index_collection, const HighsInt* mask,
+                const HighsInt dimension) {
   // Create an index collection for the given mask
+  if (dimension < 0) return kIndexCollectionCreateIllegalMaskSize;
   index_collection.dimension_ = dimension;
   index_collection.is_mask_ = true;
   index_collection.mask_ = {mask, mask + dimension};
+  return kIndexCollectionCreateOk;
 }
 
 void highsSparseTranspose(HighsInt numRow, HighsInt numCol,
@@ -304,6 +309,7 @@ void analyseVectorValues(const HighsLogOptions* log_options,
                          const std::string message, HighsInt vecDim,
                          const std::vector<double>& vec, bool analyseValueList,
                          std::string model_name) {
+  assert(vecDim == int(vec.size()));
   if (vecDim == 0) return;
   double log10 = log(10.0);
   const HighsInt nVK = 20;
@@ -397,14 +403,17 @@ void analyseVectorValues(const HighsLogOptions* log_options,
         }
       }
     }
-  }
+  }  // for (HighsInt ix = 0; ix < vecDim; ix++)
+  // If there are no nonzeros, min_abs_value retains its starting
+  // value of inf
+  if (!nNz) min_abs_value = 0;
   highsReportDevInfo(
       log_options,
       highsFormatToString(
           "%s of dimension %" HIGHSINT_FORMAT " with %" HIGHSINT_FORMAT
-          " nonzeros (%3" HIGHSINT_FORMAT "%%) in [%11.4g, %11.4g]\n",
-          message.c_str(), vecDim, nNz, 100 * nNz / vecDim, min_abs_value,
-          max_abs_value));
+          " nonzeros (%3d%%) in [%11.4g, %11.4g]\n",
+          message.c_str(), vecDim, nNz, int(1e2 * double(nNz) / double(vecDim)),
+          min_abs_value, max_abs_value));
   if (nNegInfV > 0)
     highsReportDevInfo(
         log_options, highsFormatToString(
@@ -457,6 +466,7 @@ void analyseVectorValues(const HighsLogOptions* log_options,
     highsReportDevInfo(
         log_options, highsFormatToString("\n            Value        Count\n"));
     for (HighsInt ix = 0; ix < VLsZ; ix++) {
+      if (!VLsK[ix]) continue;
       HighsInt pct = ((100.0 * VLsK[ix]) / vecDim) + 0.5;
       highsReportDevInfo(log_options,
                          highsFormatToString("     %12g %12" HIGHSINT_FORMAT
@@ -475,6 +485,82 @@ void analyseVectorValues(const HighsLogOptions* log_options,
   }
 }
 
+void analyseVectorValues(const HighsLogOptions* log_options,
+                         const std::string message, HighsInt vecDim,
+                         const std::vector<HighsInt>& vec,
+                         std::string model_name) {
+  if (vecDim == 0) return;
+  const HighsInt VLsMxZ = 10;
+  std::vector<std::pair<HighsInt, HighsInt>> VLs;
+  bool excessVLsV = false;
+  HighsInt VLsZ = 0;
+  HighsInt min_value = kHighsIInf;
+  HighsInt max_value = 0;
+  HighsInt nNz = 0;
+
+  for (HighsInt ix = 0; ix < vecDim; ix++) {
+    HighsInt v = vec[ix];
+    min_value = std::min(v, min_value);
+    max_value = std::max(v, max_value);
+    if (v != 0) nNz++;
+
+    HighsInt fdIx = -1;
+    for (HighsInt ix = 0; ix < VLsZ; ix++) {
+      if (v == VLs[ix].first) {
+        fdIx = ix;
+        break;
+      }
+    }
+    if (fdIx == -1) {
+      // New value
+      if (VLsZ < VLsMxZ) {
+        fdIx = VLsZ;
+        VLs.push_back(std::make_pair(v, 1));
+        VLsZ++;
+      } else {
+        excessVLsV = true;
+      }
+    } else {
+      // Existing value
+      VLs[fdIx].second++;
+    }
+  }
+  assert(VLsZ == int(VLs.size()));
+  std::sort(VLs.begin(), VLs.end());
+  highsReportDevInfo(
+      log_options,
+      highsFormatToString(
+          "%s of dimension %d with %d nonzeros (%3d%%) in [%d, %d]\n",
+          message.c_str(), int(vecDim), int(nNz), int(100 * nNz / vecDim),
+          int(min_value), int(max_value)));
+  highsReportDevInfo(log_options,
+                     highsFormatToString("           Value distribution:"));
+  if (excessVLsV)
+    highsReportDevInfo(
+        log_options,
+        highsFormatToString(" More than %" HIGHSINT_FORMAT " different values",
+                            VLsZ));
+  highsReportDevInfo(log_options,
+                     highsFormatToString("\n            Value        Count\n"));
+  for (HighsInt ix = 0; ix < VLsZ; ix++) {
+    if (!VLs[ix].second) continue;
+    HighsInt pct = ((100.0 * VLs[ix].second) / vecDim) + 0.5;
+    highsReportDevInfo(log_options,
+                       highsFormatToString("     %12d %12d (%3d%%)\n",
+                                           VLs[ix].first, VLs[ix].second, pct));
+  }
+  /*
+  highsReportDevInfo(log_options,
+                     highsFormatToString("grep_value_distrib,%s,%"
+  HIGHSINT_FORMAT "", model_name.c_str(), VLsZ));
+  highsReportDevInfo(log_options, highsFormatToString(","));
+  if (excessVLsV) highsReportDevInfo(log_options, highsFormatToString("!"));
+  for (HighsInt ix = 0; ix < VLsZ; ix++)
+    highsReportDevInfo(log_options, highsFormatToString(",%g", VLs[ix].first));
+  highsReportDevInfo(log_options, highsFormatToString("\n"));
+  */
+}
+
 void analyseMatrixSparsity(const HighsLogOptions& log_options,
                            const char* message, HighsInt numCol,
                            HighsInt numRow, const std::vector<HighsInt>& Astart,
@@ -491,6 +577,9 @@ void analyseMatrixSparsity(const HighsLogOptions& log_options,
     for (HighsInt el = Astart[col]; el < Astart[col + 1]; el++)
       rowCount[Aindex[el]]++;
   }
+  analyseVectorValues(&log_options, "Column counts", numCol, colCount);
+  analyseVectorValues(&log_options, "Row counts", numRow, rowCount);
+
   const HighsInt maxCat = 10;
   std::vector<HighsInt> CatV;
   std::vector<HighsInt> rowCatK;
@@ -898,7 +987,7 @@ bool initialiseScatterData(const HighsInt max_num_point,
 
 bool updateScatterData(const double value0, const double value1,
                        HighsScatterData& scatter_data) {
-  if (value0 <= 0 || value0 <= 0) return false;
+  if (value0 <= 0 || value1 <= 0) return false;
   scatter_data.num_point_++;
   scatter_data.last_point_++;
   if (scatter_data.last_point_ == scatter_data.max_num_point_)
@@ -1130,7 +1219,13 @@ double nearestPowerOfTwoScale(const double value) {
   // (if arg is not zero), if no errors occur, returns the value x in
   // the range (-1;-0.5], [0.5; 1) and stores an integer value in *exp
   // such that x×2(*exp)=arg
-  std::frexp(value, &exp_scale);
+  double check_x = std::frexp(value, &exp_scale);
+  if (std::fabs(check_x) == 0.5) {
+    check_x *= 2;
+    exp_scale--;
+  }
+  const double check_value = check_x * std::pow(2, exp_scale);
+  assert(check_value == value);
   exp_scale = -exp_scale;
   // Multiply a floating point value x(=1) by the number 2 raised to
   // the exp power

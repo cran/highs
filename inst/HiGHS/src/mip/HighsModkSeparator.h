@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file mip/HighsModkSeparator.h
@@ -22,7 +20,7 @@
  * cut.
  *
  * If a row contains continuous variables that sit at zero after bound
- * substitution, then those rows are included in the congurence system, as the
+ * substitution, then those rows are included in the congruence system, as the
  * presence of such variables does not reduce the cuts violation when applying
  * the MIR procedure. In order to handle their presence the row must simply be
  * scaled, such that all integer variables that have a non-zero solution value

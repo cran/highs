@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #include "presolve/ICrashX.h"
@@ -22,8 +20,8 @@
 HighsStatus callCrossover(const HighsOptions& options, const HighsLp& lp,
                           HighsBasis& highs_basis,
                           HighsSolution& highs_solution,
-                          HighsModelStatus& model_status,
-                          HighsInfo& highs_info) {
+                          HighsModelStatus& model_status, HighsInfo& highs_info,
+                          HighsCallback& highs_callback) {
   ipx::Int num_col, num_row;
   std::vector<ipx::Int> Ap, Ai;
   std::vector<double> objective, col_lb, col_ub, Av, rhs;
@@ -43,19 +41,25 @@ HighsStatus callCrossover(const HighsOptions& options, const HighsLp& lp,
   // Modify parameters.debug according to log_dev_level
   parameters.debug = 0;
   if (options.log_dev_level == kHighsLogDevLevelDetailed) {
-    parameters.debug = 0;
+    // Default options.log_dev_level setting is kHighsLogDevLevelNone, yielding
+    // default setting debug = 0
   } else if (options.log_dev_level == kHighsLogDevLevelInfo) {
     parameters.debug = 2;
   } else if (options.log_dev_level == kHighsLogDevLevelVerbose) {
     parameters.debug = 4;
   }
+  parameters.highs_logging = true;
+  parameters.log_options = &options.log_options;
 
   ipx::LpSolver lps;
   lps.SetParameters(parameters);
 
-  ipx::Int load_status =
-      lps.LoadModel(num_col, &objective[0], &col_lb[0], &col_ub[0], num_row,
-                    &Ap[0], &Ai[0], &Av[0], &rhs[0], &constraint_type[0]);
+  // Set pointer to any callback
+  lps.SetCallback(&highs_callback);
+
+  ipx::Int load_status = lps.LoadModel(
+      num_col, objective.data(), col_lb.data(), col_ub.data(), num_row,
+      Ap.data(), Ai.data(), Av.data(), rhs.data(), constraint_type.data());
   if (load_status != 0) {
     highsLogUser(log_options, HighsLogType::kError,
                  "Error loading ipx model\n");
@@ -94,13 +98,13 @@ HighsStatus callCrossover(const HighsOptions& options, const HighsLp& lp,
     highsLogUser(log_options, HighsLogType::kInfo,
                  "Calling IPX crossover with primal and dual values\n");
     crossover_status = lps.CrossoverFromStartingPoint(
-        &x[0], &slack[0], &highs_solution.row_dual[0],
-        &highs_solution.col_dual[0]);
+        x.data(), slack.data(), highs_solution.row_dual.data(),
+        highs_solution.col_dual.data());
   } else {
     highsLogUser(log_options, HighsLogType::kInfo,
                  "Calling IPX crossover with only primal values\n");
-    crossover_status =
-        lps.CrossoverFromStartingPoint(&x[0], &slack[0], nullptr, nullptr);
+    crossover_status = lps.CrossoverFromStartingPoint(x.data(), slack.data(),
+                                                      nullptr, nullptr);
   }
 
   if (crossover_status != 0) {
@@ -136,9 +140,9 @@ HighsStatus callCrossover(const HighsOptions& options, const HighsLp& lp,
   ipx_solution.ipx_row_status.resize(num_row);
   ipx_solution.ipx_col_status.resize(num_col);
   ipx::Int errflag = lps.GetBasicSolution(
-      &ipx_solution.ipx_col_value[0], &ipx_solution.ipx_row_value[0],
-      &ipx_solution.ipx_row_dual[0], &ipx_solution.ipx_col_dual[0],
-      &ipx_solution.ipx_row_status[0], &ipx_solution.ipx_col_status[0]);
+      ipx_solution.ipx_col_value.data(), ipx_solution.ipx_row_value.data(),
+      ipx_solution.ipx_row_dual.data(), ipx_solution.ipx_col_dual.data(),
+      ipx_solution.ipx_row_status.data(), ipx_solution.ipx_col_status.data());
   if (errflag != 0) {
     highsLogUser(log_options, HighsLogType::kError,
                  "IPX crossover getting basic solution: flag = %d\n",

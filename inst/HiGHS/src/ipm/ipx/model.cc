@@ -3,7 +3,7 @@
 #include <cassert>
 #include <cmath>
 #include "ipm/ipx/utils.h"
-#include "pdqsort/pdqsort.h"
+#include "../extern/pdqsort/pdqsort.h"
 
 namespace ipx {
 
@@ -16,20 +16,33 @@ Int Model::Load(const Control& control, Int num_constr, Int num_var,
                             obj, lbuser, ubuser);
     if (errflag)
         return errflag;
-    control.Log()
-        << "Input\n"
-        << Textline("Number of variables:") << num_var_ << '\n'
-        << Textline("Number of free variables:") << num_free_var_ << '\n'
-        << Textline("Number of constraints:") << num_constr_ << '\n'
-        << Textline("Number of equality constraints:") << num_eqconstr_ << '\n'
-        << Textline("Number of matrix entries:") << num_entries_ << '\n';
+    std::stringstream h_logging_stream;
+    h_logging_stream.str(std::string());
+    h_logging_stream
+      << "Input\n"
+      << Textline("Number of variables:") << num_var_ << '\n'
+      << Textline("Number of free variables:") << num_free_var_ << '\n'
+      << Textline("Number of constraints:") << num_constr_ << '\n'
+      << Textline("Number of equality constraints:") << num_eqconstr_ << '\n'
+      << Textline("Number of matrix entries:") << num_entries_ << '\n';
+    control.hLog(h_logging_stream);
     PrintCoefficientRange(control);
     ScaleModel(control);
 
     // Make an automatic decision for dualization if not specified by user.
     Int dualize = control.dualize();
-    if (dualize < 0)
-        dualize = num_constr > 2*num_var;
+    // dualize = -2 => Possibly dualize - Filippo style
+    // dualize = -1 => Possibly dualize - Lukas style
+    // dualize = 0 => No dualization
+    // dualize = 1 => Perform dualization
+    assert(dualize == -1);
+    const bool dualize_lukas = num_constr > 2*num_var;
+    const bool dualize_filippo = filippoDualizationTest();
+    if (dualize == -1) {
+      dualize = dualize_lukas;
+    } else if (dualize == -2) {
+      dualize = dualize_filippo;
+    }
     if (dualize)
         LoadDual();
     else
@@ -49,6 +62,10 @@ Int Model::Load(const Control& control, Int num_constr, Int num_var,
             norm_bounds_ = std::max(norm_bounds_, std::abs(x));
     PrintPreprocessingLog(control);
     return 0;
+}
+
+bool Model::filippoDualizationTest() const {
+  return false;
 }
 
 void Model::GetInfo(Info *info) const {
@@ -848,10 +865,13 @@ void Model::PrintCoefficientRange(const Control& control) const {
     }
     if (amin == INFINITY)       // no nonzero entries in A_
         amin = 0.0;
-    control.Log()
-        << Textline("Matrix range:")
-        << "[" << Scientific(amin, 5, 0) << ", "
-        << Scientific(amax, 5, 0) << "]\n";
+    std::stringstream h_logging_stream;
+    h_logging_stream.str(std::string());
+    h_logging_stream
+      << Textline("Matrix range:")
+      << "[" << Scientific(amin, 5, 0) << ", "
+      << Scientific(amax, 5, 0) << "]\n";
+    control.hLog(h_logging_stream);
 
     double rhsmin = INFINITY;
     double rhsmax = 0.0;
@@ -863,10 +883,11 @@ void Model::PrintCoefficientRange(const Control& control) const {
     }
     if (rhsmin == INFINITY)     // no nonzero entries in rhs
         rhsmin = 0.0;
-    control.Log()
-        << Textline("RHS range:")
-        << "[" << Scientific(rhsmin, 5, 0) << ", "
-        << Scientific(rhsmax, 5, 0) << "]\n";
+    h_logging_stream
+      << Textline("RHS range:")
+      << "[" << Scientific(rhsmin, 5, 0) << ", "
+      << Scientific(rhsmax, 5, 0) << "]\n";
+    control.hLog(h_logging_stream);
 
     double objmin = INFINITY;
     double objmax = 0.0;
@@ -878,10 +899,11 @@ void Model::PrintCoefficientRange(const Control& control) const {
     }
     if (objmin == INFINITY)     // no nonzero entries in obj
         objmin = 0.0;
-    control.Log()
-        << Textline("Objective range:")
-        << "[" << Scientific(objmin, 5, 0) << ", "
-        << Scientific(objmax, 5, 0) << "]\n";
+    h_logging_stream
+      << Textline("Objective range:")
+      << "[" << Scientific(objmin, 5, 0) << ", "
+      << Scientific(objmax, 5, 0) << "]\n";
+    control.hLog(h_logging_stream);
 
     double boundmin = INFINITY;
     double boundmax = 0.0;
@@ -899,10 +921,11 @@ void Model::PrintCoefficientRange(const Control& control) const {
     }
     if (boundmin == INFINITY)   // no finite nonzeros entries in bounds
         boundmin = 0.0;
-    control.Log()
-        << Textline("Bounds range:")
-        << "[" << Scientific(boundmin, 5, 0) << ", "
-        << Scientific(boundmax, 5, 0) << "]\n";
+    h_logging_stream
+      << Textline("Bounds range:")
+      << "[" << Scientific(boundmin, 5, 0) << ", "
+      << Scientific(boundmax, 5, 0) << "]\n";
+    control.hLog(h_logging_stream);
 }
 
 void Model::PrintPreprocessingLog(const Control& control) const {
@@ -926,15 +949,19 @@ void Model::PrintPreprocessingLog(const Control& control) const {
     if (maxscale == 0.0)
         maxscale = 1.0;
 
-    control.Log()
-        << "Preprocessing\n"
-        << Textline("Dualized model:") << (dualized() ? "yes" : "no") << '\n'
-        << Textline("Number of dense columns:") << num_dense_cols() << '\n';
+    std::stringstream h_logging_stream;
+    h_logging_stream.str(std::string());
+    h_logging_stream
+      << "Preprocessing\n"
+      << Textline("Dualized model:") << (dualized() ? "yes" : "no") << '\n'
+      << Textline("Number of dense columns:") << num_dense_cols() << '\n';
+    control.hLog(h_logging_stream);
     if (control.scale() > 0) {
-        control.Log()
-            << Textline("Range of scaling factors:") << "["
-            << Scientific(minscale, 8, 2) << ", "
-            << Scientific(maxscale, 8, 2) << "]\n";
+      h_logging_stream
+	<< Textline("Range of scaling factors:") << "["
+	<< Scientific(minscale, 8, 2) << ", "
+	<< Scientific(maxscale, 8, 2) << "]\n";
+      control.hLog(h_logging_stream);
     }
 }
 
@@ -1055,13 +1082,13 @@ void Model::DualizeBasicSolution(const Vector& x_user,
 
     if (dualized_) {
         assert(num_var_ == m);
-        assert(num_constr_ + (Int)boxed_vars_.size() == n);
+        assert(num_constr_ + boxed_vars_.size() == static_cast<size_t>(n));
 
         // Build dual solver variables from primal user variables.
         y_solver = -x_user;
         for (Int i = 0; i < num_constr_; i++)
             z_solver[i] = -slack_user[i];
-        for (Int k = 0; k < (Int)boxed_vars_.size(); k++) {
+        for (size_t k = 0; k < boxed_vars_.size(); k++) {
             Int j = boxed_vars_[k];
             z_solver[num_constr_+k] = c(num_constr_+k) + y_solver[j];
         }
@@ -1071,7 +1098,7 @@ void Model::DualizeBasicSolution(const Vector& x_user,
         // Build primal solver variables from dual user variables.
         std::copy_n(std::begin(y_user), num_constr_, std::begin(x_solver));
         std::copy_n(std::begin(z_user), num_var_, std::begin(x_solver) + n);
-        for (Int k = 0; k < (Int)boxed_vars_.size(); k++) {
+        for (size_t k = 0; k < boxed_vars_.size(); k++) {
             Int j = boxed_vars_[k];
             if (x_solver[n+j] < 0.0) {
                 // j is a boxed variable and z_user[j] < 0

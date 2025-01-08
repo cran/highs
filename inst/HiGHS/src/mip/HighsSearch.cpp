@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #include "mip/HighsSearch.h"
@@ -50,8 +48,7 @@ double HighsSearch::checkSol(const std::vector<double>& sol,
     if (!integerfeasible || mipsolver.variableType(i) != HighsVarType::kInteger)
       continue;
 
-    double intval = std::floor(sol[i] + 0.5);
-    if (std::abs(sol[i] - intval) > mipsolver.mipdata_->feastol) {
+    if (fractionality(sol[i]) > mipsolver.mipdata_->feastol) {
       integerfeasible = false;
     }
   }
@@ -249,7 +246,6 @@ HighsInt HighsSearch::selectBranchingCandidate(int64_t maxSbIters,
                                                double& upNodeLb) {
   assert(!lp->getFractionalIntegers().empty());
 
-  static constexpr HighsInt basisstart_threshold = 20;
   std::vector<double> upscore;
   std::vector<double> downscore;
   std::vector<uint8_t> upscorereliable;
@@ -274,8 +270,39 @@ HighsInt HighsSearch::selectBranchingCandidate(int64_t maxSbIters,
     HighsInt col = fracints[k].first;
     double fracval = fracints[k].second;
 
-    assert(fracval > localdom.col_lower_[col] + mipsolver.mipdata_->feastol);
-    assert(fracval < localdom.col_upper_[col] - mipsolver.mipdata_->feastol);
+    const double lower_residual =
+        (fracval - localdom.col_lower_[col]) - mipsolver.mipdata_->feastol;
+    const bool lower_ok = lower_residual > 0;
+    if (!lower_ok)
+      highsLogUser(mipsolver.options_mip_->log_options, HighsLogType::kError,
+                   "HighsSearch::selectBranchingCandidate Error fracval = %g "
+                   "<= %g = %g + %g = "
+                   "localdom.col_lower_[col] + mipsolver.mipdata_->feastol: "
+                   "Residual %g\n",
+                   fracval,
+                   localdom.col_lower_[col] + mipsolver.mipdata_->feastol,
+                   localdom.col_lower_[col], mipsolver.mipdata_->feastol,
+                   lower_residual);
+
+    const double upper_residual =
+        (localdom.col_upper_[col] - fracval) - mipsolver.mipdata_->feastol;
+    const bool upper_ok = upper_residual > 0;
+    if (!upper_ok)
+      highsLogUser(mipsolver.options_mip_->log_options, HighsLogType::kError,
+                   "HighsSearch::selectBranchingCandidate Error fracval = %g "
+                   ">= %g = %g - %g = "
+                   "localdom.col_upper_[col] - mipsolver.mipdata_->feastol: "
+                   "Residual %g\n",
+                   fracval,
+                   localdom.col_upper_[col] - mipsolver.mipdata_->feastol,
+                   localdom.col_upper_[col], mipsolver.mipdata_->feastol,
+                   upper_residual);
+
+    assert(lower_residual > -1e-12 && upper_residual > -1e-12);
+
+    //    assert(fracval > localdom.col_lower_[col] +
+    //    mipsolver.mipdata_->feastol); assert(fracval <
+    //    localdom.col_upper_[col] - mipsolver.mipdata_->feastol);
 
     if (pseudocost.isReliable(col)) {
       upscore[k] = pseudocost.getPseudocostUp(col, fracval);
@@ -572,7 +599,8 @@ HighsInt HighsSearch::selectBranchingCandidate(int64_t maxSbIters,
           double cutoffbnd = getCutoffBound();
           mipsolver.mipdata_->addIncumbent(
               lp->getLpSolver().getSolution().col_value, solobj,
-              inheuristic ? 'H' : 'B');
+              inheuristic ? kSolutionSourceHeuristic
+                          : kSolutionSourceBranching);
 
           if (mipsolver.mipdata_->upper_limit < cutoffbnd)
             lp->setObjectiveLimit(mipsolver.mipdata_->upper_limit);
@@ -705,7 +733,8 @@ HighsInt HighsSearch::selectBranchingCandidate(int64_t maxSbIters,
           double cutoffbnd = getCutoffBound();
           mipsolver.mipdata_->addIncumbent(
               lp->getLpSolver().getSolution().col_value, solobj,
-              inheuristic ? 'H' : 'B');
+              inheuristic ? kSolutionSourceHeuristic
+                          : kSolutionSourceBranching);
 
           if (mipsolver.mipdata_->upper_limit < cutoffbnd)
             lp->setObjectiveLimit(mipsolver.mipdata_->upper_limit);
@@ -910,7 +939,6 @@ void HighsSearch::installNode(HighsNodeQueue::OpenNode&& node) {
     // if global orbits have been computed we check whether they are still valid
     // in this node
     const auto& domchgstack = localdom.getDomainChangeStack();
-    const auto& branchpos = localdom.getBranchingPositions();
     for (HighsInt i : localdom.getBranchingPositions()) {
       HighsInt col = domchgstack[i].column;
       if (mipsolver.mipdata_->symmetries.columnPosition[col] == -1) continue;
@@ -1036,7 +1064,8 @@ HighsSearch::NodeResult HighsSearch::evaluateNode() {
           double cutoffbnd = getCutoffBound();
           mipsolver.mipdata_->addIncumbent(
               lp->getLpSolver().getSolution().col_value, lp->getObjective(),
-              inheuristic ? 'H' : 'T');
+              inheuristic ? kSolutionSourceHeuristic
+                          : kSolutionSourceEvaluateNode);
           if (mipsolver.mipdata_->upper_limit < cutoffbnd)
             lp->setObjectiveLimit(mipsolver.mipdata_->upper_limit);
 
@@ -1104,7 +1133,7 @@ HighsSearch::NodeResult HighsSearch::evaluateNode() {
             }
           }
         } else if (lp->getObjective() > getCutoffBound()) {
-          // the LP is not solved to dual feasibilty due to scaling/numerics
+          // the LP is not solved to dual feasibility due to scaling/numerics
           // therefore we compute a conflict constraint as if the LP was bound
           // exceeding and propagate the local domain again. The lp relaxation
           // class will take care to consider the dual multipliers with an
@@ -1790,7 +1819,7 @@ bool HighsSearch::backtrackPlunge(HighsNodeQueue& nodequeue) {
 
     nodelb = std::max(nodelb, localdom.getObjectiveLowerBound());
     bool nodeToQueue = nodelb > mipsolver.mipdata_->optimality_limit;
-    // we check if switching to the other branch of an anchestor yields a higher
+    // we check if switching to the other branch of an ancestor yields a higher
     // additive branch score than staying in this node and if so we postpone the
     // node and put it to the queue to backtrack further.
     if (!nodeToQueue) {

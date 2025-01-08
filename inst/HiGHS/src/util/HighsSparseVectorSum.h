@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #ifndef HIGHS_SPARSE_VECTOR_SUM_H_
@@ -64,7 +62,7 @@ class HighsSparseVectorSum {
   double getValue(HighsInt index) const { return double(values[index]); }
 
   void clear() {
-    if (nonzeroinds.size() < 0.3 * values.size())
+    if (10 * nonzeroinds.size() < 3 * values.size())
       for (HighsInt i : nonzeroinds) values[i] = 0.0;
     else
       values.assign(values.size(), false);

@@ -1,5 +1,3 @@
-
-
 # Test if dgCMatrix
 #
 # Test if the object is a \code{"dgCMatrix"}.

@@ -2,19 +2,18 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #include "mip/HighsImplications.h"
 
+#include "../extern/pdqsort/pdqsort.h"
 #include "mip/HighsCliqueTable.h"
 #include "mip/HighsMipSolverData.h"
-#include "pdqsort/pdqsort.h"
+#include "mip/MipTimer.h"
 
 bool HighsImplications::computeImplications(HighsInt col, bool val) {
   HighsDomain& globaldomain = mipsolver.mipdata_->domain;
@@ -81,7 +80,7 @@ bool HighsImplications::computeImplications(HighsInt col, bool val) {
 
   pdqsort(implics.begin(), binstart);
 
-  HighsCliqueTable::CliqueVar clique[2];
+  std::array<HighsCliqueTable::CliqueVar, 2> clique;
   clique[0] = HighsCliqueTable::CliqueVar(col, val);
 
   for (auto i = binstart; i != implics.end(); ++i) {
@@ -90,7 +89,7 @@ bool HighsImplications::computeImplications(HighsInt col, bool val) {
     else
       clique[1] = HighsCliqueTable::CliqueVar(i->column, 1);
 
-    cliquetable.addClique(mipsolver, clique, 2);
+    cliquetable.addClique(mipsolver, clique.data(), 2);
     if (globaldomain.infeasible() || globaldomain.isFixed(col)) return true;
   }
 
@@ -375,6 +374,10 @@ bool HighsImplications::runProbing(HighsInt col, HighsInt& numReductions) {
 
 void HighsImplications::addVUB(HighsInt col, HighsInt vubcol, double vubcoef,
                                double vubconstant) {
+  // assume that VUBs do not have infinite coefficients and infinite constant
+  // terms since such VUBs effectively evaluate to NaN.
+  assert(std::abs(vubcoef) != kHighsInf || std::abs(vubconstant) != kHighsInf);
+
   VarBound vub{vubcoef, vubconstant};
 
   mipsolver.mipdata_->debugSolution.checkVub(col, vubcol, vubcoef, vubconstant);
@@ -398,6 +401,10 @@ void HighsImplications::addVUB(HighsInt col, HighsInt vubcol, double vubcoef,
 
 void HighsImplications::addVLB(HighsInt col, HighsInt vlbcol, double vlbcoef,
                                double vlbconstant) {
+  // assume that VLBs do not have infinite coefficients and infinite constant
+  // terms since such VLBs effectively evaluate to NaN.
+  assert(std::abs(vlbcoef) != kHighsInf || std::abs(vlbconstant) != kHighsInf);
+
   VarBound vlb{vlbcoef, vlbconstant};
 
   mipsolver.mipdata_->debugSolution.checkVlb(col, vlbcol, vlbcoef, vlbconstant);
@@ -513,15 +520,16 @@ void HighsImplications::separateImpliedBounds(
     HighsCutPool& cutpool, double feastol) {
   HighsDomain& globaldomain = mipsolver.mipdata_->domain;
 
-  HighsInt inds[2];
-  double vals[2];
+  std::array<HighsInt, 2> inds;
+  std::array<double, 2> vals;
   double rhs;
 
   HighsInt numboundchgs = 0;
 
   // first do probing on all candidates that have not been probed yet
   if (!mipsolver.mipdata_->cliquetable.isFull()) {
-    auto oldNumQueries = mipsolver.mipdata_->cliquetable.numNeighborhoodQueries;
+    auto oldNumQueries =
+        mipsolver.mipdata_->cliquetable.numNeighbourhoodQueries;
     HighsInt oldNumEntries = mipsolver.mipdata_->cliquetable.getNumEntries();
 
     for (std::pair<HighsInt, double> fracint :
@@ -532,7 +540,10 @@ void HighsImplications::separateImpliedBounds(
           (implicationsCached(col, 0) && implicationsCached(col, 1)))
         continue;
 
-      if (runProbing(col, numboundchgs)) {
+      mipsolver.analysis_.mipTimerStart(kMipClockProbingImplications);
+      const bool probing_result = runProbing(col, numboundchgs);
+      mipsolver.analysis_.mipTimerStop(kMipClockProbingImplications);
+      if (probing_result) {
         if (globaldomain.infeasible()) return;
       }
 
@@ -548,7 +559,8 @@ void HighsImplications::separateImpliedBounds(
     nextCleanupCall -= std::max(HighsInt{0}, numNewEntries);
 
     if (nextCleanupCall < 0) {
-      HighsInt oldNumEntries = mipsolver.mipdata_->cliquetable.getNumEntries();
+      // HighsInt oldNumEntries =
+      // mipsolver.mipdata_->cliquetable.getNumEntries();
       mipsolver.mipdata_->cliquetable.runCliqueMerging(globaldomain);
       // printf("numEntries: %d, beforeMerging: %d\n",
       //        mipsolver.mipdata_->cliquetable.getNumEntries(), oldNumEntries);
@@ -558,7 +570,7 @@ void HighsImplications::separateImpliedBounds(
       // printf("nextCleanupCall: %d\n", nextCleanupCall);
     }
 
-    mipsolver.mipdata_->cliquetable.numNeighborhoodQueries = oldNumQueries;
+    mipsolver.mipdata_->cliquetable.numNeighbourhoodQueries = oldNumQueries;
   }
 
   for (std::pair<HighsInt, double> fracint :
@@ -578,7 +590,8 @@ void HighsImplications::separateImpliedBounds(
       if (infeas) {
         vals[0] = 1.0;
         inds[0] = col;
-        cutpool.addCut(mipsolver, inds, vals, 1, 0.0, false, true, false);
+        cutpool.addCut(mipsolver, inds.data(), vals.data(), 1, 0.0, false, true,
+                       false);
         continue;
       }
 
@@ -613,7 +626,7 @@ void HighsImplications::separateImpliedBounds(
 
         if (viol > feastol) {
           // printf("added implied bound cut to pool\n");
-          cutpool.addCut(mipsolver, inds, vals, 2, rhs,
+          cutpool.addCut(mipsolver, inds.data(), vals.data(), 2, rhs,
                          mipsolver.variableType(implics[i].column) !=
                              HighsVarType::kContinuous,
                          false, false, false);
@@ -629,7 +642,8 @@ void HighsImplications::separateImpliedBounds(
       if (infeas) {
         vals[0] = -1.0;
         inds[0] = col;
-        cutpool.addCut(mipsolver, inds, vals, 1, -1.0, false, true, false);
+        cutpool.addCut(mipsolver, inds.data(), vals.data(), 1, -1.0, false,
+                       true, false);
         continue;
       }
 
@@ -663,7 +677,7 @@ void HighsImplications::separateImpliedBounds(
 
         if (viol > feastol) {
           // printf("added implied bound cut to pool\n");
-          cutpool.addCut(mipsolver, inds, vals, 2, rhs,
+          cutpool.addCut(mipsolver, inds.data(), vals.data(), 2, rhs,
                          mipsolver.variableType(implics[i].column) !=
                              HighsVarType::kContinuous,
                          false, false, false);

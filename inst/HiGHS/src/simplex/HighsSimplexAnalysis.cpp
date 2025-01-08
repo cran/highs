@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file simplex/HighsSimplexAnalysis.cpp
@@ -17,12 +15,10 @@
 // #include <cstdio>
 #include <iomanip>
 
-#include "HConfig.h"
 #include "parallel/HighsParallel.h"
 #include "simplex/HighsSimplexAnalysis.h"
 #include "simplex/SimplexTimer.h"
 #include "util/FactorTimer.h"
-#include "util/HFactor.h"
 
 void HighsSimplexAnalysis::setup(const std::string lp_name, const HighsLp& lp,
                                  const HighsOptions& options,
@@ -303,7 +299,7 @@ void HighsSimplexAnalysis::setupFactorTime(const HighsOptions& options) {
       clock.timer_pointer_ = timer_;
       thread_factor_clocks.push_back(clock);
     }
-    pointer_serial_factor_clocks = &thread_factor_clocks[0];
+    pointer_serial_factor_clocks = thread_factor_clocks.data();
     FactorTimer factor_timer;
     for (HighsTimerClock& clock : thread_factor_clocks)
       factor_timer.initialiseFactorClocks(clock);
@@ -335,6 +331,7 @@ void HighsSimplexAnalysis::iterationReport() {
   iterationReport(false);
 }
 
+// Called externally - from HEkkPrimal/Dual::reportRebuild
 void HighsSimplexAnalysis::invertReport() {
   if (*log_options.log_dev_level) {
     const bool header = (num_invert_report_since_last_header < 0) ||
@@ -375,6 +372,7 @@ void HighsSimplexAnalysis::invertReport(const bool header) {
   if (!header) num_invert_report_since_last_header++;
 }
 
+// Called externally - from HEkk::returnFromSolve
 void HighsSimplexAnalysis::userInvertReport(const bool force) {
   if (last_user_log_time < 0) {
     const bool header = true;
@@ -951,7 +949,7 @@ void HighsSimplexAnalysis::summaryReport() {
     if (num_correct_dual_primal_flip) {
       printf(
           "%12" HIGHSINT_FORMAT
-          "   correct dual primal flips (max = %g) for min dual infeasiblity "
+          "   correct dual primal flips (max = %g) for min dual infeasibility "
           "= %g\n",
           num_correct_dual_primal_flip, max_correct_dual_primal_flip,
           min_correct_dual_primal_flip_dual_infeasibility);
@@ -959,7 +957,7 @@ void HighsSimplexAnalysis::summaryReport() {
     if (num_correct_dual_cost_shift) {
       printf(
           "%12" HIGHSINT_FORMAT
-          "   correct dual  cost shifts (max = %g) for max dual infeasiblity "
+          "   correct dual  cost shifts (max = %g) for max dual infeasibility "
           "= %g\n",
           num_correct_dual_cost_shift, max_correct_dual_cost_shift,
           max_correct_dual_cost_shift_dual_infeasibility);
@@ -1092,7 +1090,6 @@ void HighsSimplexAnalysis::summaryReport() {
       double dlTime = toTime - fmTime;
       HighsInt iterSpeed = 0;
       if (dlTime > 0) iterSpeed = dlIter / dlTime;
-      HighsInt lc_simplex_strategy = lcAnIter.AnIterTrace_simplex_strategy;
       HighsInt lc_edge_weight_mode = lcAnIter.AnIterTrace_edge_weight_mode;
       std::string str_edge_weight_mode;
       if (lc_edge_weight_mode == (HighsInt)EdgeWeightMode::kSteepestEdge)
@@ -1114,9 +1111,8 @@ void HighsSimplexAnalysis::summaryReport() {
       printOneDensity(lcAnIter.AnIterTraceDensity[kSimplexNlaFtran]);
       printOneDensity(lcAnIter.AnIterTraceDensity[kSimplexNlaBtranEp]);
       printOneDensity(lcAnIter.AnIterTraceDensity[kSimplexNlaPriceAp]);
-      double use_DSE_density;
-      HighsInt local_simplex_strategy = lcAnIter.AnIterTrace_simplex_strategy;
       if (rp_dual_steepest_edge) {
+        double use_DSE_density;
         if (lc_edge_weight_mode == (HighsInt)EdgeWeightMode::kSteepestEdge) {
           use_DSE_density = lcAnIter.AnIterTraceDensity[kSimplexNlaFtranDse];
         } else {
@@ -1482,7 +1478,11 @@ void HighsSimplexAnalysis::reportIterationData(const bool header) {
 void HighsSimplexAnalysis::reportRunTime(const bool header,
                                          const double run_time) {
   if (header) return;
-  *analysis_log << highsFormatToString(" %ds", (int)run_time);
+#ifndef NDEBUG
+  *analysis_log << highsFormatToString(" %15.8gs", run_time);
+#else
+  *analysis_log << highsFormatToString(" %ds", int(run_time + 0.49));
+#endif
 }
 
 HighsInt HighsSimplexAnalysis::intLog10(const double v) {

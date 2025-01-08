@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file util/HighsMatrixUtils.cpp
@@ -70,7 +68,7 @@ HighsStatus assessMatrix(
   //
   // Check whether the first start is zero
   if (matrix_start[0]) {
-    highsLogUser(log_options, HighsLogType::kWarning,
+    highsLogUser(log_options, HighsLogType::kError,
                  "%s matrix start vector begins with %" HIGHSINT_FORMAT
                  " rather than 0\n",
                  matrix_name.c_str(), matrix_start[0]);
@@ -84,7 +82,6 @@ HighsStatus assessMatrix(
   if (partitioned) this_p_end = matrix_p_end[0];
   for (HighsInt ix = 0; ix < num_vec; ix++) {
     this_start = matrix_start[ix];
-    HighsInt next_start = matrix_start[ix + 1];
     bool this_start_too_small = this_start < previous_start;
     if (this_start_too_small) {
       highsLogUser(log_options, HighsLogType::kError,
@@ -178,7 +175,7 @@ HighsStatus assessMatrix(
                      matrix_name.c_str(), ix, el, component, vec_dim);
         return HighsStatus::kError;
       }
-      // Check that the index has not already ocurred.
+      // Check that the index has not already occurred.
       legal_component = index_set.find(component) == nullptr;
       if (!legal_component) {
         highsLogUser(log_options, HighsLogType::kError,
@@ -191,7 +188,7 @@ HighsStatus assessMatrix(
       // Check the value
       double abs_value = fabs(matrix_value[el]);
       // Check that the value is not too large
-      bool large_value = abs_value > large_matrix_value;
+      bool large_value = abs_value >= large_matrix_value;
       if (large_value) {
         if (max_large_value < abs_value) max_large_value = abs_value;
         if (min_large_value > abs_value) min_large_value = abs_value;
@@ -237,13 +234,18 @@ HighsStatus assessMatrix(
       error_found = true;
       assert(num_small_values == 0);
     }
-    highsLogUser(log_options, HighsLogType::kWarning,
-                 "%s matrix packed vector contains %" HIGHSINT_FORMAT
-                 " |values| in [%g, %g] "
-                 "less than or equal to %g: ignored\n",
-                 matrix_name.c_str(), num_small_values, min_small_value,
-                 max_small_value, small_matrix_value);
-    warning_found = true;
+    // If explicit zeros are ignored, then no model information is
+    // lost, so only report and return a warning if small nonzeros are
+    // ignored
+    if (max_small_value > 0) {
+      highsLogUser(log_options, HighsLogType::kWarning,
+                   "%s matrix packed vector contains %" HIGHSINT_FORMAT
+                   " |values| in [%g, %g] "
+                   "less than or equal to %g: ignored\n",
+                   matrix_name.c_str(), num_small_values, min_small_value,
+                   max_small_value, small_matrix_value);
+      warning_found = true;
+    }
   }
   matrix_start[num_vec] = num_new_nz;
   HighsStatus return_status = HighsStatus::kOk;

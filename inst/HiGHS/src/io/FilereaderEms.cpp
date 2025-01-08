@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file io/FilereaderEms.cpp
@@ -274,11 +272,11 @@ HighsStatus FilereaderEms::writeModelToFile(const HighsOptions& options,
     f << "names" << std::endl;
 
     f << "columns" << std::endl;
-    for (HighsInt i = 0; i < (HighsInt)lp.col_names_.size(); i++)
+    for (size_t i = 0; i < lp.col_names_.size(); i++)
       f << lp.col_names_[i] << std::endl;
 
     f << "rows" << std::endl;
-    for (HighsInt i = 0; i < (HighsInt)lp.row_names_.size(); i++)
+    for (size_t i = 0; i < lp.row_names_.size(); i++)
       f << lp.row_names_[i] << std::endl;
   }
 

@@ -9,10 +9,10 @@ highs_model(
   L,
   lower,
   upper,
-  A,
-  lhs,
-  rhs,
-  types,
+  A = NULL,
+  lhs = NULL,
+  rhs = NULL,
+  types = rep.int(1L, length(L)),
   maximum = FALSE,
   offset = 0
 )

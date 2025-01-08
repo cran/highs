@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -34,7 +32,7 @@ class HighsCDouble {
   // Proceedings of. 2005.
 
   /// performs an exact transformation such that x + y = a + b
-  /// and x = double(a + b). The operation uses 6 flops (addition/substraction).
+  /// and x = double(a + b). The operation uses 6 flops (addition/subtraction).
   static void two_sum(double& x, double& y, double a, double b) {
     x = a + b;
     double z = x - a;
@@ -52,7 +50,7 @@ class HighsCDouble {
 
   /// performs an exact transformation such that x + y = a * b
   /// and x = double(a * b). The operation uses 10 flops for
-  /// addition/substraction and 7 flops for multiplication.
+  /// addition/subtraction and 7 flops for multiplication.
   static void two_product(double& x, double& y, double a, double b) {
     x = a * b;
     double a1, a2, b1, b2;
@@ -291,6 +289,12 @@ class HighsCDouble {
   }
 
   friend HighsCDouble floor(const HighsCDouble& x) {
+    // Treat |x| < 1 as special case, as per (for example)
+    // https://github.com/shibatch/tlfloat: see #2041
+    if (abs(x) < 1) {
+      if (x == 0 || x > 0) return HighsCDouble(0.0);
+      return HighsCDouble(-1.0);
+    }
     double floor_x = std::floor(double(x));
     HighsCDouble res;
 
@@ -299,6 +303,12 @@ class HighsCDouble {
   }
 
   friend HighsCDouble ceil(const HighsCDouble& x) {
+    // Treat |x| < 1 as special case, as per (for example)
+    // https://github.com/shibatch/tlfloat: see #2041
+    if (abs(x) < 1) {
+      if (x == 0 || x < 0) return HighsCDouble(0.0);
+      return HighsCDouble(1.0);
+    }
     double ceil_x = std::ceil(double(x));
     HighsCDouble res;
 

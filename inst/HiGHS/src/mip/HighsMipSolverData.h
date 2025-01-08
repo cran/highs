@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -35,6 +33,39 @@
 #include "presolve/HighsSymmetry.h"
 #include "util/HighsTimer.h"
 
+struct HighsPrimaDualIntegral {
+  double value;
+  double prev_lb;
+  double prev_ub;
+  double prev_gap;
+  double prev_time;
+  void initialise();
+};
+
+enum MipSolutionSource : int {
+  kSolutionSourceNone = -1,
+  kSolutionSourceMin = kSolutionSourceNone,
+  kSolutionSourceBranching,
+  kSolutionSourceCentralRounding,
+  kSolutionSourceFeasibilityPump,
+  kSolutionSourceHeuristic,
+  //  kSolutionSourceInitial,
+  kSolutionSourceSubMip,
+  kSolutionSourceEmptyMip,
+  kSolutionSourceRandomizedRounding,
+  kSolutionSourceSolveLp,
+  kSolutionSourceEvaluateNode,
+  kSolutionSourceUnbounded,
+  kSolutionSourceTrivialZ,
+  kSolutionSourceTrivialL,
+  kSolutionSourceTrivialU,
+  kSolutionSourceTrivialP,
+  //  kSolutionSourceOpt1,
+  //  kSolutionSourceOpt2,
+  kSolutionSourceCleanup,
+  kSolutionSourceCount
+};
+
 struct HighsMipSolverData {
   HighsMipSolver& mipsolver;
   HighsCutPool cutpool;
@@ -48,6 +79,7 @@ struct HighsMipSolverData {
   HighsRedcostFixing redcostfixing;
   HighsObjectiveFunction objectiveFunction;
   presolve::HighsPostsolveStack postSolveStack;
+  HighsPresolveStatus presolve_status;
   HighsLp presolvedModel;
   bool cliquesExtracted;
   bool rowMatrixSet;
@@ -95,6 +127,9 @@ struct HighsMipSolverData {
   int64_t num_leaves;
   int64_t num_leaves_before_run;
   int64_t num_nodes_before_run;
+  int64_t total_repair_lp;
+  int64_t total_repair_lp_feasible;
+  int64_t total_repair_lp_iterations;
   int64_t total_lp_iterations;
   int64_t heuristic_lp_iterations;
   int64_t sepa_lp_iterations;
@@ -114,6 +149,8 @@ struct HighsMipSolverData {
 
   HighsNodeQueue nodequeue;
 
+  HighsPrimaDualIntegral primal_dual_integral;
+
   HighsDebugSol debugSolution;
 
   HighsMipSolverData(HighsMipSolver& mipsolver)
@@ -129,10 +166,56 @@ struct HighsMipSolverData {
         implications(mipsolver),
         heuristics(mipsolver),
         objectiveFunction(mipsolver),
+        presolve_status(HighsPresolveStatus::kNotSet),
+        cliquesExtracted(false),
+        rowMatrixSet(false),
+        analyticCenterComputed(false),
+        analyticCenterStatus(HighsModelStatus::kNotset),
+        detectSymmetries(false),
+        numRestarts(0),
+        numRestartsRoot(0),
+        numCliqueEntriesAfterPresolve(0),
+        numCliqueEntriesAfterFirstPresolve(0),
+        feastol(0.0),
+        epsilon(0.0),
+        heuristic_effort(0.0),
+        dispfreq(0),
+        firstlpsolobj(-kHighsInf),
+        rootlpsolobj(-kHighsInf),
+        numintegercols(0),
+        maxTreeSizeLog2(0),
+        pruned_treeweight(0),
+        avgrootlpiters(0.0),
+        last_disptime(0.0),
+        firstrootlpiters(0),
+        num_nodes(0),
+        num_leaves(0),
+        num_leaves_before_run(0),
+        num_nodes_before_run(0),
+        total_repair_lp(0),
+        total_repair_lp_feasible(0),
+        total_repair_lp_iterations(0),
+        total_lp_iterations(0),
+        heuristic_lp_iterations(0),
+        sepa_lp_iterations(0),
+        sb_lp_iterations(0),
+        total_lp_iterations_before_run(0),
+        heuristic_lp_iterations_before_run(0),
+        sepa_lp_iterations_before_run(0),
+        sb_lp_iterations_before_run(0),
+        num_disp_lines(0),
+        numImprovingSols(0),
+        lower_bound(-kHighsInf),
+        upper_bound(kHighsInf),
+        upper_limit(kHighsInf),
+        optimality_limit(kHighsInf),
         debugSolution(mipsolver) {
     domain.addCutpool(cutpool);
     domain.addConflictPool(conflictPool);
   }
+
+  bool solutionRowFeasible(const std::vector<double>& solution) const;
+  HighsModelStatus trivialHeuristics();
 
   void startAnalyticCenterComputation(
       const highs::parallel::TaskGroup& taskGroup);
@@ -150,6 +233,15 @@ struct HighsMipSolverData {
   void finishSymmetryDetection(const highs::parallel::TaskGroup& taskGroup,
                                std::unique_ptr<SymmetryDetectionData>& symData);
 
+  void updatePrimalDualIntegral(const double from_lower_bound,
+                                const double to_lower_bound,
+                                const double from_upper_bound,
+                                const double to_upper_bound,
+                                const bool check_bound_change = true,
+                                const bool check_prev_data = true);
+  double limitsToGap(const double use_lower_bound, const double use_upper_bound,
+                     double& lb, double& ub) const;
+
   double computeNewUpperLimit(double upper_bound, double mip_abs_gap,
                               double mip_rel_gap) const;
   bool moreHeuristicsAllowed() const;
@@ -157,23 +249,32 @@ struct HighsMipSolverData {
   void init();
   void basisTransfer();
   void checkObjIntegrality();
-  void runPresolve();
+  void runPresolve(const HighsInt presolve_reduction_limit);
   void setupDomainPropagation();
+  void saveReportMipSolution(const double new_upper_limit = -kHighsInf);
   void runSetup();
-  double transformNewIncumbent(const std::vector<double>& sol);
+  double transformNewIntegerFeasibleSolution(
+      const std::vector<double>& sol,
+      const bool possibly_store_as_new_incumbent = true);
   double percentageInactiveIntegers() const;
   void performRestart();
   bool checkSolution(const std::vector<double>& solution) const;
-  bool trySolution(const std::vector<double>& solution, char source = ' ');
+  bool trySolution(const std::vector<double>& solution,
+                   const int solution_source = kSolutionSourceNone);
   bool rootSeparationRound(HighsSeparation& sepa, HighsInt& ncuts,
                            HighsLpRelaxation::Status& status);
   HighsLpRelaxation::Status evaluateRootLp();
   void evaluateRootNode();
-  bool addIncumbent(const std::vector<double>& sol, double solobj, char source);
+  bool addIncumbent(const std::vector<double>& sol, double solobj,
+                    const int solution_source,
+                    const bool print_display_line = true);
 
   const std::vector<double>& getSolution() const;
 
-  void printDisplayLine(char first = ' ');
+  std::string solutionSourceToString(const int solution_source,
+                                     const bool code = true);
+  void printSolutionSourceKey();
+  void printDisplayLine(const int solution_source = kSolutionSourceNone);
 
   void getRow(HighsInt row, HighsInt& rowlen, const HighsInt*& rowinds,
               const double*& rowvals) const {
@@ -184,6 +285,11 @@ struct HighsMipSolverData {
   }
 
   bool checkLimits(int64_t nodeOffset = 0) const;
+  void limitsToBounds(double& dual_bound, double& primal_bound,
+                      double& mip_rel_gap) const;
+  bool interruptFromCallbackWithData(const int callback_type,
+                                     const double mipsolver_objective_value,
+                                     const std::string message = "") const;
 };
 
 #endif

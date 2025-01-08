@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -16,10 +14,10 @@
 #include <cassert>
 #include <numeric>
 
+#include "../extern/pdqsort/pdqsort.h"
 #include "mip/HighsDomain.h"
 #include "mip/HighsLpRelaxation.h"
 #include "mip/HighsMipSolverData.h"
-#include "pdqsort/pdqsort.h"
 #include "util/HighsCDouble.h"
 #include "util/HighsHash.h"
 
@@ -303,7 +301,7 @@ void HighsCutPool::separate(const std::vector<double>& sol, HighsDomain& domain,
                        }) -
       efficacious_cuts.begin();
 
-  HighsInt lowerThreshold = 0.05 * efficacious_cuts.size();
+  HighsInt lowerThreshold = efficacious_cuts.size() / 20;
   HighsInt upperThreshold = efficacious_cuts.size() - 1;
 
   if (numefficacious <= lowerThreshold) {
@@ -507,7 +505,7 @@ HighsInt HighsCutPool::addCut(const HighsMipSolver& mipsolver, HighsInt* Rindex,
 
   // set the right hand side and reset the age
   rhs_[rowindex] = rhs;
-  ages_[rowindex] = std::max((HighsInt)0, agelim_ - 5);
+  ages_[rowindex] = std::max(HighsInt{0}, agelim_ - 5);
   ++ageDistribution[ages_[rowindex]];
   rowintegral[rowindex] = integral;
   if (propagate) propRows.emplace(ages_[rowindex], rowindex);

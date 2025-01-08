@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #include "mip/HighsLpRelaxation.h"
@@ -19,8 +17,72 @@
 #include "mip/HighsMipSolver.h"
 #include "mip/HighsMipSolverData.h"
 #include "mip/HighsPseudocost.h"
+#include "mip/MipTimer.h"
 #include "util/HighsCDouble.h"
 #include "util/HighsHash.h"
+
+void HighsLpRelaxation::getCutPool(HighsInt& num_col, HighsInt& num_cut,
+                                   std::vector<double>& cut_lower,
+                                   std::vector<double>& cut_upper,
+                                   HighsSparseMatrix& cut_matrix) const {
+  // NB RESTORE reference
+  //  const HighsLp& lp = lpsolver.getLp();
+  HighsLp lp = lpsolver.getLp();
+  num_col = lp.num_col_;
+  HighsInt num_lp_row = lp.num_row_;
+  HighsInt num_model_row = mipsolver.numRow();
+  num_cut = num_lp_row - num_model_row;
+  cut_lower.resize(num_cut);
+  cut_upper.resize(num_cut);
+  // Get a map from row index to cut row index
+  std::vector<HighsInt> cut_row_index;
+  cut_row_index.assign(num_lp_row, -1);
+  HighsInt cut_num = 0;
+  for (HighsInt iRow = 0; iRow < lp.num_row_; iRow++) {
+    if (lprows[iRow].origin != LpRow::Origin::kCutPool) continue;
+    cut_row_index[iRow] = cut_num;
+    cut_lower[cut_num] = lp.row_lower_[iRow];
+    cut_upper[cut_num] = lp.row_upper_[iRow];
+    cut_num++;
+  }
+  assert(cut_num == num_cut);
+
+  cut_matrix.num_col_ = lp.num_col_;
+  cut_matrix.num_row_ = num_cut;
+  cut_matrix.format_ = MatrixFormat::kRowwise;
+
+  std::vector<HighsInt> cut_matrix_length;
+  cut_matrix_length.assign(num_cut, 0);
+  for (HighsInt iCol = 0; iCol < lp.num_col_; iCol++) {
+    for (HighsInt iEl = lp.a_matrix_.start_[iCol];
+         iEl < lp.a_matrix_.start_[iCol + 1]; iEl++) {
+      HighsInt iCut = cut_row_index[lp.a_matrix_.index_[iEl]];
+      if (iCut >= 0) cut_matrix_length[iCut]++;
+    }
+  }
+  cut_matrix.start_.resize(num_cut + 1);
+  cut_matrix.start_[0] = 0;
+  HighsInt num_cut_nz = 0;
+  for (HighsInt iCut = 0; iCut < num_cut; iCut++) {
+    HighsInt length = cut_matrix_length[iCut];
+    cut_matrix_length[iCut] = cut_matrix.start_[iCut];
+    num_cut_nz += length;
+    cut_matrix.start_[iCut + 1] = num_cut_nz;
+  }
+  cut_matrix.index_.resize(num_cut_nz);
+  cut_matrix.value_.resize(num_cut_nz);
+  for (HighsInt iCol = 0; iCol < lp.num_col_; iCol++) {
+    for (HighsInt iEl = lp.a_matrix_.start_[iCol];
+         iEl < lp.a_matrix_.start_[iCol + 1]; iEl++) {
+      HighsInt iCut = cut_row_index[lp.a_matrix_.index_[iEl]];
+      if (iCut >= 0) {
+        cut_matrix.index_[cut_matrix_length[iCut]] = iCol;
+        cut_matrix.value_[cut_matrix_length[iCut]] = lp.a_matrix_.value_[iEl];
+        cut_matrix_length[iCut]++;
+      }
+    }
+  }
+}
 
 void HighsLpRelaxation::LpRow::get(const HighsMipSolver& mipsolver,
                                    HighsInt& len, const HighsInt*& inds,
@@ -54,7 +116,7 @@ bool HighsLpRelaxation::LpRow::isIntegral(
     case kCutPool:
       return mipsolver.mipdata_->cutpool.cutIsIntegral(index);
     case kModel:
-      return mipsolver.mipdata_->rowintegral[index];
+      return (mipsolver.mipdata_->rowintegral[index] != 0);
   };
 
   assert(false);
@@ -298,7 +360,6 @@ void HighsLpRelaxation::computeBasicDegenerateDuals(double threshold,
         HighsInt iRow = row_ep.index[i];
         const double lb = lp.row_lower_[iRow];
         const double ub = lp.row_upper_[iRow];
-        const double dual = solution.row_dual[iRow];
 
         double val = sign * row_ep.array[iRow];
         if (ub == lb || val > mipsolver.mipdata_->epsilon) {
@@ -345,9 +406,9 @@ double HighsLpRelaxation::computeBestEstimate(const HighsPseudocost& ps) const {
     // fractionality.
 
     HighsCDouble increase = 0.0;
-    double offset = mipsolver.mipdata_->feastol *
-                    std::max(std::abs(objective), 1.0) /
-                    mipsolver.mipdata_->integral_cols.size();
+    double offset =
+        mipsolver.mipdata_->feastol * std::max(std::abs(objective), 1.0) /
+        static_cast<double>(mipsolver.mipdata_->integral_cols.size());
 
     for (const std::pair<HighsInt, double>& f : fractionalints) {
       increase += std::min(ps.getPseudocostUp(f.first, f.second, offset),
@@ -487,7 +548,9 @@ void HighsLpRelaxation::removeCuts(HighsInt ndelcuts,
     assert(lpsolver.getLp().num_row_ == (HighsInt)lprows.size());
     basis.debug_origin_name = "HighsLpRelaxation::removeCuts";
     lpsolver.setBasis(basis);
+    mipsolver.analysis_.mipTimerStart(kMipClockSimplexBasisSolveLp);
     lpsolver.run();
+    mipsolver.analysis_.mipTimerStop(kMipClockSimplexBasisSolveLp);
   }
 }
 
@@ -985,9 +1048,35 @@ void HighsLpRelaxation::setObjectiveLimit(double objlim) {
 HighsLpRelaxation::Status HighsLpRelaxation::run(bool resolve_on_error) {
   lpsolver.setOptionValue(
       "time_limit", lpsolver.getRunTime() + mipsolver.options_mip_->time_limit -
-                        mipsolver.timer_.read(mipsolver.timer_.solve_clock));
+                        mipsolver.timer_.read(mipsolver.timer_.total_clock));
   // lpsolver.setOptionValue("output_flag", true);
+  const bool valid_basis = lpsolver.getBasis().valid;
+  const HighsInt simplex_solve_clock = valid_basis
+                                           ? kMipClockSimplexBasisSolveLp
+                                           : kMipClockSimplexNoBasisSolveLp;
+  const bool dev_report = false;
+  if (dev_report && !mipsolver.submip) {
+    if (valid_basis) {
+      printf("Solving LP (%7d, %7d) with    a valid basis\n",
+             int(lpsolver.getNumCol()), int(lpsolver.getNumRow()));
+    } else {
+      printf("Solving LP (%7d, %7d) without a valid basis\n",
+             int(lpsolver.getNumCol()), int(lpsolver.getNumRow()));
+    }
+  }
+  const bool solver_logging = false;
+  const bool detailed_simplex_logging = false;
+  if (solver_logging) lpsolver.setOptionValue("output_flag", true);
+  if (detailed_simplex_logging) {
+    lpsolver.setOptionValue("output_flag", true);
+    lpsolver.setOptionValue("log_dev_level", kHighsLogDevLevelVerbose);
+    lpsolver.setOptionValue("highs_analysis_level",
+                            kHighsAnalysisLevelSolverRuntimeData);
+  }
+
+  mipsolver.analysis_.mipTimerStart(simplex_solve_clock);
   HighsStatus callstatus = lpsolver.run();
+  mipsolver.analysis_.mipTimerStop(simplex_solve_clock);
 
   const HighsInfo& info = lpsolver.getInfo();
   HighsInt itercount = std::max(HighsInt{0}, info.simplex_iteration_count);
@@ -1010,9 +1099,9 @@ HighsLpRelaxation::Status HighsLpRelaxation::run(bool resolve_on_error) {
     if (resolve_on_error) {
       // still an error: now try to solve with presolve from scratch
       lpsolver.setOptionValue("simplex_strategy", kSimplexStrategyDual);
-      lpsolver.setOptionValue("presolve", "on");
+      lpsolver.setOptionValue("presolve", kHighsOnString);
       auto retval = run(false);
-      lpsolver.setOptionValue("presolve", "off");
+      lpsolver.setOptionValue("presolve", kHighsOffString);
 
       return retval;
     }
@@ -1028,13 +1117,15 @@ HighsLpRelaxation::Status HighsLpRelaxation::run(bool resolve_on_error) {
   switch (model_status) {
     case HighsModelStatus::kObjectiveBound:
       ++numSolved;
-      avgSolveIters += (itercount - avgSolveIters) / numSolved;
+      avgSolveIters +=
+          (itercount - avgSolveIters) / static_cast<double>(numSolved);
 
       storeDualUBProof();
       return Status::kInfeasible;
     case HighsModelStatus::kInfeasible: {
       ++numSolved;
-      avgSolveIters += (itercount - avgSolveIters) / numSolved;
+      avgSolveIters +=
+          (itercount - avgSolveIters) / static_cast<double>(numSolved);
 
       storeDualInfProof();
       if (true || checkDualProof()) return Status::kInfeasible;
@@ -1065,7 +1156,7 @@ HighsLpRelaxation::Status HighsLpRelaxation::run(bool resolve_on_error) {
       //                 HighsLogType::kWarning,
       //                 "LP failed to reliably determine infeasibility\n");
 
-      // printf("error: unreliable infeasiblities, modelstatus = %"
+      // printf("error: unreliable infeasibilities, modelstatus = %"
       // HIGHSINT_FORMAT " (scaled
       // %" HIGHSINT_FORMAT ")\n",
       //        (HighsInt)lpsolver.getModelStatus(),
@@ -1073,10 +1164,18 @@ HighsLpRelaxation::Status HighsLpRelaxation::run(bool resolve_on_error) {
       return Status::kError;
     }
     case HighsModelStatus::kUnbounded:
-      if (info.basis_validity == kBasisValidityInvalid) return Status::kError;
-
+      // If unboundedness is detected in the presolved LP, then
+      // postsolve cannot be run, so there is no basis. Returning
+      // Status::kError as a result yielded #1962, where the root node
+      // is unbounded.
+      if (info.basis_validity == kBasisValidityInvalid)
+        highsLogUser(mipsolver.options_mip_->log_options,
+                     HighsLogType::kWarning,
+                     "HighsLpRelaxation::run LP is unbounded with no basis, "
+                     "but not returning Status::kError\n");
       if (info.primal_solution_status == kSolutionStatusFeasible)
-        mipsolver.mipdata_->trySolution(lpsolver.getSolution().col_value, 'T');
+        mipsolver.mipdata_->trySolution(lpsolver.getSolution().col_value,
+                                        kSolutionSourceUnbounded);
 
       return Status::kUnbounded;
     case HighsModelStatus::kUnknown:
@@ -1086,7 +1185,8 @@ HighsLpRelaxation::Status HighsLpRelaxation::run(bool resolve_on_error) {
       assert(info.max_primal_infeasibility >= 0);
       assert(info.max_dual_infeasibility >= 0);
       ++numSolved;
-      avgSolveIters += (itercount - avgSolveIters) / numSolved;
+      avgSolveIters +=
+          (itercount - avgSolveIters) / static_cast<double>(numSolved);
       if (info.max_primal_infeasibility <= mipsolver.mipdata_->feastol &&
           info.max_dual_infeasibility <= mipsolver.mipdata_->feastol)
         return Status::kOptimal;
@@ -1115,7 +1215,9 @@ HighsLpRelaxation::Status HighsLpRelaxation::run(bool resolve_on_error) {
         // istanbul-no-cutoff
         ipm.setOptionValue("simplex_iteration_limit",
                            info.simplex_iteration_count);
+        mipsolver.analysis_.mipTimerStart(kMipClockIpmSolveLp);
         ipm.run();
+        mipsolver.analysis_.mipTimerStop(kMipClockIpmSolveLp);
         lpsolver.setBasis(ipm.getBasis(), "HighsLpRelaxation::run IPM basis");
         return run(false);
       }
@@ -1164,13 +1266,11 @@ HighsLpRelaxation::Status HighsLpRelaxation::resolveLp(HighsDomain* domain) {
           double val = std::max(
               std::min(sol.col_value[i], lpsolver.getLp().col_upper_[i]),
               lpsolver.getLp().col_lower_[i]);
-          double intval = std::floor(val + 0.5);
 
-          if (std::abs(val - intval) > mipsolver.mipdata_->feastol) {
+          if (fractionality(val) > mipsolver.mipdata_->feastol) {
             HighsInt col = i;
-            if (roundable && mipsolver.mipdata_->uplocks[col] != 0 &&
-                mipsolver.mipdata_->downlocks[col] != 0)
-              roundable = false;
+            roundable = roundable && (mipsolver.mipdata_->uplocks[col] == 0 ||
+                                      mipsolver.mipdata_->downlocks[col] == 0);
 
             const HighsCliqueTable::Substitution* subst =
                 mipsolver.mipdata_->cliquetable.getSubstitution(col);
@@ -1257,14 +1357,28 @@ HighsLpRelaxation::Status HighsLpRelaxation::resolveLp(HighsDomain* domain) {
           std::vector<double> roundsol = sol.col_value;
 
           for (const std::pair<HighsInt, double>& fracint : fractionalints) {
+            // get column index
             HighsInt col = fracint.first;
-
+            // round based on locks and sign of objective coefficient
             if (mipsolver.mipdata_->uplocks[col] == 0 &&
                 (mipsolver.colCost(col) < 0 ||
-                 mipsolver.mipdata_->downlocks[col] != 0))
-              roundsol[col] = std::ceil(fracint.second);
-            else
-              roundsol[col] = std::floor(fracint.second);
+                 mipsolver.mipdata_->downlocks[col] != 0)) {
+              // round up
+              roundsol[col] = std::min(
+                  std::ceil(fracint.second - mipsolver.mipdata_->feastol),
+                  lpsolver.getLp().col_upper_[col] == kHighsInf
+                      ? kHighsInf
+                      : std::floor(lpsolver.getLp().col_upper_[col] +
+                                   mipsolver.mipdata_->feastol));
+            } else {
+              // round down
+              roundsol[col] = std::max(
+                  std::floor(fracint.second + mipsolver.mipdata_->feastol),
+                  lpsolver.getLp().col_lower_[col] == -kHighsInf
+                      ? -kHighsInf
+                      : std::ceil(lpsolver.getLp().col_lower_[col] -
+                                  mipsolver.mipdata_->feastol));
+            }
           }
 
           const auto& cliquesubst =
@@ -1281,7 +1395,8 @@ HighsLpRelaxation::Status HighsLpRelaxation::resolveLp(HighsDomain* domain) {
           for (HighsInt i = 0; i != mipsolver.numCol(); ++i)
             objsum += roundsol[i] * mipsolver.colCost(i);
 
-          mipsolver.mipdata_->addIncumbent(roundsol, double(objsum), 'S');
+          mipsolver.mipdata_->addIncumbent(roundsol, double(objsum),
+                                           kSolutionSourceSolveLp);
           objsum = 0;
         }
 

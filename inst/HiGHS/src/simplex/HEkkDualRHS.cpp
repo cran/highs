@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file simplex/HEkkDualRHS.cpp
@@ -20,7 +18,7 @@
 #include <iostream>
 #include <set>
 
-#include "pdqsort/pdqsort.h"
+#include "../extern/pdqsort/pdqsort.h"
 #include "simplex/SimplexTimer.h"
 
 using std::fill_n;
@@ -31,8 +29,6 @@ using std::pair;
 
 void HEkkDualRHS::setup() {
   const HighsInt numRow = ekk_instance_.lp_.num_row_;
-  const HighsInt numTot =
-      ekk_instance_.lp_.num_col_ + ekk_instance_.lp_.num_row_;
   workMark.resize(numRow);
   workIndex.resize(numRow);
   work_infeasibility.resize(numRow);
@@ -312,19 +308,20 @@ void HEkkDualRHS::chooseMultiHyperGraphPart(HighsInt* chIndex,
   analysis->simplexTimerStop(ChuzrDualClock);
 }
 
-void HEkkDualRHS::updatePrimal(HVector* column, double theta) {
+bool HEkkDualRHS::updatePrimal(HVector* column, double theta) {
   analysis->simplexTimerStart(UpdatePrimalClock);
 
   const HighsInt numRow = ekk_instance_.lp_.num_row_;
   const HighsInt columnCount = column->count;
-  const HighsInt* variable_index = &column->index[0];
-  const double* columnArray = &column->array[0];
+  const HighsInt* variable_index = column->index.data();
+  const double* columnArray = column->array.data();
 
-  const double* baseLower = &ekk_instance_.info_.baseLower_[0];
-  const double* baseUpper = &ekk_instance_.info_.baseUpper_[0];
+  const double* baseLower = ekk_instance_.info_.baseLower_.data();
+  const double* baseUpper = ekk_instance_.info_.baseUpper_.data();
   const double Tp = ekk_instance_.options_->primal_feasibility_tolerance;
-  double* baseValue = &ekk_instance_.info_.baseValue_[0];
+  double* baseValue = ekk_instance_.info_.baseValue_.data();
 
+  HighsInt num_excessive_primal = 0;
   bool updatePrimal_inDense = columnCount < 0 || columnCount > 0.4 * numRow;
 
   const HighsInt to_entry = updatePrimal_inDense ? numRow : columnCount;
@@ -346,8 +343,14 @@ void HEkkDualRHS::updatePrimal(HVector* column, double theta) {
       work_infeasibility[iRow] = primal_infeasibility * primal_infeasibility;
     else
       work_infeasibility[iRow] = fabs(primal_infeasibility);
+    if (baseValue[iRow] <= -kExcessivePrimalValue ||
+        baseValue[iRow] >= kExcessivePrimalValue)
+      num_excessive_primal++;
   }
   analysis->simplexTimerStop(UpdatePrimalClock);
+  // Flag detection of excessive values in return
+  if (num_excessive_primal) return false;
+  return true;
 }
 
 void HEkkDualRHS::updatePivots(const HighsInt iRow, const double value) {
@@ -374,7 +377,7 @@ void HEkkDualRHS::updatePivots(const HighsInt iRow, const double value) {
 
 void HEkkDualRHS::updateInfeasList(HVector* column) {
   const HighsInt columnCount = column->count;
-  const HighsInt* variable_index = &column->index[0];
+  const HighsInt* variable_index = column->index.data();
 
   // DENSE mode: disabled
   if (workCount < 0) return;
@@ -411,9 +414,9 @@ void HEkkDualRHS::updateInfeasList(HVector* column) {
 
 void HEkkDualRHS::createArrayOfPrimalInfeasibilities() {
   HighsInt numRow = ekk_instance_.lp_.num_row_;
-  const double* baseValue = &ekk_instance_.info_.baseValue_[0];
-  const double* baseLower = &ekk_instance_.info_.baseLower_[0];
-  const double* baseUpper = &ekk_instance_.info_.baseUpper_[0];
+  const double* baseValue = ekk_instance_.info_.baseValue_.data();
+  const double* baseLower = ekk_instance_.info_.baseLower_.data();
+  const double* baseUpper = ekk_instance_.info_.baseUpper_.data();
   const double Tp = ekk_instance_.options_->primal_feasibility_tolerance;
   for (HighsInt i = 0; i < numRow; i++) {
     // @primal_infeasibility calculation
@@ -435,10 +438,10 @@ void HEkkDualRHS::createArrayOfPrimalInfeasibilities() {
 
 void HEkkDualRHS::createInfeasList(double columnDensity) {
   HighsInt numRow = ekk_instance_.lp_.num_row_;
-  double* dwork = &ekk_instance_.scattered_dual_edge_weight_[0];
+  double* dwork = ekk_instance_.scattered_dual_edge_weight_.data();
 
   // 1. Build the full list
-  fill_n(&workMark[0], numRow, 0);
+  fill_n(workMark.data(), numRow, 0);
   workCount = 0;
   workCutoff = 0;
   for (HighsInt iRow = 0; iRow < numRow; iRow++) {
@@ -465,7 +468,7 @@ void HEkkDualRHS::createInfeasList(double columnDensity) {
     workCutoff = min(maxMerit * 0.99999, cutMerit * 1.00001);
 
     // Create again
-    fill_n(&workMark[0], numRow, 0);
+    fill_n(workMark.data(), numRow, 0);
     workCount = 0;
     for (HighsInt iRow = 0; iRow < numRow; iRow++) {
       if (work_infeasibility[iRow] >= edge_weight[iRow] * workCutoff) {

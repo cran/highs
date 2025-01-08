@@ -2,7 +2,8 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2021 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
@@ -14,6 +15,7 @@
 #include "presolve/ICrash.h"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cmath>
 #include <iomanip>
@@ -99,7 +101,7 @@ Quadratic parseOptions(const HighsLp& lp, const ICrashOptions options) {
       // if (status == HighsStatus::kOk) {
       //   ilp = local_lp;
       // } else {
-      //   printf("Cannot dualise equality problem\n");
+      //   printf("Cannot dualize equality problem\n");
       // }
     }
   } else {
@@ -120,7 +122,7 @@ Quadratic parseOptions(const HighsLp& lp, const ICrashOptions options) {
     //   // if (status == HighsStatus::kOk) {
     //   //   ilp = local_lp;
     //   // } else {
-    //   //   printf("Cannot dualise equality problem\n");
+    //   //   printf("Cannot dualize equality problem\n");
     //   // }
     // }
   }
@@ -156,7 +158,7 @@ void update(Quadratic& idata) {
   idata.lp_objective = vectorProduct(idata.lp.col_cost_, idata.xk.col_value);
 
   // residual & residual_norm_2
-  calculateRowValues(idata.lp, idata.xk);
+  calculateRowValuesQuad(idata.lp, idata.xk);
   updateResidual(idata.options.breakpoints, idata.lp, idata.xk, idata.residual);
   idata.residual_norm_2 = getNorm2(idata.residual);
 
@@ -230,7 +232,7 @@ void updateParameters(Quadratic& idata, const ICrashOptions& options,
       if (iteration % 3 == 0) {
         idata.mu = 0.1 * idata.mu;
       } else {
-        calculateRowValues(idata.lp, idata.xk);
+        calculateRowValuesQuad(idata.lp, idata.xk);
         std::vector<double> residual(idata.lp.num_row_, 0);
         updateResidualFast(idata.lp, idata.xk, residual);
         for (int row = 0; row < idata.lp.num_row_; row++)
@@ -287,7 +289,7 @@ static void solveSubproblemICA(Quadratic& idata, const ICrashOptions& options) {
 static void solveSubproblemQP(Quadratic& idata, const ICrashOptions& options) {
   bool minor_iteration_details = false;
 
-  calculateRowValues(idata.lp, idata.xk);
+  calculateRowValuesQuad(idata.lp, idata.xk);
   std::vector<double> residual(idata.lp.num_row_, 0);
   updateResidualFast(idata.lp, idata.xk, residual);
   double objective = 0;

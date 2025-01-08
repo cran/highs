@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file simplex/HEkkPrimal.h
@@ -180,6 +178,11 @@ class HEkkPrimal {
   HVector row_basic_feasibility_change;
   HVector col_steepest_edge;
   HighsRandom random_;  // Just for checking PSE weights
+
+  double max_max_local_primal_infeasibility_;
+  double max_max_ignored_violation_;
+  double max_max_primal_correction_;
+  HighsInt last_header_iteration_count_;
 
   const HighsInt primal_correction_strategy =
       kSimplexPrimalCorrectionStrategyAlways;

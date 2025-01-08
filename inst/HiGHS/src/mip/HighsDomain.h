@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #ifndef HIGHS_DOMAIN_H_
@@ -257,7 +255,14 @@ class HighsDomain {
 
     std::vector<PartitionCliqueData> partitionCliqueData;
 
-    ObjectivePropagation() = default;
+    ObjectivePropagation() {
+      objFunc = nullptr;
+      cost = nullptr;
+      objectiveLower = 0.0;
+      numInfObjLower = 0;
+      capacityThreshold = 0.0;
+      isPropagated = false;
+    }
     ObjectivePropagation(HighsDomain* domain);
 
     bool isActive() const { return domain != nullptr; }
@@ -353,6 +358,7 @@ class HighsDomain {
         conflictPoolPropagation(other.conflictPoolPropagation),
         infeasible_(other.infeasible_),
         infeasible_reason(other.infeasible_reason),
+        infeasible_pos(other.infeasible_pos),
         colLowerPos_(other.colLowerPos_),
         colUpperPos_(other.colUpperPos_),
         branchPos_(other.branchPos_),
@@ -480,7 +486,9 @@ class HighsDomain {
   }
 
   void fixCol(HighsInt col, double val, Reason reason = Reason::unspecified()) {
-    assert(infeasible_ == 0);
+    if (kAllowDeveloperAssert) {
+      assert(infeasible_ == 0);
+    }
     if (col_lower_[col] < val) {
       changeBound({val, col, HighsBoundType::kLower}, reason);
       if (infeasible_ == 0) propagate();

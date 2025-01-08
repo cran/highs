@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file util/HighsSparseMatrix.h
@@ -60,15 +58,23 @@ class HighsSparseMatrix {
                const int8_t* in_partition = NULL);
   void addRows(const HighsSparseMatrix new_rows,
                const int8_t* in_partition = NULL);
-
+  void getRow(const HighsInt iRow, HighsInt& num_nz, HighsInt* index,
+              double* value) const;
+  void getCol(const HighsInt iCol, HighsInt& num_nz, HighsInt* index,
+              double* value) const;
   void deleteCols(const HighsIndexCollection& index_collection);
   void deleteRows(const HighsIndexCollection& index_collection);
   HighsStatus assessDimensions(const HighsLogOptions& log_options,
                                const std::string matrix_name);
+  HighsStatus assessStart(const HighsLogOptions& log_options);
+  HighsStatus assessIndexBounds(const HighsLogOptions& log_options);
+
   HighsStatus assess(const HighsLogOptions& log_options,
                      const std::string matrix_name,
                      const double small_matrix_value,
                      const double large_matrix_value);
+  void assessSmallValues(const HighsLogOptions& log_options,
+                         const double small_matrix_value);
   bool hasLargeValue(const double large_matrix_value);
   void considerColScaling(const HighsInt max_scale_factor_exponent,
                           double* col_scale);
@@ -84,12 +90,19 @@ class HighsSparseMatrix {
                    const HighsInt to_col);
   void createColwise(const HighsSparseMatrix& matrix);
   void createRowwise(const HighsSparseMatrix& matrix);
-  void productQuad(vector<double>& result, const vector<double>& row,
+  void alphaProductPlusY(const double alpha, const std::vector<double>& x,
+                         std::vector<double>& y,
+                         const bool transpose = false) const;
+  void product(vector<double>& result, const vector<double>& x) const;
+  void productTranspose(vector<double>& result, const vector<double>& x) const;
+  void productQuad(vector<double>& result, const vector<double>& x,
                    const HighsInt debug_report = kDebugReportOff) const;
   void productTransposeQuad(
-      vector<double>& result_value, vector<HighsInt>& result_index,
-      const HVector& column,
+      vector<double>& result_value, const vector<double>& x,
       const HighsInt debug_report = kDebugReportOff) const;
+  void productTransposeQuad(
+      vector<double>& result_value, vector<HighsInt>& result_index,
+      const HVector& x, const HighsInt debug_report = kDebugReportOff) const;
   // Methods for PRICE, including the creation and updating of the
   // partitioned row-wise matrix
   void createRowwisePartitioned(const HighsSparseMatrix& matrix,

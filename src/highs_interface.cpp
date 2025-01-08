@@ -257,7 +257,11 @@ int32_t solver_get_sense(SEXP hi) {
     Rcpp::XPtr<Highs>highs(hi);
     ObjSense sense;
     HighsStatus status = highs->getObjectiveSense(sense);
-    return sense == ObjSense::kMaximize;
+    if (status == HighsStatus::kOk) {
+        return sense == ObjSense::kMaximize;
+    } else {
+        Rcpp::stop("could not obtain the sense of the objective function.");
+    }
 }
 
 // [[Rcpp::export]]
@@ -320,7 +324,7 @@ SEXP solver_set_coeff(SEXP hi, std::vector<int32_t> row, std::vector<int32_t> co
     for (std::size_t i = 0; i < row.size(); ++i) {
         status = highs->changeCoeff(row[i], col[i], val[i]);
         if (status != HighsStatus::kOk) {
-            Rcpp::stop("error setting coefficient");
+            Rcpp::stop("could not change the coefficient.");
         }
     }
     return R_NilValue;

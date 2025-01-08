@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file util/HighsSort.h
@@ -38,7 +36,7 @@ void maxheapsort(HighsInt* heap_v,  //!< HighsInt values to be sorted
  */
 void maxheapsort(
     HighsInt* heap_v,  //!< Values to be sorted
-    HighsInt* heap_i,  //!< Indices corrresponding to (sorted) values
+    HighsInt* heap_i,  //!< Indices corresponding to (sorted) values
     HighsInt n         //!< Number of values to be sorted
 );
 /**
@@ -47,7 +45,7 @@ void maxheapsort(
  */
 void maxheapsort(
     double* heap_v,    //!< Values to be sorted
-    HighsInt* heap_i,  //!< Indices corrresponding to (sorted) values
+    HighsInt* heap_i,  //!< Indices corresponding to (sorted) values
     HighsInt n         //!< Number of values to be sorted
 );
 /**
@@ -63,7 +61,7 @@ void buildMaxheap(HighsInt* heap_v,  //!< HighsInt values to be sorted
  */
 void buildMaxheap(
     HighsInt* heap_v,  //!< Values to be sorted
-    HighsInt* heap_i,  //!< Indices corrresponding to (sorted) values
+    HighsInt* heap_i,  //!< Indices corresponding to (sorted) values
     HighsInt n         //!< Number of values to be sorted
 );
 /**
@@ -72,7 +70,7 @@ void buildMaxheap(
  */
 void buildMaxheap(
     double* heap_v,    //!< Values to be sorted
-    HighsInt* heap_i,  //!< Indices corrresponding to (sorted) values
+    HighsInt* heap_i,  //!< Indices corresponding to (sorted) values
     HighsInt n         //!< Number of values to be sorted
 );
 /**
@@ -86,7 +84,7 @@ void maxHeapsort(HighsInt* heap_v,  //!< HighsInt values to be sorted
  */
 void maxHeapsort(
     HighsInt* heap_v,  //!< Values to be sorted
-    HighsInt* heap_i,  //!< Indices corrresponding to (sorted) values
+    HighsInt* heap_i,  //!< Indices corresponding to (sorted) values
     HighsInt n         //!< Number of values to be sorted
 );
 /**
@@ -94,7 +92,7 @@ void maxHeapsort(
  */
 void maxHeapsort(
     double* heap_v,    //!< Values to be sorted
-    HighsInt* heap_i,  //!< Indices corrresponding to (sorted) values
+    HighsInt* heap_i,  //!< Indices corresponding to (sorted) values
     HighsInt n         //!< Number of values to be sorted
 );
 /**

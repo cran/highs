@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #ifndef SIMPLEX_HAPP_H_
@@ -72,6 +70,10 @@ inline HighsStatus returnFromSolveLpSimplex(HighsLpSolverObject& solver_object,
                  "Error in basis matrix inverse after solving the LP\n");
     return_status = HighsStatus::kError;
   }
+  if (solver_object.model_status_ == HighsModelStatus::kOptimal) {
+    solver_object.highs_info_.max_complementarity_violation = 0;
+    solver_object.highs_info_.sum_complementarity_violations = 0;
+  }
   return return_status;
 }
 
@@ -110,6 +112,9 @@ inline HighsStatus solveLpSimplex(HighsLpSolverObject& solver_object) {
   // return
   resetModelStatusAndHighsInfo(solver_object);
 
+  // Initialise the simplex stats
+  ekk_instance.initialiseSimplexStats();
+
   // Assumes that the LP has a positive number of rows, since
   // unconstrained LPs should be solved in solveLp
   bool positive_num_row = solver_object.lp_.num_row_ > 0;
@@ -147,17 +152,17 @@ inline HighsStatus solveLpSimplex(HighsLpSolverObject& solver_object) {
         return returnFromSolveLpSimplex(solver_object, call_status);
       }
     } else {
-      // Starting from a logical basis, so consider dualising and/or
+      // Starting from a logical basis, so consider dualizing and/or
       // permuting the LP
-      if (options.simplex_dualise_strategy == kHighsOptionChoose ||
-          options.simplex_dualise_strategy == kHighsOptionOn) {
-        // Dualise unless we choose not to
-        bool dualise_lp = true;
-        if (options.simplex_dualise_strategy == kHighsOptionChoose) {
+      if (options.simplex_dualize_strategy == kHighsOptionChoose ||
+          options.simplex_dualize_strategy == kHighsOptionOn) {
+        // Dualize unless we choose not to
+        bool dualize_lp = true;
+        if (options.simplex_dualize_strategy == kHighsOptionChoose) {
           if (incumbent_lp.num_row_ < 10 * incumbent_lp.num_col_)
-            dualise_lp = false;
+            dualize_lp = false;
         }
-        if (dualise_lp) ekk_instance.dualise();
+        if (dualize_lp) ekk_instance.dualize();
       }
       if (options.simplex_permute_strategy == kHighsOptionChoose ||
           options.simplex_permute_strategy == kHighsOptionOn) {
@@ -186,9 +191,9 @@ inline HighsStatus solveLpSimplex(HighsLpSolverObject& solver_object) {
     return_status = ekk_instance.solve();
     solved_unscaled_lp = true;
     ekk_instance.unpermute();
-    ekk_instance.undualise();
+    ekk_instance.undualize();
     assert(!ekk_instance.status_.is_permuted &&
-           !ekk_instance.status_.is_dualised);
+           !ekk_instance.status_.is_dualized);
     if (options.cost_scale_factor) {
       double cost_scale_factor = pow(2.0, -options.cost_scale_factor);
       highsLogDev(options.log_options, HighsLogType::kInfo,
@@ -211,9 +216,9 @@ inline HighsStatus solveLpSimplex(HighsLpSolverObject& solver_object) {
       //
       return_status = ekk_instance.solve();
       ekk_instance.unpermute();
-      ekk_instance.undualise();
+      ekk_instance.undualize();
       assert(!ekk_instance.status_.is_permuted &&
-             !ekk_instance.status_.is_dualised);
+             !ekk_instance.status_.is_dualized);
       //
       if (options.cost_scale_factor) {
         double cost_scale_factor = pow(2.0, -options.cost_scale_factor);
@@ -252,12 +257,27 @@ inline HighsStatus solveLpSimplex(HighsLpSolverObject& solver_object) {
           scaled_model_status == HighsModelStatus::kOptimal &&
           (num_unscaled_primal_infeasibilities ||
            num_unscaled_dual_infeasibilities);
-      if (scaled_optimality_but_unscaled_infeasibilities)
+      // Determine whether the unscaled solution has primal
+      // infeasibilities after the scaled LP has been solved to the
+      // objective target
+      const bool scaled_objective_target_but_unscaled_primal_infeasibilities =
+          scaled_model_status == HighsModelStatus::kObjectiveTarget &&
+          highs_info.num_primal_infeasibilities > 0;
+      // Determine whether the unscaled solution has dual
+      // infeasibilities after the scaled LP has been solved to the
+      // objective bound
+      const bool scaled_objective_bound_but_unscaled_dual_infeasibilities =
+          scaled_model_status == HighsModelStatus::kObjectiveBound &&
+          highs_info.num_dual_infeasibilities > 0;
+      if (scaled_optimality_but_unscaled_infeasibilities ||
+          scaled_objective_target_but_unscaled_primal_infeasibilities ||
+          scaled_objective_bound_but_unscaled_dual_infeasibilities)
         highsLogDev(options.log_options, HighsLogType::kInfo,
-                    "Have num/max/sum primal (%" HIGHSINT_FORMAT
-                    "/%g/%g) and dual (%" HIGHSINT_FORMAT
+                    "After unscaling with status %s, have num/max/sum primal "
+                    "(%" HIGHSINT_FORMAT "/%g/%g) and dual (%" HIGHSINT_FORMAT
                     "/%g/%g) "
                     "unscaled infeasibilities\n",
+                    utilModelStatusToString(scaled_model_status).c_str(),
                     highs_info.num_primal_infeasibilities,
                     highs_info.max_primal_infeasibility,
                     highs_info.sum_primal_infeasibilities,
@@ -272,8 +292,8 @@ inline HighsStatus solveLpSimplex(HighsLpSolverObject& solver_object) {
            scaled_model_status == HighsModelStatus::kInfeasible ||
            scaled_model_status == HighsModelStatus::kUnboundedOrInfeasible ||
            scaled_model_status == HighsModelStatus::kUnbounded ||
-           scaled_model_status == HighsModelStatus::kObjectiveBound ||
-           scaled_model_status == HighsModelStatus::kObjectiveTarget ||
+           scaled_objective_bound_but_unscaled_dual_infeasibilities ||
+           scaled_objective_target_but_unscaled_primal_infeasibilities ||
            scaled_model_status == HighsModelStatus::kUnknown);
       // Handle the case when refinement will not take place
       if (!refine_solution) {
@@ -320,21 +340,31 @@ inline HighsStatus solveLpSimplex(HighsLpSolverObject& solver_object) {
           options.dual_simplex_cost_perturbation_multiplier;
       HighsInt simplex_dual_edge_weight_strategy =
           ekk_info.dual_edge_weight_strategy;
+      // #1865 exposed that this should not be
+      // HighsModelStatus::kObjectiveBound, but
+      // HighsModelStatus::kObjectiveTarget, since if the latter is
+      // the model status for the scaled LP, any primal
+      // infeasibilities should be small, but must be cleaned up
+      // before (hopefully) a few phase 2 primal simplex iterations
+      // are required to attain the target for the unscaled LP
+      //
+      // In #1865, phase 2 primal simplex was forced with large primal
+      // infeasibilities
       if (num_unscaled_primal_infeasibilities == 0 ||
-          scaled_model_status == HighsModelStatus::kObjectiveBound) {
-        // Only dual infeasibilities, or primal infeasibilities do not
-        // matter due to solution status, so use primal simplex phase
-        // 2
+          scaled_model_status == HighsModelStatus::kObjectiveTarget) {
+        // Only dual infeasibilities, or objective target reached (in
+        // primal phase 2) - so primal infeasibilities should be small
+        // - so use primal simplex phase 2
         options.simplex_strategy = kSimplexStrategyPrimal;
-        if (scaled_model_status == HighsModelStatus::kObjectiveBound) {
-          highsLogDev(
-              options.log_options, HighsLogType::kInfo,
-              "solveLpSimplex: Calling primal simplex after "
-              "scaled_model_status == HighsModelStatus::kObjectiveBound: solve "
-              "= %d; tick = %d; iter = %d\n",
-              (int)ekk_instance.debug_solve_call_num_,
-              (int)ekk_instance.debug_initial_build_synthetic_tick_,
-              (int)ekk_instance.iteration_count_);
+        if (scaled_model_status == HighsModelStatus::kObjectiveTarget) {
+          highsLogDev(options.log_options, HighsLogType::kInfo,
+                      "solveLpSimplex: Calling primal simplex after "
+                      "scaled_model_status == "
+                      "HighsModelStatus::kObjectiveTarget: solve "
+                      "= %d; tick = %d; iter = %d\n",
+                      (int)ekk_instance.debug_solve_call_num_,
+                      (int)ekk_instance.debug_initial_build_synthetic_tick_,
+                      (int)ekk_instance.iteration_count_);
         }
       } else {
         // Using dual simplex, so force Devex if starting from an advanced
@@ -347,11 +377,21 @@ inline HighsStatus solveLpSimplex(HighsLpSolverObject& solver_object) {
       //
       // Solve the unscaled LP with scaled NLA
       //
-      // Force the simplex solver to start in phase 2 unless solving
-      // the LP directly as unscaled
+      // Force the simplex solver to start in phase 1 if solving the
+      // LP directly as unscaled, or using primal simplex to clean up
+      // small dual infeasibilities after the scaled LP yielded model
+      // status HighsModelStatus::kObjectiveTarget. Otherwise force
+      // the simplex solver to start in phase 2
       //
-      const bool force_phase2 = options.simplex_unscaled_solution_strategy !=
-                                kSimplexUnscaledSolutionStrategyDirect;
+      const bool force_phase1 =
+          (options.simplex_unscaled_solution_strategy ==
+           kSimplexUnscaledSolutionStrategyDirect) ||
+          (scaled_model_status == HighsModelStatus::kObjectiveTarget);
+      const bool force_phase2 =
+          (options.simplex_unscaled_solution_strategy !=
+           kSimplexUnscaledSolutionStrategyDirect) &&
+          (scaled_model_status != HighsModelStatus::kObjectiveTarget);
+      assert(force_phase2 == !force_phase1);
       return_status = ekk_instance.solve(force_phase2);
       solved_unscaled_lp = true;
       if (scaled_model_status != HighsModelStatus::kObjectiveBound &&
@@ -360,7 +400,6 @@ inline HighsStatus solveLpSimplex(HighsLpSolverObject& solver_object) {
         // for the first time in which case we again call solve with primal
         // simplex if not dual feasible
         const bool objective_bound_refinement =
-            ekk_instance.model_status_ == HighsModelStatus::kObjectiveBound &&
             ekk_info.num_dual_infeasibilities > 0;
         if (objective_bound_refinement) {
           options.simplex_strategy = kSimplexStrategyPrimal;

@@ -1,4 +1,5 @@
 #include "parallel/HighsParallel.h"
+#include "lp_data/HighsCallback.h"
 #include "ipm/ipx/control.h"
 #include <iostream>
 
@@ -9,26 +10,61 @@ Control::Control() {
     dummy_.setstate(std::ios::failbit);
 }
 
-Int Control::InterruptCheck() const {
+Int Control::InterruptCheck(const Int ipm_iteration_count) const {
     HighsTaskExecutor::getThisWorkerDeque()->checkInterrupt();
     if (parameters_.time_limit >= 0.0 &&
         parameters_.time_limit < timer_.Elapsed())
-        return IPX_ERROR_interrupt_time;
+        return IPX_ERROR_time_interrupt;
+    // The pointer callback_ should not be null, since that indicates
+    // that it's not been set
+    assert(callback_);
+    if (callback_) {
+      if (callback_->user_callback && callback_->active[kCallbackIpmInterrupt]) {
+	callback_->clearHighsCallbackDataOut();
+	callback_->data_out.ipm_iteration_count = ipm_iteration_count;
+	if (callback_->callbackAction(kCallbackIpmInterrupt,
+				      "IPM interrupt"))
+	  return IPX_ERROR_user_interrupt;
+      }
+    }
     return 0;
 }
 
-std::ostream& Control::Log() const {
-    return output_;
+void Control::hLog(std::string str) const {
+  if (parameters_.highs_logging) {
+    assert(parameters_.log_options);
+    HighsLogOptions log_options_ = *(parameters_.log_options);
+    highsLogUser(log_options_, HighsLogType::kInfo, "%s", str.c_str());
+  } else {
+    output_ << str;
+  }
+
 }
 
-std::ostream& Control::IntervalLog() const {
-    if (parameters_.print_interval >= 0.0 &&
-        interval_.Elapsed() >= parameters_.print_interval) {
-        interval_.Reset();
-        return output_;
+void Control::hLog(std::stringstream& logging) const {
+  if (parameters_.highs_logging) {
+    assert(parameters_.log_options);
+    HighsLogOptions log_options_ = *(parameters_.log_options);
+    highsLogUser(log_options_, HighsLogType::kInfo, "%s", logging.str().c_str());
+  } else {
+    output_ << logging.str();
+  }
+  logging.str(std::string());
+}
+
+void Control::hIntervalLog(std::stringstream& logging) const {
+  if (parameters_.print_interval >= 0.0 &&
+      interval_.Elapsed() >= parameters_.print_interval) {
+    interval_.Reset();
+    if (parameters_.highs_logging) {
+      assert(parameters_.log_options);
+      HighsLogOptions log_options_ = *(parameters_.log_options);
+      highsLogUser(log_options_, HighsLogType::kInfo, "%s", logging.str().c_str());
     } else {
-        return dummy_;
+      output_ << logging.str();
     }
+  }
+  logging.str(std::string());
 }
 
 std::ostream& Control::Debug(Int level) const {
@@ -53,6 +89,10 @@ const Parameters& Control::parameters() const {
 void Control::parameters(const Parameters& new_parameters) {
     parameters_ = new_parameters;
     MakeStream();
+}
+
+void Control::callback(HighsCallback* callback) {
+    callback_ = callback;
 }
 
 void Control::OpenLogfile() {

@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #ifndef HIGHS_DYNAMIC_ROW_MATRIX_H_
@@ -44,7 +42,7 @@ class HighsDynamicRowMatrix {
 
   /// vector of column sizes
 
-  /// keep an ordered set ofof free spaces in the row arrays so that they can be
+  /// keep an ordered set of free spaces in the row arrays so that they can be
   /// reused efficiently
   std::set<std::pair<HighsInt, HighsInt>> freespaces_;
 
@@ -54,7 +52,9 @@ class HighsDynamicRowMatrix {
  public:
   HighsDynamicRowMatrix(HighsInt ncols);
 
-  bool columnsLinked(HighsInt rowindex) const { return colsLinked[rowindex]; }
+  bool columnsLinked(HighsInt rowindex) const {
+    return (colsLinked[rowindex] != 0);
+  }
 
   void unlinkColumns(HighsInt rowindex);
 

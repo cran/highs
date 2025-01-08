@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file test/KktChStep.cpp
@@ -224,7 +222,7 @@ void KktChStep::addChange(int type, HighsInt row, HighsInt col, double valC,
         }
       }
       break;
-    case 11:  // empty row from duplucate rows
+    case 11:  // empty row from duplicate rows
       upd = rLowers.top();
       rLowers.pop();
       for (size_t i = 0; i < upd.size(); i++) {
@@ -238,7 +236,7 @@ void KktChStep::addChange(int type, HighsInt row, HighsInt col, double valC,
         RrowUpper[ind] = get<1>(upd[i]);
       }
       break;
-    case 12:  // doubleton eq from dupliocate rows;
+    case 12:  // doubleton eq from duplicate rows;
       upd = cLowers.top();
       cLowers.pop();
       for (size_t i = 0; i < upd.size(); i++) {

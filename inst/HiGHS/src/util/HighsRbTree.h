@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #ifndef HIGHS_RBTREE_H_
@@ -143,7 +141,7 @@ class RbTree {
   }
 
   void setColor(LinkType node, HighsUInt color) {
-    static_cast<Impl*>(this)->getRbTreeLinks(node).setColor(color);
+    static_cast<Impl*>(this)->getRbTreeLinks(node).setColor(color != 0);
   }
 
   HighsUInt getColor(LinkType node) const {

@@ -2,12 +2,10 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2022 at the University of Edinburgh    */
+/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
+/*    Leona Gottwald and Michael Feldmeier                               */
 /*                                                                       */
 /*    Available as open-source under the MIT License                     */
-/*                                                                       */
-/*    Authors: Julian Hall, Ivet Galabova, Leona Gottwald and Michael    */
-/*    Feldmeier                                                          */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file lp_data/HConst.h
@@ -23,20 +21,31 @@
 #include "util/HighsInt.h"
 
 const std::string kHighsCopyrightStatement =
-    "Copyright (c) 2022 HiGHS under MIT licence terms";
+    "Copyright (c) 2024 HiGHS under MIT licence terms";
 
+const size_t kHighsSize_tInf = std::numeric_limits<size_t>::max();
 const HighsInt kHighsIInf = std::numeric_limits<HighsInt>::max();
+const HighsInt kHighsIInf32 = std::numeric_limits<int>::max();
 const double kHighsInf = std::numeric_limits<double>::infinity();
+const double kHighsUndefined = kHighsInf;
 const double kHighsTiny = 1e-14;
 const double kHighsMacheps = std::ldexp(1, -52);
 const double kHighsZero = 1e-50;
 const std::string kHighsOffString = "off";
 const std::string kHighsChooseString = "choose";
 const std::string kHighsOnString = "on";
+const HighsInt kHighsMaxStringLength = 512;
 const HighsInt kSimplexConcurrencyLimit = 8;
 const double kRunningAverageMultiplier = 0.05;
+const double kExcessivelyLargeBoundValue = 1e10;
+const double kExcessivelyLargeCostValue = 1e10;
+const double kExcessivelySmallBoundValue = 1e-4;
+const double kExcessivelySmallCostValue = 1e-4;
 
+const bool kAllowDeveloperAssert = false;
 const bool kExtendInvertWhenAddingRows = false;
+
+enum class HighsLogType { kInfo = 1, kDetailed, kVerbose, kWarning, kError };
 
 enum SimplexScaleStrategy {
   kSimplexScaleStrategyMin = 0,
@@ -77,11 +86,14 @@ enum HighsAnalysisLevel {
   kHighsAnalysisLevelSolverTime = 8,
   kHighsAnalysisLevelNlaData = 16,
   kHighsAnalysisLevelNlaTime = 32,
+  kHighsAnalysisLevelMipData = 64,
+  kHighsAnalysisLevelMipTime = 128,
   kHighsAnalysisLevelMin = kHighsAnalysisLevelNone,
   kHighsAnalysisLevelMax =
       kHighsAnalysisLevelModelData + kHighsAnalysisLevelSolverSummaryData +
       kHighsAnalysisLevelSolverRuntimeData + kHighsAnalysisLevelSolverTime +
-      kHighsAnalysisLevelNlaData + kHighsAnalysisLevelNlaTime
+      kHighsAnalysisLevelNlaData + kHighsAnalysisLevelNlaTime +
+      kHighsAnalysisLevelMipData + kHighsAnalysisLevelMipTime
 };
 
 enum class HighsVarType : uint8_t {
@@ -100,6 +112,16 @@ enum OptionOffChooseOn {
   kHighsOptionOff = -1,
   kHighsOptionChoose,
   kHighsOptionOn
+};
+
+enum IpxDualizeStrategy {
+  kIpxDualizeStrategyOff = kHighsOptionOff,
+  kIpxDualizeStrategyChoose = kHighsOptionChoose,
+  kIpxDualizeStrategyOn = kHighsOptionOn,
+  kIpxDualizeStrategyLukas,
+  kIpxDualizeStrategyFilippo,
+  kIpxDualizeStrategyMin = kIpxDualizeStrategyOff,
+  kIpxDualizeStrategyMax = kIpxDualizeStrategyFilippo,
 };
 
 /** SCIP/HiGHS Objective sense */
@@ -144,9 +166,6 @@ enum GlpsolCostRowLocation {
 
 const std::string kHighsFilenameDefault = "";
 
-// Need to allow infinite costs to pass SCIP LPI unit tests
-const bool kHighsAllowInfiniteCosts = true;
-
 enum class HighsPresolveStatus {
   kNotPresolved = -1,
   kNotReduced,
@@ -155,8 +174,17 @@ enum class HighsPresolveStatus {
   kReduced,
   kReducedToEmpty,
   kTimeout,
-  kNullError,
-  kOptionsError,
+  kNullError,     // V2.0: Delete since it's not used!
+  kOptionsError,  // V2.0: Delete since it's not used!
+  kNotSet,
+  kOutOfMemory,  // V2.0: Move above kNotSet
+};
+
+enum class HighsPostsolveStatus {  // V2.0: Delete if not used!
+  kNotPresolved = -1,
+  kNoPrimalSolutionError,
+  kSolutionRecovered,
+  kBasisError
 };
 
 enum class HighsModelStatus {
@@ -164,11 +192,11 @@ enum class HighsModelStatus {
   // values is unchanged, since enums are not preserved in some
   // interfaces
   kNotset = 0,
-  kLoadError,
+  kLoadError,  // V2.0: Delete since it's not used!
   kModelError,
-  kPresolveError,
+  kPresolveError,  // V2.0: Delete since it's not used!
   kSolveError,
-  kPostsolveError,
+  kPostsolveError,  // V2.0: Delete if not used! Add to documentation if used
   kModelEmpty,
   kOptimal,
   kInfeasible,
@@ -178,12 +206,30 @@ enum class HighsModelStatus {
   kObjectiveTarget,
   kTimeLimit,
   kIterationLimit,
-  // V2.0: flip kUnknown and kSolutionLimit - and then modify kMax and
-  // highs_c_api.h, highs_csharp_api.cs, highspy/highs_bindings.cpp
+  // V2.0: put kUnknown after kSolutionLimit and kInterrupt - and then
+  // modify kMax and highs_c_api.h, highs_csharp_api.cs,
+  // highspy/highs_bindings.cpp
   kUnknown,
   kSolutionLimit,
+  kInterrupt,
+  kMemoryLimit,
   kMin = kNotset,
-  kMax = kSolutionLimit
+  kMax = kMemoryLimit
+};
+
+enum HighsCallbackType : int {
+  kCallbackMin = 0,
+  kCallbackLogging = kCallbackMin,    // 0
+  kCallbackSimplexInterrupt,          // 1
+  kCallbackIpmInterrupt,              // 2
+  kCallbackMipSolution,               // 3
+  kCallbackMipImprovingSolution,      // 4
+  kCallbackMipLogging,                // 5
+  kCallbackMipInterrupt,              // 6
+  kCallbackMipGetCutPool,             // 7
+  kCallbackMipDefineLazyConstraints,  // 8
+  kCallbackMax = kCallbackMipDefineLazyConstraints,
+  kNumCallbackType
 };
 
 /** SCIP/CPLEX-like HiGHS basis status for columns and rows. */
@@ -192,7 +238,7 @@ enum class HighsBasisStatus : uint8_t {
       0,   // (slack) variable is at its lower bound [including fixed variables]
   kBasic,  // (slack) variable is basic
   kUpper,  // (slack) variable is at its upper bound
-  kZero,   // free variable is non-basic and set to zero
+  kZero,   // free variable is nonbasic and set to zero
   kNonbasic  // nonbasic with no specific bound information - useful for users
              // and postsolve
 };
@@ -222,6 +268,15 @@ enum PresolveRuleType : int {
   kPresolveRuleCount,
 };
 
+enum IisStrategy {
+  kIisStrategyMin = 0,
+  kIisStrategyFromLpRowPriority = kIisStrategyMin,  // 0
+  kIisStrategyFromLpColPriority,                    // 1
+  //  kIisStrategyFromRayRowPriority,                     // 2
+  //  kIisStrategyFromRayColPriority,                     // 3
+  kIisStrategyMax = kIisStrategyFromLpColPriority
+};
+
 // Default and max allowed power-of-two matrix scale factor
 const HighsInt kDefaultAllowedMatrixPow2Scale = 20;
 const HighsInt kMaxAllowedMatrixPow2Scale = 30;
@@ -236,8 +291,18 @@ const HighsInt kHighsIllegalInfeasibilityCount = -1;
 const double kHighsIllegalErrorValue = kHighsInf;
 const HighsInt kHighsIllegalErrorIndex = -1;
 
+// Illegal values for complementarity violations used to indicate that true
+// values aren't known
+const double kHighsIllegalComplementarityViolation = kHighsInf;
+
 // Maximum upper bound on semi-variables
 const double kMaxSemiVariableUpper = 1e5;
+
+// Limit on primal values being realistic
+const double kExcessivePrimalValue = 1e25;
+
+// Hash marker for duplicates
+const HighsInt kHashIsDuplicate = -1;
 
 // Tolerance values for highsDoubleToString
 const double kModelValueToStringTolerance = 1e-15;
