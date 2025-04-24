@@ -1,8 +1,11 @@
-# Test if dgCMatrix
+# Test if Object is a Sparse Matrix
 #
-# Test if the object is a \code{"dgCMatrix"}.
+# This function tests if an object is a sparse matrix of class "dgCMatrix".
+# The dgCMatrix class represents sparse numeric matrices in compressed sparse column format.
 #
-# @param x an object to be tested.
+# @param x An R object to be tested.
+#
+# @return A logical value: TRUE if x is a dgCMatrix, FALSE otherwise.
 is_dgc <- function(x) inherits(x, "dgCMatrix")
 
 

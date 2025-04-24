@@ -1,3 +1,4 @@
+#include <Rcpp.h>
 #include "reader.hpp"
 
 #include <algorithm>
@@ -356,7 +357,7 @@ void Reader::parseexpression(std::vector<ProcessedToken>::iterator& it,
           std::shared_ptr<LinTerm>(new LinTerm());
       linterm->coef = it->value;
       linterm->var = builder.getvarbyname(name);
-      //	 printf("LpReader: Term   %+g %s\n", linterm->coef,
+      //	 Rprintf("LpReader: Term   %+g %s\n", linterm->coef,
       //name.c_str());
       expr->linterms.push_back(linterm);
 
@@ -367,7 +368,7 @@ void Reader::parseexpression(std::vector<ProcessedToken>::iterator& it,
 
     // const
     if (it->type == ProcessedTokenType::CONST) {
-      //      printf("LpReader: Offset change from %+g by %+g\n", expr->offset, it->value);
+      //      Rprintf("LpReader: Offset change from %+g by %+g\n", expr->offset, it->value);
       expr->offset += it->value;
       ++it;
       continue;
@@ -381,7 +382,7 @@ void Reader::parseexpression(std::vector<ProcessedToken>::iterator& it,
           std::shared_ptr<LinTerm>(new LinTerm());
       linterm->coef = 1.0;
       linterm->var = builder.getvarbyname(name);
-      //	 printf("LpReader: Term   %+g %s\n", linterm->coef,
+      //	 Rprintf("LpReader: Term   %+g %s\n", linterm->coef,
       //name.c_str());
       expr->linterms.push_back(linterm);
 
@@ -893,7 +894,7 @@ void Reader::splittokens() {
 void Reader::processtokens() {
   std::string svalue_lc;
   while (!rawtokens[0].istype(RawTokenType::FLEND)) {
-    fflush(stdout);
+    NULL;
 
     // Slash + asterisk: comment, skip everything up to next asterisk + slash
     if (rawtokens[0].istype(RawTokenType::SLASH) &&
@@ -1035,7 +1036,7 @@ void Reader::processtokens() {
       // opening bracket, or string (variable name)
       if (rawtokens[0].istype(RawTokenType::GREATER)) {
         // ">" suggests that the file contains indicator constraints
-        printf(
+        Rprintf(
             "File appears to contain indicator constraints: cannot currently "
             "be handled by HiGHS\n");
       }

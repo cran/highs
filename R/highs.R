@@ -263,6 +263,28 @@ highs_model <- function(Q = NULL, L, lower, upper,
 }
 
 
+#' Write a Highs Model to a File
+#' 
+#' Write an highs model to file.
+#' 
+#' @param model an object of class \code{highs_model}.
+#' @param file a character string giving the filename.
+#' 
+#' @examples
+#' model <- example_model()
+#' model_file <- tempfile(fileext = ".mps")
+#' highs_write_model(model, model_file)
+#' 
+#' @export 
+highs_write_model <- function(model, file) {
+    checkmate::assert_string(file)
+    checkmate::assert_class(model, classes = "highs_model")
+    checkmate::assert_directory_exists(dirname(file), access = "w")
+    solver <- hi_new_solver(model)
+    solver_write_model(solver, file)
+}
+
+
 #' Solve an Optimization Problems
 #'
 #' Solve linear and quadratic mixed integer optimization problems.
@@ -341,17 +363,17 @@ highs_solve <- function(Q = NULL, L, lower, upper,
                          maximum = maximum, offset = offset)
 
     set_number_of_threads(control$threads)
-    init_msg <- capture.output(solver <- new_solver(model))
+    init_msg <- capture.output(solver <- hi_new_solver(model))
     if (is.null(solver)) {
         stop(paste(tail(init_msg, -3), collapse = "\n"))
     }
-    solver_set_options(solver, control)
+    hi_solver_set_options(solver, control)
 
-    run_status <- solver_run(solver)
+    run_status <- hi_solver_run(solver)
     status <- solver_status(solver)
     status_message <- solver_status_message(solver)
 
-    solution <- solver_solution(solver)
+    solution <- solver_get_solution(solver)
     info <- solver_info(solver)
     list(primal_solution = solution[["col_value"]],
          objective_value = info[["objective_function_value"]],
@@ -376,7 +398,7 @@ highs_control <- function(threads = 1L, time_limit = Inf, log_to_console = FALSE
     checkmate::assert_double(time_limit, len = 1L, any.missing = FALSE)
     checkmate::assert_logical(log_to_console, len = 1L, any.missing = FALSE)
     control <- c(as.list(environment()), list(...))
-    default_control <- list(parallel = "off")
+    default_control <- list(parallel = "off", solver = "ipm")
     control <- modifyList(default_control, control)
     if (is.infinite(control[["time_limit"]])) {
         control[["time_limit"]] <- NULL
@@ -475,21 +497,21 @@ highs_solver <- function(model, control = highs_control()) {
     checkmate::assert_class(model, classes = "highs_model")
     checkmate::assert_class(control, classes = "highs_control")
     set_number_of_threads(control$threads)
-    init_msg <- capture.output(solver <- new_solver(model))
+    init_msg <- capture.output(solver <- hi_new_solver(model))
     if (is.null(solver)) {
         stop(paste(tail(init_msg, -3), collapse = "\n"))
     } else {
         rm(init_msg)
     }
-    solver_set_options(solver, control)
+    hi_solver_set_options(solver, control)
     solve <- function(...) {
         cntrl <- list(...)
         if (length(cntrl) == 0L) {
-            solver_get_options(solver)
+            hi_solver_get_options(solver)
         } else {
-            solver_set_options(solver, cntrl)
+            hi_solver_set_options(solver, cntrl)
         }
-        solver_run(solver)
+        hi_solver_run(solver)
     }
     status <- function() {
         solver_status(solver)
@@ -498,7 +520,7 @@ highs_solver <- function(model, control = highs_control()) {
         solver_status_message(solver)
     }
     solution <- function() {
-        solver_solution(solver)
+        solver_get_solution(solver)
     }
     info <- function() {
         solver_info(solver)
@@ -566,5 +588,21 @@ highs_solver <- function(model, control = highs_control()) {
             solver_set_sense(solve, maximize)
         }
     }
-    structure(environment(), class = "highs_solver")
+    structure(environment(), class = "highs_solver_wrapper")
+}
+
+
+#' @noRd
+#' @export
+print.highs_solver_wrapper <- function(x, ...) {
+    writeLines("High Solver Wrapper")
+    writeLines("  - model")
+    writeLines("  - solver")
+    writeLines("  - control")
+    exclude <- c("model", "solver", "control")
+    for (name in setdiff(ls(x), exclude)) {
+        xargs <- trimws(gsub("function", "", capture.output(str(get(name, envir = x)))))
+        msg <- sprintf("  - %s%s", name, xargs)
+        writeLines(msg)
+    }
 }

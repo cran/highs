@@ -1,7 +1,7 @@
 Package: highs
 Type: Package
 Title: 'HiGHS' Optimization Solver
-Version: 1.9.0-1
+Version: 1.10.0-1
 Authors@R: c(person("Florian", "Schwendinger", email = "FlorianSchwendinger@gmx.at", role = c("aut", "cre")),
              person("Dirk", "Schumacher", role = "aut"),
              person("Julian", "Hall", role = "cph"),
@@ -12,6 +12,7 @@ Description: R interface to 'HiGHS', an optimization solver for solving mixed in
         optimization problems with quadratic or linear objective and linear constraints.
 License: GPL (>= 2)
 Imports: Rcpp (>= 1.0.7), checkmate
+Depends: R (>= 4.0.0)
 SystemRequirements: Bash, PkgConfig, CMAKE (>=3.16), C++17
 URL: https://gitlab.com/roigrp/solver/highs
 BugReports: https://gitlab.com/roigrp/solver/highs/-/issues
@@ -21,7 +22,7 @@ LinkingTo: Rcpp
 Encoding: UTF-8
 RoxygenNote: 7.2.3
 NeedsCompilation: yes
-Packaged: 2025-01-08 08:58:26 UTC; f
+Packaged: 2025-04-20 18:28:36 UTC; f
 Author: Florian Schwendinger [aut, cre],
   Dirk Schumacher [aut],
   Julian Hall [cph],
@@ -30,4 +31,4 @@ Author: Florian Schwendinger [aut, cre],
   Michael Feldmeier [cph]
 Maintainer: Florian Schwendinger <FlorianSchwendinger@gmx.at>
 Repository: CRAN
-Date/Publication: 2025-01-08 11:40:06 UTC
+Date/Publication: 2025-04-24 12:20:06 UTC

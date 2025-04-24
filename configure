@@ -9,7 +9,10 @@ if test -z "${R_HIGHS_LIB_DIR}"; then
     cd ${R_HIGHS_PKG_HOME}
     rm -rf inst/HiGHS
     R_HIGHS_LIB_DIR=${R_HIGHS_PKG_HOME}/src/highslib
-    # cp -r ${R_HIGHS_LIB_DIR} /home/f/lib/  # development
+    
+    # development
+    # rm -rf /home/f/lib/highslib
+    # cp -rf ${R_HIGHS_LIB_DIR} /home/f/lib/
 fi
 
 
@@ -20,3 +23,5 @@ if [ -z "$(ls ${R_HIGHS_LIB_DIR} | grep 'include')" ]; then
     echo "'HiGHS' libraries could not be found!"
     exit 1
 fi
+
+

@@ -8,169 +8,96 @@
 #' highs_available_solver_options()
 #' @export
 highs_available_solver_options <- function() {
-    option_names <- rbind(
-        c("presolve", "string", "run-time"),
-        c("solver", "string", "run-time"),
-        c("parallel", "string", "run-time"),
-        c("ranging", "string", "run-time"),
-        c("time_limit", "double", "run-time"),
-        c("infinite_cost", "double", "file"),
-        c("infinite_bound", "double", "file"),
-        c("small_matrix_value", "double", "file"),
-        c("large_matrix_value", "double", "file"),
-        c("primal_feasibility_tolerance", "double", "file"),
-        c("dual_feasibility_tolerance", "double", "file"),
-        c("ipm_optimality_tolerance", "double", "file"),
-        c("objective_bound", "double", "file"),
-        c("objective_target", "double", "file"),
-        c("random_seed", "integer", "file"),
-        c("threads", "integer", "file"),
-        c("highs_debug_level", "integer", "file"),
-        c("highs_analysis_level", "integer", "file"),
-        c("simplex_strategy", "integer", "file"),
-        c("simplex_scale_strategy", "integer", "file"),
-        c("simplex_crash_strategy", "integer", "file"),
-        c("simplex_dual_edge_weight_strategy", "integer", "file"),
-        c("simplex_primal_edge_weight_strategy", "integer", "file"),
-        c("simplex_iteration_limit", "integer", "file"),
-        c("simplex_update_limit", "integer", "file"),
-        c("simplex_min_concurrency", "integer", "file"),
-        c("simplex_max_concurrency", "integer", "file"),
-        c("ipm_iteration_limit", "integer", "file"),
-        c("write_model_file", "string", "file"),
-        c("solution_file", "string", "file"),
-        c("log_file", "string", "file"),
-        c("write_model_to_file", "bool", "file"),
-        c("write_solution_to_file", "bool", "file"),
-        c("write_solution_style", "integer", "file"),
-        c("glpsol_cost_row_location", "integer", "file"),
-        c("output_flag", "bool", "logging"),
-        c("log_to_console", "bool", "logging"),
-        c("log_dev_level", "integer", "advanced"),
-        c("run_crossover", "bool", "advanced"),
-        c("allow_unbounded_or_infeasible", "bool", "advanced"),
-        c("use_implied_bounds_from_presolve", "bool", "advanced"),
-        c("lp_presolve_requires_basis_postsolve", "bool", "advanced"),
-        c("mps_parser_type_free", "bool", "advanced"),
-        c("keep_n_rows", "integer", "advanced"),
-        c("cost_scale_factor", "integer", "advanced"),
-        c("allowed_matrix_scale_factor", "integer", "advanced"),
-        c("allowed_cost_scale_factor", "integer", "advanced"),
-        c("simplex_dualise_strategy", "integer", "advanced"),
-        c("simplex_permute_strategy", "integer", "advanced"),
-        c("max_dual_simplex_cleanup_level", "integer", "advanced"),
-        c("max_dual_simplex_phase1_cleanup_level", "integer", "advanced"),
-        c("simplex_price_strategy", "integer", "advanced"),
-        c("simplex_unscaled_solution_strategy", "integer", "advanced"),
-        c("presolve_substitution_maxfillin", "integer", "advanced"),
-        c("presolve_rule_off", "integer", "advanced"),
-        c("presolve_rule_logging", "bool", "advanced"),
-        c("simplex_initial_condition_check", "bool", "advanced"),
-        c("no_unnecessary_rebuild_refactor", "bool", "advanced"),
-        c("simplex_initial_condition_tolerance", "double", "advanced"),
-        c("rebuild_refactor_solution_error_tolerance", "double", "advanced"),
-        c("dual_steepest_edge_weight_error_tolerance", "double", "advanced"),
-        c("dual_steepest_edge_weight_log_error_threshold", "double", "advanced"),
-        c("dual_simplex_cost_perturbation_multiplier", "double", "advanced"),
-        c("primal_simplex_bound_perturbation_multiplier", "double", "advanced"),
-        c("dual_simplex_pivot_growth_tolerance", "double", "advanced"),
-        c("presolve_pivot_threshold", "double", "advanced"),
-        c("factor_pivot_threshold", "double", "advanced"),
-        c("factor_pivot_tolerance", "double", "advanced"),
-        c("start_crossover_tolerance", "double", "advanced"),
-        c("less_infeasible_DSE_check", "bool", "advanced"),
-        c("less_infeasible_DSE_choose_row", "bool", "advanced"),
-        c("use_original_HFactor_logic", "bool", "advanced"),
-        c("icrash", "bool", "icrash"),
-        c("icrash_dualize", "bool", "icrash"),
-        c("icrash_strategy", "string", "icrash"),
-        c("icrash_starting_weight", "double", "icrash"),
-        c("icrash_iterations", "integer", "icrash"),
-        c("icrash_approx_iter", "integer", "icrash"),
-        c("icrash_exact", "bool", "icrash"),
-        c("icrash_breakpoints", "bool", "icrash"),
-        c("mip_detect_symmetry", "bool", "mip"),
-        c("mip_max_nodes", "integer", "mip"),
-        c("mip_max_stall_nodes", "integer", "mip"),
-        c("mip_max_leaves", "integer", "mip"),
-        c("mip_max_improving_sols", "integer", "mip"),
-        c("mip_lp_age_limit", "integer", "mip"),
-        c("mip_pool_age_limit", "integer", "mip"),
-        c("mip_pool_soft_limit", "integer", "mip"),
-        c("mip_pscost_minreliable", "integer", "mip"),
-        c("mip_min_cliquetable_entries_for_parallelism", "integer", "mip"),
-        c("mip_report_level", "integer", "mip"),
-        c("mip_feasibility_tolerance", "double", "mip"),
-        c("mip_rel_gap", "double", "mip"),
-        c("mip_abs_gap", "double", "mip"),
-        c("mip_heuristic_effort", "double", "mip")
-    )
-    colnames(option_names) <- c("option", "type", "category")
-    option_names <- as.data.frame(option_names)
-    option_names[order(option_names[["category"]], option_names[["option"]], option_names[["type"]]), ]
-}
-
-.available__solver__options_ <- function() {
-    option_names <- list(
-        bool = c("write_solution_to_file", "output_flag", "log_to_console",
-                 "run_crossover", "allow_unbounded_or_infeasible",
-                 "use_implied_bounds_from_presolve", "lp_presolve_requires_basis_postsolve",
-                 "mps_parser_type_free", "simplex_initial_condition_check",
-                 "no_unnecessary_rebuild_refactor", "less_infeasible_DSE_check",
-                 "less_infeasible_DSE_choose_row", "use_original_HFactor_logic",
-                 "mip_detect_symmetry"),
-        integer = c("log_dev_level", "random_seed", "threads", "highs_debug_level",
-                    "highs_analysis_level", "simplex_strategy", "simplex_scale_strategy",
-                    "simplex_crash_strategy", "simplex_dual_edge_weight_strategy",
-                    "simplex_primal_edge_weight_strategy", "simplex_iteration_limit",
-                    "simplex_update_limit", "simplex_min_concurrency", "simplex_max_concurrency",
-                    "ipm_iteration_limit", "write_solution_style", "keep_n_rows",
-                    "cost_scale_factor", "allowed_matrix_scale_factor", "allowed_cost_scale_factor",
-                    "simplex_dualise_strategy", "simplex_permute_strategy",
-                    "max_dual_simplex_cleanup_level", "max_dual_simplex_phase1_cleanup_level",
-                    "simplex_price_strategy", "simplex_unscaled_solution_strategy",
-                    "presolve_substitution_maxfillin", "mip_max_nodes", "mip_max_stall_nodes",
-                    "mip_max_leaves", "mip_lp_age_limit", "mip_pool_age_limit",
-                    "mip_pool_soft_limit", "mip_pscost_minreliable", "mip_report_level"),
-        double = c("time_limit", "infinite_cost", "infinite_bound", "small_matrix_value",
-                   "large_matrix_value", "primal_feasibility_tolerance",
-                   "dual_feasibility_tolerance", "ipm_optimality_tolerance",
-                   "objective_bound", "objective_target", "simplex_initial_condition_tolerance",
-                   "rebuild_refactor_solution_error_tolerance",
-                   "dual_steepest_edge_weight_log_error_threshold",
-                   "dual_simplex_cost_perturbation_multiplier",
-                   "primal_simplex_bound_perturbation_multiplier",
-                   "dual_simplex_pivot_growth_tolerance", "presolve_pivot_threshold",
-                   "factor_pivot_threshold", "factor_pivot_tolerance", "start_crossover_tolerance",
-                   "mip_feasibility_tolerance", "mip_heuristic_effort"),
-        string = c("presolve", "solver", "parallel", "ranging", "solution_file", "log_file")
-    )
-    option_names
+    HIGHS_OPTIONS
 }
 
 
-solver_get_options <- function(solver, keys = NULL) {
-    assert_character(keys, null.ok = TRUE)
-    option_names <- highs_available_solver_options()
+solver_get_option_typed <- function(solver, key, type) {
+    checkmate::assert_choice(type, c("bool", "integer", "double", "string"))
+    if (type == "bool") {
+        solver_get_bool_option(solver, key)
+    } else if (type == "integer") {
+        solver_get_int_option(solver, key)
+    } else if (type == "double") {
+        solver_get_dbl_option(solver, key)
+    } else if (type == "string") {
+        solver_get_str_option(solver, key)
+    }
+}
+
+
+#' Get a HiGHS Solver Option
+#'
+#' Retrieves the value of a specific option from a HiGHS solver instance.
+#'
+#' @param solver A HiGHS solver object of class \code{"highs_solver"}.
+#' @param key A character string specifying the option name to retrieve.
+#' @param type Type of the option. Can be one of "auto", "bool", "integer", "double", or "string".
+#'             When set to "auto" (default), the function will attempt to determine the type from the available options list.
+#'             Specify a type directly if the option is valid but not listed in the available options.
+#'
+#' @return The value of the specified option with the appropriate type.
+#' @examples
+#' solver <- example_solver()
+#' hi_solver_get_option(solver, "output_flag")
+#' hi_solver_get_option(solver, "solver", type = "string")
+#' @export
+hi_solver_get_option <- function(solver, key, type = c("auto", "bool", "integer", "double", "string")) {
+    checkmate::assert_class(solver, classes = "highs_solver")
+    checkmate::assert_character(key, len = 1, any.missing = FALSE)
+    type <- match.arg(type)
+    if (type == "auto") {
+        meta_data <- highs_available_solver_options()
+        checkmate::assert_choice(key, meta_data[["option"]])
+        type <- meta_data[["type"]][which(meta_data[["option"]] == key)]
+    }
+    solver_get_option_typed(solver, key, type)
+}
+
+
+#' Get multiple HiGHS Solver Options
+#'
+#' Retrieves the values of multiple options from a HiGHS solver instance.
+#'
+#' @param solver A HiGHS solver object of class \code{"highs_solver"}.
+#' @param keys A character vector of option names to retrieve.
+#' 
+#' @return A named list of option values with the appropriate types.
+#' 
+#' @examples
+#' solver <- example_solver()
+#' hi_solver_get_options(solver, c("output_flag", "solver"))
+#' @export
+hi_solver_get_options <- function(solver, keys = NULL) {
+    checkmate::assert_class(solver, classes = "highs_solver")
+    checkmate::assert_character(keys, null.ok = TRUE)
+    meta_data <- highs_available_solver_options()
     getters <- list(bool = solver_get_bool_option, integer = solver_get_int_option,
                     double = solver_get_dbl_option, string = solver_get_str_option)
-    opts <- vector("list", NROW(option_names))
-    names(opts) <- option_names[["option"]]
-    for (i in seq_len(NROW(option_names))) {
-        row <- option_names[i,]
-        solver_get_option <- getters[[row[["type"]]]]
-        key <- row[["option"]]
-        opts[[key]] <- solver_get_option(solver, key)
-    }
-    if (length(keys) > 0L) {
-        opts[which(names(opts) %in% keys)]
+    if (length(keys) == 0L) {
+        idx <- seq_len(nrow(meta_data))
     } else {
-        opts
+        idx <- match(meta_data[["option"]], keys)
+        idx <- idx[!is.na(idx)]
+        if (length(idx) != length(keys)) {
+            emsg <- paste("The following options were not found in the available solver options:",
+                          paste(setdiff(keys, meta_data[["option"]]), collapse = ", "),
+                          "Please check the option names.",
+                          sep = "\n")
+            stop(emsg)
+        }
     }
+    
+    opts <- setNames(vector("list", length(idx)), meta_data[["option"]][idx])
+    for (i in idx) {
+        opts[[i]] <- solver_get_option_typed(solver, meta_data[["option"]][i], meta_data[["type"]][i])
+    }
+    return(opts)
 }
 
 
 force_type <- function(obj, type) {
+    if (is.na(type)) return(obj)
     force <- list(bool = as.logical, integer = as.integer,
                   double = as.double, string = as.character)[[type]]
     force(obj)
@@ -192,28 +119,92 @@ test_type <- function(obj, type) {
 }
 
 
-solver_set_options <- function(solver, kwargs = list()) {
-    if (length(kwargs) == 0) return(invisible(NULL))
-    option_names <- highs_available_solver_options()
-    assert_character(names(kwargs), min.len = 1L, any.missing = FALSE)
-    m <- match(names(kwargs), option_names[["option"]])
-    if (anyNA(m)) {
-        stop("unknown option")
+
+#' Set a HiGHS Solver Option
+#'
+#' Sets the value of a specific option for a HiGHS solver instance.
+#'
+#' @param solver A HiGHS solver object of class \code{"highs_solver"}.
+#' @param key A character string specifying the option name to set.
+#' @param value The value to set for the specified option. Will be coerced to the appropriate type.
+#' @param type Type of the option. Can be one of "auto", "bool", "integer", "double", or "string".
+#'             When set to "auto" (default), the function will attempt to determine the type from the available options list.
+#'             Specify a type directly if the option is valid but not listed in the available options.
+#'
+#' @return Invisibly returns NULL.
+#' 
+#' @examples
+#' solver <- example_solver()
+#' hi_solver_set_option(solver, "output_flag", "FALSE")
+#' hi_solver_set_option(solver, "solver", "simplex", type = "string")
+#' 
+#' @export
+hi_solver_set_option <- function(solver, key, value, type = c("auto", "bool", "integer", "double", "string")) {
+    checkmate::assert_class(solver, classes = "highs_solver")
+    checkmate::assert_character(key, len = 1, any.missing = FALSE)
+    checkmate::assert_character(value, len = 1, any.missing = FALSE)
+    type <- match.arg(type)
+    if (type == "auto") {
+        meta_data <- highs_available_solver_options()
+        checkmate::assert_choice(key, meta_data[["option"]])
+        meta_data <- highs_available_solver_options()
+        type <- meta_data[["type"]][which(meta_data[["option"]] == key)]
     }
-    option_names <- option_names[m, ]
-    option_types <- setNames(option_names[["type"]], option_names[["option"]])
-    for (i in seq_along(kwargs)) {
-        key <- names(kwargs)[i]
-        value <- kwargs[[i]]
-        dtype <- option_types[key]
-        val <- force_type(value, dtype)
-        if (!test_type(val, dtype)) {
-            msg <- sprintf("option '%s' expects object of class '%s' got '%s'",
-                           key, dtype, paste(class(val), collapse = "."))
-            stop(msg)
-        }
-        solver_set_option(solver, key, val)
+    value <- force_type(value, type)
+    solver_set_option(solver, key, value)
+}
+
+
+
+#' Set Multiple HiGHS Solver Options
+#'
+#' Sets multiple options for a HiGHS solver instance at once.
+#'
+#' @param solver A HiGHS solver object of class \code{"highs_solver"}.
+#' @param control A named list of options to set. Names should be valid option names and values will be coerced to the appropriate types.
+#'
+#' @return Invisibly returns NULL.
+#' 
+#' @examples
+#' solver <- example_solver()
+#' hi_solver_set_options(solver, list(output_flag = FALSE, solver = "simplex"))
+#' 
+#' control <- list(
+#'   presolve = "on",
+#'   solver = "simplex",
+#'   parallel = "on",
+#'   ranging = "off",
+#'   time_limit = 100.0,
+#'   
+#'   primal_feasibility_tolerance = 1e-7,
+#'   dual_feasibility_tolerance = 1e-7,
+#'   random_seed = 1234,
+#'   threads = 4,
+#'   
+#'   output_flag = TRUE,
+#'   log_to_console = TRUE,
+#'   
+#'   run_crossover = "on",
+#'   allow_unbounded_or_infeasible = FALSE,
+#'   
+#'   mip_detect_symmetry = TRUE,
+#'   mip_max_nodes = 10000,
+#'   mip_max_leaves = 5000,
+#'   mip_feasibility_tolerance = 1e-6
+#' )
+#' hi_solver_set_options(solver, control)
+#' @export
+hi_solver_set_options <- function(solver, control = list()) {
+    if (length(control) == 0) return(invisible(NULL))
+    checkmate::assert_class(solver, classes = "highs_solver")
+    checkmate::assert_character(names(control), min.len = 1L, any.missing = FALSE)
+    meta_data <- highs_available_solver_options()
+    types <- meta_data[["type"]][match(names(control), meta_data[["option"]])]
+    for (i in seq_along(control)) {
+        key <- names(control)[i]
+        value <- control[[i]]
+        type <- types[i]
+        solver_set_option(solver, key, force_type(value, type))
     }
     return(invisible(NULL))
 }
-
