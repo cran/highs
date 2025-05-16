@@ -2,16 +2,16 @@
 % Please edit documentation in R/solver-api.R
 \name{hi_solver_set_objective}
 \alias{hi_solver_set_objective}
-\title{Set the objective coefficient for a variable.}
+\title{Set the objective coefficient for a set of variables.}
 \usage{
-hi_solver_set_objective(solver, index, obj)
+hi_solver_set_objective(solver, index, coeff)
 }
 \arguments{
 \item{solver}{An object of class "highs_solver".}
 
 \item{index}{The variable index.}
 
-\item{obj}{A numeric value representing the objective coefficient.}
+\item{coeff}{A numeric value representing the objective coefficient.}
 }
 \value{
 The solver instance with the updated objective.

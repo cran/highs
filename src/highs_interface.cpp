@@ -287,8 +287,9 @@ int32_t solver_set_offset(SEXP hi, const double ext_offset) {
 int32_t solver_set_integrality(SEXP hi, std::vector<int32_t> index, std::vector<int32_t> type) {
     Rcpp::XPtr<Highs>highs(hi);
     const int32_t num_set_entries = index.size();
-    const HighsInt* set = &(index[0]);
-    const HighsVarType* integrality = &(to_vartype(type)[0]);
+    const HighsInt* set = static_cast<HighsInt*>(index.data());
+    std::vector<HighsVarType> var_types = to_vartype(type);
+    const HighsVarType* integrality = var_types.data();
     HighsStatus status = highs->changeColsIntegrality(num_set_entries, set, integrality);
     return static_cast<int32_t>(status);
 }

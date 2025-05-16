@@ -2,7 +2,7 @@
 % Please edit documentation in R/solver-api.R
 \name{hi_solver_set_variable_bounds}
 \alias{hi_solver_set_variable_bounds}
-\title{Set variable bounds for a given variable.}
+\title{Set variable bounds for a set of variables.}
 \usage{
 hi_solver_set_variable_bounds(solver, index, lower, upper)
 }
@@ -19,7 +19,7 @@ hi_solver_set_variable_bounds(solver, index, lower, upper)
 The solver instance with updated variable bounds.
 }
 \description{
-This function sets the lower and upper bounds for a specific variable.
+This function sets the lower and upper bounds for a set of variables.
 }
 \examples{
 solver <- example_solver()

@@ -1,4 +1,4 @@
-cbfd4498973344b0275bb09720594083 *DESCRIPTION
+8fe71ebca5d1736bc44b03e668efb9c4 *DESCRIPTION
 e44f3c234357317d2d3128d9c7667c0c *NAMESPACE
 4d6e50fb38a6705600ac4a65b088e73b *NEWS.md
 268bd525ac1d773a0eb9cbcbb2821811 *R/RcppExports.R
@@ -8,7 +8,7 @@ c20df7f3f6211b5fbb57d6abc66eee09 *R/highs.R
 460ae1232b4666c7d98b2e7eb4bc2211 *R/model-api.R
 329648311e1a360b08be9b1858dcd7f4 *R/options.R
 a8f055533c2a895b0822dccf94e84adb *R/smat.R
-7ec0825628da657620992b0582615b11 *R/solver-api.R
+a99d873c66681c02b015f6914d110fe8 *R/solver-api.R
 5a22eee03efdab06730ddab65368e9ee *README.md
 1d8af1fccc61265ade12a01c49f2fe19 *cleanup
 458b254dab97b57a368b277c36c1b8ca *configure
@@ -542,13 +542,13 @@ f4dc8e3a4fd28dd972f3b529a2b81550 *man/hi_solver_get_sense.Rd
 331bd3489710d9c78c4dc18ed368fc33 *man/hi_solver_run.Rd
 ce4282307ba3cbef56cf1c844e974368 *man/hi_solver_set_coeff.Rd
 be9fb17a72660c27ac03400de74c3845 *man/hi_solver_set_constraint_bounds.Rd
-5def5091db45418b7a29e19e2d76dbcc *man/hi_solver_set_integrality.Rd
-67ad05ef1400ef6186691666dcbd3567 *man/hi_solver_set_objective.Rd
+029290fadea8a35e6d14c99213a017b3 *man/hi_solver_set_integrality.Rd
+249904b78d9f31f95e1ac662390cccc8 *man/hi_solver_set_objective.Rd
 3ce22553dab1bc4c908a52c95b81d24e *man/hi_solver_set_offset.Rd
 6bc4ba74d7a4e71d807b2d2762a97d01 *man/hi_solver_set_option.Rd
 7faafbb89b62eead2c4430296f1067b9 *man/hi_solver_set_options.Rd
 88613747edaad4421ce885f46791745c *man/hi_solver_set_sense.Rd
-89da6891ff80a80a8c467e83a1357495 *man/hi_solver_set_variable_bounds.Rd
+808f9880034da5c1621dac3fcec4fb64 *man/hi_solver_set_variable_bounds.Rd
 2c12e021b00882fa59668365bf5712c4 *man/hi_solver_status.Rd
 978455afcc7658adc4b5ce62dc494d16 *man/hi_solver_status_message.Rd
 98ac88f585bfde20bcc49778df0713d2 *man/hi_solver_write_basis.Rd
@@ -561,5 +561,5 @@ cc8f10dc0d9bff208105659b17dae287 *man/highs_solver.Rd
 9a437dbbcb9e35425439c16b20287b03 *man/highs_write_model.Rd
 05d674bad34386e55574e9a72b6a9767 *src/Makevars.in
 5aba29837b9a5713d1e182e3b36e1e65 *src/RcppExports.cpp
-222c2d6c13cbf6cb01aa144086784bdf *src/highs_interface.cpp
+cdf0c04f24aa92c5da0666337c856cde *src/highs_interface.cpp
 5b81e31e1f14b360e58a19b7a2ceea26 *src/highs_interface.h

@@ -2,16 +2,16 @@
 % Please edit documentation in R/solver-api.R
 \name{hi_solver_set_integrality}
 \alias{hi_solver_set_integrality}
-\title{Set integrality for a variable in the solver.}
+\title{Set integrality for a set of variables in the solver.}
 \usage{
 hi_solver_set_integrality(solver, index, type)
 }
 \arguments{
 \item{solver}{An object of class "highs_solver".}
 
-\item{index}{An integer specifying the variable index.}
+\item{index}{An integer vector specifying the variable index.}
 
-\item{type}{An integer representing the integrality type.}
+\item{type}{An integer vector representing the integrality type.}
 }
 \value{
 The solver instance with updated integrality settings.

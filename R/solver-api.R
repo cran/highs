@@ -78,13 +78,13 @@ hi_solver_set_offset <- function(solver, ext_offset) {
 }
 
 
-#' Set integrality for a variable in the solver.
+#' Set integrality for a set of variables in the solver.
 #'
 #' This function defines whether a variable is categorized as integral or continuous.
 #'
 #' @param solver An object of class "highs_solver".
-#' @param index An integer specifying the variable index.
-#' @param type An integer representing the integrality type.
+#' @param index An integer vector specifying the variable index.
+#' @param type An integer vector representing the integrality type.
 #' 
 #' @return The solver instance with updated integrality settings.
 #' 
@@ -95,19 +95,19 @@ hi_solver_set_offset <- function(solver, ext_offset) {
 #' @export
 hi_solver_set_integrality <- function(solver, index, type) {
     checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_integerish(index, lower = 0, any.missing = FALSE, len = 1)
-    checkmate::assert_integerish(type, lower = 0, any.missing = FALSE, len = 1)
+    checkmate::assert_integerish(index, lower = 0, any.missing = FALSE, min.len = 1)
+    checkmate::assert_integerish(type, lower = 0, any.missing = FALSE, len = length(index))
     solver_set_integrality(solver, as.integer(index), as.integer(type))
 }
 
 
-#' Set the objective coefficient for a variable.
+#' Set the objective coefficient for a set of variables.
 #'
 #' This function assigns a coefficient to a variable in the objective function.
 #'
 #' @param solver An object of class "highs_solver".
 #' @param index The variable index.
-#' @param obj A numeric value representing the objective coefficient.
+#' @param coeff A numeric value representing the objective coefficient.
 #' 
 #' @return The solver instance with the updated objective.
 #' 
@@ -116,17 +116,17 @@ hi_solver_set_integrality <- function(solver, index, type) {
 #' hi_solver_set_objective(solver, 2, 3.5)
 #' 
 #' @export
-hi_solver_set_objective <- function(solver, index, obj) {
+hi_solver_set_objective <- function(solver, index, coeff) {
     checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_integerish(index, lower = 0, any.missing = FALSE, len = 1)
-    checkmate::assert_numeric(obj, len = 1, any.missing = FALSE)
-    solver_set_objective(solver, as.integer(index), as.double(obj))
+    checkmate::assert_integerish(index, lower = 0, any.missing = FALSE, min.len = 1)
+    checkmate::assert_numeric(coeff, len = length(index), any.missing = FALSE)
+    solver_set_objective(solver, as.integer(index), as.double(coeff))
 }
 
 
-#' Set variable bounds for a given variable.
+#' Set variable bounds for a set of variables.
 #'
-#' This function sets the lower and upper bounds for a specific variable.
+#' This function sets the lower and upper bounds for a set of variables.
 #'
 #' @param solver An object of class "highs_solver".
 #' @param index The variable index.
@@ -142,9 +142,9 @@ hi_solver_set_objective <- function(solver, index, obj) {
 #' @export
 hi_solver_set_variable_bounds <- function(solver, index, lower, upper) {
     checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_integerish(index, lower = 0, any.missing = FALSE, len = 1)
-    checkmate::assert_numeric(lower, len = 1, any.missing = FALSE)
-    checkmate::assert_numeric(upper, len = 1, any.missing = FALSE)
+    checkmate::assert_integerish(index, lower = 0, any.missing = FALSE, min.len = 1)
+    checkmate::assert_numeric(lower, len = length(index), any.missing = FALSE)
+    checkmate::assert_numeric(upper, len = length(index), any.missing = FALSE)
     solver_set_variable_bounds(solver, as.integer(index), as.double(lower), as.double(upper))
 }
 
