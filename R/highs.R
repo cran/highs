@@ -398,10 +398,13 @@ highs_control <- function(threads = 1L, time_limit = Inf, log_to_console = FALSE
     checkmate::assert_double(time_limit, len = 1L, any.missing = FALSE)
     checkmate::assert_logical(log_to_console, len = 1L, any.missing = FALSE)
     control <- c(as.list(environment()), list(...))
-    default_control <- list(parallel = "off", solver = "ipm")
+    default_control <- list(parallel = "off", solver = "choose")
     control <- modifyList(default_control, control)
     if (is.infinite(control[["time_limit"]])) {
         control[["time_limit"]] <- NULL
+    }
+    if (isTRUE(control$solver == "pdlp")) {
+        stop("solver 'pdlp' is not supported in the R highs interface.")
     }
     control$parallel <- if (isTRUE(threads > 1)) "on" else "off"
     structure(control, class = "highs_control")
