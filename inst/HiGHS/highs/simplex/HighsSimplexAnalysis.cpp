@@ -484,7 +484,7 @@ void HighsSimplexAnalysis::dualSteepestEdgeWeightError(
 
 bool HighsSimplexAnalysis::predictEndDensity(const HighsInt tran_stage_type,
                                              const double start_density,
-                                             double& end_density) {
+                                             double& end_density) const {
   return predictFromScatterData(tran_stage[tran_stage_type].rhs_density_,
                                 start_density, end_density);
 }
@@ -608,15 +608,15 @@ void HighsSimplexAnalysis::simplexTimerStop(const HighsInt simplex_clock,
 }
 
 bool HighsSimplexAnalysis::simplexTimerRunning(const HighsInt simplex_clock,
-                                               const HighsInt thread_id) {
+                                               const HighsInt thread_id) const {
   if (!analyse_simplex_time) return false;
   // assert(analyse_simplex_time);
   return thread_simplex_clocks[thread_id].timer_pointer_->clock_start
              [thread_simplex_clocks[thread_id].clock_[simplex_clock]] < 0;
 }
 
-HighsInt HighsSimplexAnalysis::simplexTimerNumCall(const HighsInt simplex_clock,
-                                                   const HighsInt thread_id) {
+HighsInt HighsSimplexAnalysis::simplexTimerNumCall(
+    const HighsInt simplex_clock, const HighsInt thread_id) const {
   if (!analyse_simplex_time) return -1;
   // assert(analyse_simplex_time);
   return thread_simplex_clocks[thread_id]
@@ -625,7 +625,7 @@ HighsInt HighsSimplexAnalysis::simplexTimerNumCall(const HighsInt simplex_clock,
 }
 
 double HighsSimplexAnalysis::simplexTimerRead(const HighsInt simplex_clock,
-                                              const HighsInt thread_id) {
+                                              const HighsInt thread_id) const {
   if (!analyse_simplex_time) return -1.0;
   // assert(analyse_simplex_time);
   return thread_simplex_clocks[thread_id].timer_pointer_->read(
@@ -1141,10 +1141,10 @@ void HighsSimplexAnalysis::summaryReport() {
   }
 }
 
-void HighsSimplexAnalysis::summaryReportFactor() {
+void HighsSimplexAnalysis::summaryReportFactor() const {
   for (HighsInt tran_stage_type = 0; tran_stage_type < NUM_TRAN_STAGE_TYPE;
        tran_stage_type++) {
-    TranStageAnalysis& stage = tran_stage[tran_stage_type];
+    const TranStageAnalysis& stage = tran_stage[tran_stage_type];
     //    printScatterData(stage.name_, stage.rhs_density_);
     printScatterDataRegressionComparison(stage.name_, stage.rhs_density_);
     if (!stage.num_decision_) return;
@@ -1164,7 +1164,7 @@ void HighsSimplexAnalysis::summaryReportFactor() {
   }
 }
 
-void HighsSimplexAnalysis::reportSimplexTimer() {
+void HighsSimplexAnalysis::reportSimplexTimer() const {
   assert(analyse_simplex_time);
   SimplexTimer simplex_timer;
   simplex_timer.reportSimplexInnerClock(thread_simplex_clocks[0]);
@@ -1248,7 +1248,7 @@ void HighsSimplexAnalysis::updateInvertFormData(const HFactor& factor) {
   if (report_kernel) Rprintf("\n");
 }
 
-void HighsSimplexAnalysis::reportInvertFormData() {
+void HighsSimplexAnalysis::reportInvertFormData() const {
   assert(analyse_factor_data);
   Rprintf("grep_kernel,%s,%s,%" HIGHSINT_FORMAT ",%" HIGHSINT_FORMAT
          ",%" HIGHSINT_FORMAT ",",
@@ -1379,7 +1379,7 @@ void HighsSimplexAnalysis::reportOneDensity(const double density) {
   }
 }
 
-void HighsSimplexAnalysis::printOneDensity(const double density) {
+void HighsSimplexAnalysis::printOneDensity(const double density) const {
   assert(analyse_simplex_summary_data || analyse_simplex_runtime_data);
   const HighsInt log_10_density = intLog10(density);
   if (log_10_density > -99) {
@@ -1481,17 +1481,15 @@ void HighsSimplexAnalysis::reportRunTime(const bool header,
 #ifndef NDEBUG
   *analysis_log << highsFormatToString(" %15.8gs", run_time);
 #else
-  *analysis_log << highsFormatToString(" %ds", int(run_time + 0.49));
+  *analysis_log << highsFormatToString(" %.1fs", run_time);
 #endif
 }
 
-HighsInt HighsSimplexAnalysis::intLog10(const double v) {
-  double log10V = v > 0 ? -2.0 * log(v) / log(10.0) : 99;
-  HighsInt intLog10V = log10V;
-  return intLog10V;
+HighsInt HighsSimplexAnalysis::intLog10(const double v) const {
+  return static_cast<HighsInt>(v > 0 ? -2.0 * log(v) / log(10.0) : 99);
 }
 
-bool HighsSimplexAnalysis::dualAlgorithm() {
+bool HighsSimplexAnalysis::dualAlgorithm() const {
   return (simplex_strategy == kSimplexStrategyDual ||
           simplex_strategy == kSimplexStrategyDualTasks ||
           simplex_strategy == kSimplexStrategyDualMulti);

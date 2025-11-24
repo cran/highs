@@ -394,7 +394,7 @@ void LpSolver::RunIPM() {
     info_.centring_success = false;
 
     if (x_start_.size() != 0) {
-      control_.hLog(" Using starting point provided by user. Skipping initial iterations.\n");
+        control_.hLog(" Using starting point provided by user. Skipping initial iterations.\n");
         iterate_->Initialize(x_start_, xl_start_, xu_start_,
                              y_start_, zl_start_, zu_start_);
     }
@@ -522,8 +522,8 @@ void LpSolver::BuildStartingBasis() {
         info_.status_ipm = IPX_STATUS_debug;
         return;
     }
-    basis_.reset(new Basis(control_, model_));
     control_.hLog(" Constructing starting basis...\n");
+    basis_.reset(new Basis(control_, model_));
     StartingBasis(iterate_.get(), basis_.get(), &info_);
     if (info_.errflag == IPX_ERROR_user_interrupt) {
         info_.errflag = 0;
@@ -558,6 +558,7 @@ void LpSolver::BuildStartingBasis() {
 void LpSolver::RunMainIPM(IPM& ipm) {
     KKTSolverBasis kkt(control_, *basis_);
     Timer timer;
+    ipm.PrintHeader();
     ipm.maxiter(control_.ipm_maxiter());
     ipm.Driver(&kkt, iterate_.get(), &info_);
     info_.time_ipm2 = timer.Elapsed();

@@ -1,7 +1,7 @@
 **R** HIGHS Interface
 ================
 Florian Schwendinger</br>
-Updated: 2025-04-20
+Updated: 2025-11-23
 
 <!-- badges: start -->
 
@@ -139,12 +139,12 @@ writeLines(ls("package:highs", pattern = "^hi(|_new)_solver"))
 #> hi_solver_get_dbl_option
 #> hi_solver_get_int_option
 #> hi_solver_get_lp_costs
-#> hi_solver_get_model
 #> hi_solver_get_num_col
 #> hi_solver_get_num_row
 #> hi_solver_get_option
 #> hi_solver_get_options
 #> hi_solver_get_sense
+#> hi_solver_get_solution
 #> hi_solver_get_str_option
 #> hi_solver_get_variable_bounds
 #> hi_solver_get_vartype
@@ -160,7 +160,6 @@ writeLines(ls("package:highs", pattern = "^hi(|_new)_solver"))
 #> hi_solver_set_options
 #> hi_solver_set_sense
 #> hi_solver_set_variable_bounds
-#> hi_solver_solution
 #> hi_solver_status
 #> hi_solver_status_message
 #> hi_solver_write_basis
@@ -234,8 +233,8 @@ str(s)
 #>  $ info           :List of 18
 #>   ..$ valid                     : logi TRUE
 #>   ..$ mip_node_count            : num -1
-#>   ..$ simplex_iteration_count   : int 0
-#>   ..$ ipm_iteration_count       : int 5
+#>   ..$ simplex_iteration_count   : int 2
+#>   ..$ ipm_iteration_count       : int 0
 #>   ..$ qp_iteration_count        : int 0
 #>   ..$ crossover_iteration_count : int 0
 #>   ..$ primal_solution_status    : chr "Feasible"
@@ -268,36 +267,36 @@ cntrl <- list(log_dev_level = 0L)
 s <- highs_solve(Q = Q, L = L, A = A, lhs = 0, rhs = 3, control = cntrl)
 str(s)
 #> List of 6
-#>  $ primal_solution: num [1:2] 3 0
-#>  $ objective_value: num -6
-#>  $ status         : int 10
-#>  $ status_message : chr "Unbounded"
+#>  $ primal_solution: num [1:2] 2e+00 -1e+07
+#>  $ objective_value: num -1e+07
+#>  $ status         : int 7
+#>  $ status_message : chr "Optimal"
 #>  $ solver_msg     :List of 6
 #>   ..$ value_valid: logi TRUE
 #>   ..$ dual_valid : logi TRUE
-#>   ..$ col_value  : num [1:2] 3 0
-#>   ..$ col_dual   : num [1:2] 0 1
-#>   ..$ row_value  : num 3
-#>   ..$ row_dual   : num -2
+#>   ..$ col_value  : num [1:2] 2e+00 -1e+07
+#>   ..$ col_dual   : num [1:2] 0 0
+#>   ..$ row_value  : num 2
+#>   ..$ row_dual   : num 0
 #>  $ info           :List of 18
 #>   ..$ valid                     : logi TRUE
 #>   ..$ mip_node_count            : num -1
-#>   ..$ simplex_iteration_count   : int 1
+#>   ..$ simplex_iteration_count   : int 0
 #>   ..$ ipm_iteration_count       : int 0
-#>   ..$ qp_iteration_count        : int 0
+#>   ..$ qp_iteration_count        : int 3
 #>   ..$ crossover_iteration_count : int 0
 #>   ..$ primal_solution_status    : chr "Feasible"
-#>   ..$ dual_solution_status      : chr "Infeasible"
-#>   ..$ basis_validity            : int 1
-#>   ..$ objective_function_value  : num -6
+#>   ..$ dual_solution_status      : chr "Feasible"
+#>   ..$ basis_validity            : int 0
+#>   ..$ objective_function_value  : num -1e+07
 #>   ..$ mip_dual_bound            : num 0
 #>   ..$ mip_gap                   : num Inf
 #>   ..$ num_primal_infeasibilities: int 0
 #>   ..$ max_primal_infeasibility  : num 0
 #>   ..$ sum_primal_infeasibilities: num 0
-#>   ..$ num_dual_infeasibilities  : int 1
-#>   ..$ max_dual_infeasibility    : num 1
-#>   ..$ sum_dual_infeasibilities  : num 1
+#>   ..$ num_dual_infeasibilities  : int 0
+#>   ..$ max_dual_infeasibility    : num 0
+#>   ..$ sum_dual_infeasibilities  : num 0
 ```
 
 # 3 Additional information

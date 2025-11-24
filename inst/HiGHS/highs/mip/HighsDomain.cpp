@@ -1244,7 +1244,7 @@ void HighsDomain::ObjectivePropagation::propagate() {
 void HighsDomain::computeMinActivity(HighsInt start, HighsInt end,
                                      const HighsInt* ARindex,
                                      const double* ARvalue, HighsInt& ninfmin,
-                                     HighsCDouble& activitymin) {
+                                     HighsCDouble& activitymin) const {
   if (infeasible_) {
     activitymin = 0.0;
     ninfmin = 0;
@@ -1289,7 +1289,7 @@ void HighsDomain::computeMinActivity(HighsInt start, HighsInt end,
 void HighsDomain::computeMaxActivity(HighsInt start, HighsInt end,
                                      const HighsInt* ARindex,
                                      const double* ARvalue, HighsInt& ninfmax,
-                                     HighsCDouble& activitymax) {
+                                     HighsCDouble& activitymax) const {
   if (infeasible_) {
     activitymax = 0.0;
     ninfmax = 0;
@@ -1399,7 +1399,7 @@ HighsInt HighsDomain::propagateRowUpper(const HighsInt* Rindex,
                                         double Rupper,
                                         const HighsCDouble& minactivity,
                                         HighsInt ninfmin,
-                                        HighsDomainChange* boundchgs) {
+                                        HighsDomainChange* boundchgs) const {
   assert(std::isfinite(double(minactivity)));
   if (ninfmin > 1) return 0;
   HighsInt numchgs = 0;
@@ -1443,7 +1443,7 @@ HighsInt HighsDomain::propagateRowLower(const HighsInt* Rindex,
                                         double Rlower,
                                         const HighsCDouble& maxactivity,
                                         HighsInt ninfmax,
-                                        HighsDomainChange* boundchgs) {
+                                        HighsDomainChange* boundchgs) const {
   assert(std::isfinite(double(maxactivity)));
   if (ninfmax > 1) return 0;
   HighsInt numchgs = 0;
@@ -1482,7 +1482,7 @@ HighsInt HighsDomain::propagateRowLower(const HighsInt* Rindex,
 }
 
 void HighsDomain::updateThresholdLbChange(HighsInt col, double newbound,
-                                          double val, double& threshold) {
+                                          double val, double& threshold) const {
   if (newbound != col_upper_[col]) {
     double thresholdNew =
         std::fabs(val) * boundRange(col_upper_[col], newbound,
@@ -1497,7 +1497,7 @@ void HighsDomain::updateThresholdLbChange(HighsInt col, double newbound,
 }
 
 void HighsDomain::updateThresholdUbChange(HighsInt col, double newbound,
-                                          double val, double& threshold) {
+                                          double val, double& threshold) const {
   if (newbound != col_lower_[col]) {
     double thresholdNew =
         std::fabs(val) * boundRange(newbound, col_lower_[col],
@@ -2925,8 +2925,7 @@ bool HighsDomain::ConflictSet::resolveLinearGeq(HighsCDouble M, double Mupper,
   resolvedDomainChanges.clear();
   double covered = double(M - Mupper);
   if (covered > 0) {
-    for (HighsInt k = 0; k < (HighsInt)resolveBuffer.size(); ++k) {
-      ResolveCandidate& reasonDomchg = resolveBuffer[k];
+    for (const auto& reasonDomchg : resolveBuffer) {
       LocalDomChg locdomchg;
       locdomchg.pos = reasonDomchg.boundPos;
       locdomchg.domchg = localdom.domchgstack_[reasonDomchg.boundPos];
@@ -3035,8 +3034,7 @@ bool HighsDomain::ConflictSet::resolveLinearLeq(HighsCDouble M, double Mlower,
   resolvedDomainChanges.clear();
   double covered = double(M - Mlower);
   if (covered < 0) {
-    for (HighsInt k = 0; k < (HighsInt)resolveBuffer.size(); ++k) {
-      ResolveCandidate& reasonDomchg = resolveBuffer[k];
+    for (const auto& reasonDomchg : resolveBuffer) {
       LocalDomChg locdomchg;
       locdomchg.pos = reasonDomchg.boundPos;
       locdomchg.domchg = localdom.domchgstack_[reasonDomchg.boundPos];
@@ -3218,7 +3216,10 @@ bool HighsDomain::ConflictSet::explainInfeasibility() {
       HighsInt ninfmin;
       HighsCDouble minAct;
       globaldom.computeMinActivity(0, len, inds, vals, ninfmin, minAct);
-      assert(ninfmin == 0);
+      // This case should only happen when a globally unbounded column is
+      // bounded in the local domain, e.g., by a branching choice in some
+      // heuristic.
+      if (ninfmin > 0) return false;
 
       return explainInfeasibilityLeq(inds, vals, len, rhs, double(minAct));
     }
@@ -3620,9 +3621,11 @@ HighsDomain::ConflictSet::popQueue() {
 
 void HighsDomain::ConflictSet::clearQueue() { resolveQueue.clear(); }
 
-HighsInt HighsDomain::ConflictSet::queueSize() { return resolveQueue.size(); }
+HighsInt HighsDomain::ConflictSet::queueSize() const {
+  return resolveQueue.size();
+}
 
-bool HighsDomain::ConflictSet::resolvable(HighsInt domChgPos) {
+bool HighsDomain::ConflictSet::resolvable(HighsInt domChgPos) const {
   assert(domChgPos >= 0);
   assert(domChgPos < (HighsInt)localdom.domchgreason_.size());
   // Rprintf("domchgPos: %d\n", domChgPos);

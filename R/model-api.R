@@ -89,7 +89,7 @@ hi_model_set_sense <- function(model, maximum) {
 #' @export
 hi_model_set_offset <- function(model, offset) {
     checkmate::assert_class(model, classes = "highs_model")
-    checkmate::assert_numeric(offset, len = 1)
+    checkmate::assert_numeric(offset, len = 1, any.missing = FALSE)
     model_set_offset(model, offset)
 }
 

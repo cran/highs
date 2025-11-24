@@ -24,6 +24,15 @@ void highsLogHeader(const HighsLogOptions& log_options,
   const std::string githash_text =
       log_githash ? " (git hash: " + githash_string + ")" : "";
   
+
+#ifdef HIPO
+#ifdef BLAS_LIBRARIES
+  highsLogUser(log_options, HighsLogType::kInfo, "Using blas: %s\n",
+               BLAS_LIBRARIES);
+#else
+  highsLogUser(log_options, HighsLogType::kInfo, "Using blas: unknown\n");
+#endif
+#endif
 }
 
 std::array<char, 32> highsDoubleToString(const double val,
@@ -148,8 +157,8 @@ void highsLogUser(const HighsLogOptions& log_options_, const HighsLogType type,
     }
     if (log_options_.user_callback_active) {
       assert(log_options_.user_callback);
-      HighsCallbackDataOut data_out;
-      data_out.log_type = int(type);
+      HighsCallbackOutput data_out;
+      data_out.log_type = type;
       log_options_.user_callback(kCallbackLogging, msgbuffer.data(), &data_out,
                                  nullptr, log_options_.user_callback_data);
     }
@@ -207,8 +216,8 @@ void highsLogDev(const HighsLogOptions& log_options_, const HighsLogType type,
                                      log_options_.user_log_callback_data);
     } else if (log_options_.user_callback_active) {
       assert(log_options_.user_callback);
-      HighsCallbackDataOut data_out;
-      data_out.log_type = int(type);
+      HighsCallbackOutput data_out;
+      data_out.log_type = type;
       log_options_.user_callback(kCallbackLogging, msgbuffer.data(), &data_out,
                                  nullptr, log_options_.user_callback_data);
     }

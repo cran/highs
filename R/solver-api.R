@@ -3,18 +3,27 @@
 #' This function initializes a new Highs solver instance using the provided model pointer.
 #'
 #' @param model an object of class \code{"highs_model"}
-#' 
+#'
 #' @return A new solver instance.
-#' 
+#'
 #' @examples
 #' model <- example_model()
 #' solver <- hi_new_solver(model)
-#' @export 
+#' @export
 hi_new_solver <- function(model) {
-    checkmate::assert_class(model, classes = "highs_model")
-    solver <- new_solver(model)
-    class(solver) <- c("highs_solver", class(solver))
-    solver
+  checkmate::assert_class(model, classes = "highs_model")
+  msg <- capture.output(result <- new_solver(model))
+  if (result$status == -1L) {
+    stop(msg)
+  } else if (result$status == 1L) {
+    warning(msg)
+  }
+  solver <- result$solver
+  if (is.null(solver)) {
+    stop(sprintf("%s\nSolver could not be created check your model!", msg))
+  }
+  class(solver) <- c("highs_solver", class(solver))
+  solver
 }
 
 
@@ -23,17 +32,17 @@ hi_new_solver <- function(model) {
 #' This function returns the optimization sense (e.g., minimization or maximization) of the provided solver instance.
 #'
 #' @param solver An object of class "highs_solver" representing the solver instance.
-#' 
+#'
 #' @return The optimization sense of the solver instance.
-#' 
+#'
 #' @examples
 #' solver <- example_solver()
 #' hi_solver_get_sense(solver)
-#' 
-#' @export 
+#'
+#' @export
 hi_solver_get_sense <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_get_sense(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  as.logical(solver_get_sense(solver))
 }
 
 #' Set the optimization sense of the solver instance.
@@ -42,18 +51,18 @@ hi_solver_get_sense <- function(solver) {
 #'
 #' @param solver An object of class "highs_solver".
 #' @param maximum A boolean indicating whether to set maximization (TRUE) or minimization (FALSE).
-#' 
+#'
 #' @return The updated solver instance with the new optimization sense.
-#' 
+#'
 #' @examples
 #' solver <- example_solver()
 #' hi_solver_set_sense(solver, TRUE)
-#' 
+#'
 #' @export
 hi_solver_set_sense <- function(solver, maximum) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_logical(maximum, len = 1, any.missing = FALSE)
-    solver_set_sense(solver, maximum)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_logical(maximum, len = 1, any.missing = FALSE)
+  solver_set_sense(solver, maximum)
 }
 
 
@@ -63,18 +72,18 @@ hi_solver_set_sense <- function(solver, maximum) {
 #'
 #' @param solver An object of class "highs_solver".
 #' @param ext_offset A numeric value representing the offset.
-#' 
+#'
 #' @return The solver instance with the updated offset.
-#' 
+#'
 #' @examples
 #' solver <- example_solver()
 #' hi_solver_set_offset(solver, 5.0)
-#' 
+#'
 #' @export
 hi_solver_set_offset <- function(solver, ext_offset) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_numeric(ext_offset, len = 1, any.missing = FALSE)
-    solver_set_offset(solver, as.double(ext_offset))
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_numeric(ext_offset, len = 1, any.missing = FALSE)
+  solver_set_offset(solver, as.double(ext_offset))
 }
 
 
@@ -85,19 +94,29 @@ hi_solver_set_offset <- function(solver, ext_offset) {
 #' @param solver An object of class "highs_solver".
 #' @param index An integer vector specifying the variable index.
 #' @param type An integer vector representing the integrality type.
-#' 
+#'
 #' @return The solver instance with updated integrality settings.
-#' 
+#'
 #' @examples
 #' solver <- example_solver()
 #' hi_solver_set_integrality(solver, 1, 1)
-#' 
+#'
 #' @export
 hi_solver_set_integrality <- function(solver, index, type) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_integerish(index, lower = 0, any.missing = FALSE, min.len = 1)
-    checkmate::assert_integerish(type, lower = 0, any.missing = FALSE, len = length(index))
-    solver_set_integrality(solver, as.integer(index), as.integer(type))
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_integerish(
+    index,
+    lower = 0,
+    any.missing = FALSE,
+    min.len = 1
+  )
+  checkmate::assert_integerish(
+    type,
+    lower = 0,
+    any.missing = FALSE,
+    len = length(index)
+  )
+  solver_set_integrality(solver, as.integer(index), as.integer(type))
 }
 
 
@@ -108,19 +127,24 @@ hi_solver_set_integrality <- function(solver, index, type) {
 #' @param solver An object of class "highs_solver".
 #' @param index The variable index.
 #' @param coeff A numeric value representing the objective coefficient.
-#' 
+#'
 #' @return The solver instance with the updated objective.
-#' 
+#'
 #' @examples
 #' solver <- example_solver()
 #' hi_solver_set_objective(solver, 2, 3.5)
-#' 
+#'
 #' @export
 hi_solver_set_objective <- function(solver, index, coeff) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_integerish(index, lower = 0, any.missing = FALSE, min.len = 1)
-    checkmate::assert_numeric(coeff, len = length(index), any.missing = FALSE)
-    solver_set_objective(solver, as.integer(index), as.double(coeff))
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_integerish(
+    index,
+    lower = 0,
+    any.missing = FALSE,
+    min.len = 1
+  )
+  checkmate::assert_numeric(coeff, len = length(index), any.missing = FALSE)
+  solver_set_objective(solver, as.integer(index), as.double(coeff))
 }
 
 
@@ -132,20 +156,30 @@ hi_solver_set_objective <- function(solver, index, coeff) {
 #' @param index The variable index.
 #' @param lower The lower bound.
 #' @param upper The upper bound.
-#' 
+#'
 #' @return The solver instance with updated variable bounds.
-#' 
+#'
 #' @examples
 #' solver <- example_solver()
 #' hi_solver_set_variable_bounds(solver, 2, 0, 10)
-#' 
+#'
 #' @export
 hi_solver_set_variable_bounds <- function(solver, index, lower, upper) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_integerish(index, lower = 0, any.missing = FALSE, min.len = 1)
-    checkmate::assert_numeric(lower, len = length(index), any.missing = FALSE)
-    checkmate::assert_numeric(upper, len = length(index), any.missing = FALSE)
-    solver_set_variable_bounds(solver, as.integer(index), as.double(lower), as.double(upper))
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_integerish(
+    index,
+    lower = 0,
+    any.missing = FALSE,
+    min.len = 1
+  )
+  checkmate::assert_numeric(lower, len = length(index), any.missing = FALSE)
+  checkmate::assert_numeric(upper, len = length(index), any.missing = FALSE)
+  solver_set_variable_bounds(
+    solver,
+    as.integer(index),
+    as.double(lower),
+    as.double(upper)
+  )
 }
 
 
@@ -157,20 +191,25 @@ hi_solver_set_variable_bounds <- function(solver, index, lower, upper) {
 #' @param index The constraint index.
 #' @param lower The lower bound.
 #' @param upper The upper bound.
-#' 
+#'
 #' @return The solver instance with updated constraint bounds.
-#' 
+#'
 #' @examples
 #' solver <- example_solver()
 #' hi_solver_set_constraint_bounds(solver, 1, -Inf, 100)
-#' 
+#'
 #' @export
 hi_solver_set_constraint_bounds <- function(solver, index, lower, upper) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_integerish(index, lower = 0, any.missing = FALSE, len = 1)
-    checkmate::assert_numeric(lower, len = 1, any.missing = FALSE)
-    checkmate::assert_numeric(upper, len = 1, any.missing = FALSE)
-    solver_set_constraint_bounds(solver, as.integer(index), as.double(lower), as.double(upper))
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_integerish(index, lower = 0, any.missing = FALSE, len = 1)
+  checkmate::assert_numeric(lower, len = 1, any.missing = FALSE)
+  checkmate::assert_numeric(upper, len = 1, any.missing = FALSE)
+  solver_set_constraint_bounds(
+    solver,
+    as.integer(index),
+    as.double(lower),
+    as.double(upper)
+  )
 }
 
 
@@ -182,22 +221,21 @@ hi_solver_set_constraint_bounds <- function(solver, index, lower, upper) {
 #' @param row The row index.
 #' @param col The column index.
 #' @param val The coefficient value.
-#' 
+#'
 #' @return The solver instance with the updated coefficient.
-#' 
+#'
 #' @examples
 #' solver <- example_solver()
 #' hi_solver_set_coeff(solver, 1, 1, 4.2)
-#' 
+#'
 #' @export
 hi_solver_set_coeff <- function(solver, row, col, val) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_integerish(row, lower = 0, any.missing = FALSE, len = 1)
-    checkmate::assert_integerish(col, lower = 0, any.missing = FALSE, len = 1)
-    checkmate::assert_numeric(val, len = 1, any.missing = FALSE)
-    solver_set_coeff(solver, as.integer(row), as.integer(col), as.double(val))
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_integerish(row, lower = 0, any.missing = FALSE, len = 1)
+  checkmate::assert_integerish(col, lower = 0, any.missing = FALSE, len = 1)
+  checkmate::assert_numeric(val, len = 1, any.missing = FALSE)
+  solver_set_coeff(solver, as.integer(row), as.integer(col), as.double(val))
 }
-
 
 
 #' Add Variables to the Solver
@@ -216,11 +254,11 @@ hi_solver_set_coeff <- function(solver, row, col, val) {
 #'
 #' @export
 hi_solver_add_vars <- function(solver, lower, upper) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_numeric(lower, any.missing = FALSE)
-    checkmate::assert_numeric(upper, any.missing = FALSE)
-    checkmate::assert_true(length(lower) == length(upper))
-    solver_add_vars(solver, as.double(lower), as.double(upper))
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_numeric(lower, any.missing = FALSE)
+  checkmate::assert_numeric(upper, any.missing = FALSE)
+  checkmate::assert_true(length(lower) == length(upper))
+  solver_add_vars(solver, as.double(lower), as.double(upper))
 }
 
 
@@ -238,8 +276,8 @@ hi_solver_add_vars <- function(solver, lower, upper) {
 #'
 #' @export
 hi_solver_clear <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_clear(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_clear(solver)
 }
 
 
@@ -257,8 +295,8 @@ hi_solver_clear <- function(solver) {
 #'
 #' @export
 hi_solver_clear_model <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_clear_model(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_clear_model(solver)
 }
 
 
@@ -276,8 +314,8 @@ hi_solver_clear_model <- function(solver) {
 #'
 #' @export
 hi_solver_clear_solver <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_clear_solver(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_clear_solver(solver)
 }
 
 
@@ -295,8 +333,8 @@ hi_solver_clear_solver <- function(solver) {
 #'
 #' @export
 hi_solver_run <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_run(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_run(solver)
 }
 
 
@@ -313,8 +351,8 @@ hi_solver_run <- function(solver) {
 # model <- hi_solver_get_model(solver)
 #
 hi_solver_get_model <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_get_model(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_get_model(solver)
 }
 
 
@@ -332,8 +370,8 @@ hi_solver_get_model <- function(solver) {
 #'
 #' @export
 hi_solver_get_num_col <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_get_num_col(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_get_num_col(solver)
 }
 
 
@@ -351,8 +389,8 @@ hi_solver_get_num_col <- function(solver) {
 #'
 #' @export
 hi_solver_get_num_row <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_get_num_row(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_get_num_row(solver)
 }
 
 
@@ -372,8 +410,8 @@ hi_solver_get_num_row <- function(solver) {
 #'
 #' @export
 hi_solver_write_model <- function(solver, filename) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_write_model(solver, filename)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_write_model(solver, filename)
 }
 
 
@@ -393,8 +431,8 @@ hi_solver_write_model <- function(solver, filename) {
 #'
 #' @export
 hi_solver_write_basis <- function(solver, filename) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_write_basis(solver, filename)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_write_basis(solver, filename)
 }
 
 
@@ -413,8 +451,8 @@ hi_solver_write_basis <- function(solver, filename) {
 #'
 #' @export
 hi_solver_status_message <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_status_message(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_status_message(solver)
 }
 
 
@@ -433,8 +471,8 @@ hi_solver_status_message <- function(solver) {
 #'
 #' @export
 hi_solver_status <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_status(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_status(solver)
 }
 
 
@@ -449,7 +487,7 @@ hi_solver_status <- function(solver) {
 #'
 #' @export
 hi_solver_infinity <- function() {
-    solver_infinity()
+  solver_infinity()
 }
 
 
@@ -466,8 +504,8 @@ hi_solver_infinity <- function() {
 #'
 #' @export
 hi_reset_global_scheduler <- function(blocking) {
-    checkmate::assert_logical(blocking, len = 1, any.missing = FALSE)
-    reset_global_scheduler(blocking)
+  checkmate::assert_logical(blocking, len = 1, any.missing = FALSE)
+  reset_global_scheduler(blocking)
 }
 
 
@@ -485,8 +523,8 @@ hi_reset_global_scheduler <- function(blocking) {
 #'
 #' @export
 hi_solver_info <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_info(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_info(solver)
 }
 
 
@@ -505,8 +543,8 @@ hi_solver_info <- function(solver) {
 #'
 #' @export
 hi_solver_get_solution <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_get_solution(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_get_solution(solver)
 }
 
 
@@ -525,9 +563,9 @@ hi_solver_get_solution <- function(solver) {
 #'
 #' @export
 hi_solver_get_bool_option <- function(solver, key) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_character(key, len = 1, any.missing = FALSE)
-    solver_get_bool_option(solver, key)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_character(key, len = 1, any.missing = FALSE)
+  solver_get_bool_option(solver, key)
 }
 
 
@@ -546,9 +584,9 @@ hi_solver_get_bool_option <- function(solver, key) {
 #'
 #' @export
 hi_solver_get_int_option <- function(solver, key) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_character(key, len = 1, any.missing = FALSE)
-    solver_get_int_option(solver, key)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_character(key, len = 1, any.missing = FALSE)
+  solver_get_int_option(solver, key)
 }
 
 
@@ -567,9 +605,9 @@ hi_solver_get_int_option <- function(solver, key) {
 #'
 #' @export
 hi_solver_get_dbl_option <- function(solver, key) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_character(key, len = 1, any.missing = FALSE)
-    solver_get_dbl_option(solver, key)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_character(key, len = 1, any.missing = FALSE)
+  solver_get_dbl_option(solver, key)
 }
 
 
@@ -588,9 +626,9 @@ hi_solver_get_dbl_option <- function(solver, key) {
 #'
 #' @export
 hi_solver_get_str_option <- function(solver, key) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_character(key, len = 1, any.missing = FALSE)
-    solver_get_str_option(solver, key)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_character(key, len = 1, any.missing = FALSE)
+  solver_get_str_option(solver, key)
 }
 
 
@@ -611,11 +649,21 @@ hi_solver_get_str_option <- function(solver, key) {
 #'
 #' @export
 hi_solver_change_variable_bounds <- function(solver, idx, lower, upper) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_integerish(idx, lower = 0, any.missing = FALSE, min.len = 1)
-    checkmate::assert_numeric(lower, len = length(idx), any.missing = FALSE)
-    checkmate::assert_numeric(upper, len = length(idx), any.missing = FALSE)
-    solver_change_variable_bounds(solver, as.integer(idx), as.double(lower), as.double(upper))
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_integerish(
+    idx,
+    lower = 0,
+    any.missing = FALSE,
+    min.len = 1
+  )
+  checkmate::assert_numeric(lower, len = length(idx), any.missing = FALSE)
+  checkmate::assert_numeric(upper, len = length(idx), any.missing = FALSE)
+  solver_change_variable_bounds(
+    solver,
+    as.integer(idx),
+    as.double(lower),
+    as.double(upper)
+  )
 }
 
 
@@ -636,11 +684,21 @@ hi_solver_change_variable_bounds <- function(solver, idx, lower, upper) {
 #'
 #' @export
 hi_solver_change_constraint_bounds <- function(solver, idx, lhs, rhs) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_integerish(idx, lower = 0, any.missing = FALSE, min.len = 1)
-    checkmate::assert_numeric(lhs, len = length(idx), any.missing = FALSE)
-    checkmate::assert_numeric(rhs, len = length(idx), any.missing = FALSE)
-    solver_change_constraint_bounds(solver, as.integer(idx), as.double(lhs), as.double(rhs))
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_integerish(
+    idx,
+    lower = 0,
+    any.missing = FALSE,
+    min.len = 1
+  )
+  checkmate::assert_numeric(lhs, len = length(idx), any.missing = FALSE)
+  checkmate::assert_numeric(rhs, len = length(idx), any.missing = FALSE)
+  solver_change_constraint_bounds(
+    solver,
+    as.integer(idx),
+    as.double(lhs),
+    as.double(rhs)
+  )
 }
 
 
@@ -663,13 +721,35 @@ hi_solver_change_constraint_bounds <- function(solver, idx, lhs, rhs) {
 #'
 #' @export
 hi_solver_add_rows <- function(solver, lhs, rhs, start, index, value) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_numeric(lhs, min.len = 1, any.missing = FALSE)
-    checkmate::assert_numeric(rhs, len = length(lhs), any.missing = FALSE)
-    checkmate::assert_integerish(start, lower = 0, any.missing = FALSE, min.len = 1)
-    checkmate::assert_integerish(index, lower = 0, any.missing = FALSE, min.len = 1)
-    checkmate::assert_numeric(value, len = length(index), any.missing = FALSE, min.len = 1)
-    solver_add_rows(solver, as.double(lhs), as.double(rhs), as.integer(start), as.integer(index), as.double(value))
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_numeric(lhs, min.len = 1, any.missing = FALSE)
+  checkmate::assert_numeric(rhs, len = length(lhs), any.missing = FALSE)
+  checkmate::assert_integerish(
+    start,
+    lower = 0,
+    any.missing = FALSE,
+    min.len = 1
+  )
+  checkmate::assert_integerish(
+    index,
+    lower = 0,
+    any.missing = FALSE,
+    min.len = 1
+  )
+  checkmate::assert_numeric(
+    value,
+    len = length(index),
+    any.missing = FALSE,
+    min.len = 1
+  )
+  solver_add_rows(
+    solver,
+    as.double(lhs),
+    as.double(rhs),
+    as.integer(start),
+    as.integer(index),
+    as.double(value)
+  )
 }
 
 
@@ -692,15 +772,46 @@ hi_solver_add_rows <- function(solver, lhs, rhs, start, index, value) {
 #' hi_solver_add_cols(solver, c(1), c(0), c(10), c(0, 1), c(0), c(2))
 #'
 #' @export
-hi_solver_add_cols <- function(solver, costs, lower, upper, start, index, value) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    checkmate::assert_numeric(costs, min.len = 1, any.missing = FALSE)
-    checkmate::assert_numeric(lower, len = length(costs), any.missing = FALSE)
-    checkmate::assert_numeric(upper, len = length(costs), any.missing = FALSE)
-    checkmate::assert_integerish(start, lower = 0, any.missing = FALSE, min.len = 1)
-    checkmate::assert_integerish(index, lower = 0, any.missing = FALSE, min.len = 1)
-    checkmate::assert_numeric(value, len = length(index), any.missing = FALSE, min.len = 1)
-    solver_add_cols(solver, as.double(costs), as.double(lower), as.double(upper), as.integer(start), as.integer(index), as.double(value))
+hi_solver_add_cols <- function(
+  solver,
+  costs,
+  lower,
+  upper,
+  start,
+  index,
+  value
+) {
+  checkmate::assert_class(solver, classes = "highs_solver")
+  checkmate::assert_numeric(costs, min.len = 1, any.missing = FALSE)
+  checkmate::assert_numeric(lower, len = length(costs), any.missing = FALSE)
+  checkmate::assert_numeric(upper, len = length(costs), any.missing = FALSE)
+  checkmate::assert_integerish(
+    start,
+    lower = 0,
+    any.missing = FALSE,
+    min.len = 1
+  )
+  checkmate::assert_integerish(
+    index,
+    lower = 0,
+    any.missing = FALSE,
+    min.len = 1
+  )
+  checkmate::assert_numeric(
+    value,
+    len = length(index),
+    any.missing = FALSE,
+    min.len = 1
+  )
+  solver_add_cols(
+    solver,
+    as.double(costs),
+    as.double(lower),
+    as.double(upper),
+    as.integer(start),
+    as.integer(index),
+    as.double(value)
+  )
 }
 
 
@@ -718,8 +829,8 @@ hi_solver_add_cols <- function(solver, costs, lower, upper, start, index, value)
 #'
 #' @export
 hi_solver_get_lp_costs <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_get_lp_costs(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_get_lp_costs(solver)
 }
 
 
@@ -737,8 +848,8 @@ hi_solver_get_lp_costs <- function(solver) {
 #'
 #' @export
 hi_solver_get_variable_bounds <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_get_variable_bounds(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_get_variable_bounds(solver)
 }
 
 
@@ -756,8 +867,8 @@ hi_solver_get_variable_bounds <- function(solver) {
 #'
 #' @export
 hi_solver_get_constraint_bounds <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_get_constraint_bounds(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_get_constraint_bounds(solver)
 }
 
 
@@ -775,8 +886,8 @@ hi_solver_get_constraint_bounds <- function(solver) {
 #'
 #' @export
 hi_solver_get_constraint_matrix <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_get_constraint_matrix(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_get_constraint_matrix(solver)
 }
 
 
@@ -794,6 +905,6 @@ hi_solver_get_constraint_matrix <- function(solver) {
 #'
 #' @export
 hi_solver_get_vartype <- function(solver) {
-    checkmate::assert_class(solver, classes = "highs_solver")
-    solver_get_vartype(solver)
+  checkmate::assert_class(solver, classes = "highs_solver")
+  solver_get_vartype(solver)
 }

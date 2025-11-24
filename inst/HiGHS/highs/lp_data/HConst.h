@@ -20,9 +20,9 @@
 const std::string kHighsCopyrightStatement =
     "Copyright (c) 2025 HiGHS under MIT licence terms";
 
-const size_t kHighsSize_tInf = std::numeric_limits<size_t>::max();
-const HighsInt kHighsIInf = std::numeric_limits<HighsInt>::max();
-const HighsInt kHighsIInf32 = std::numeric_limits<int>::max();
+const size_t kHighsSize_tInf = (std::numeric_limits<size_t>::max)();
+const HighsInt kHighsIInf = (std::numeric_limits<HighsInt>::max)();
+const HighsInt kHighsIInf32 = (std::numeric_limits<int>::max)();
 const double kHighsInf = std::numeric_limits<double>::infinity();
 const double kHighsUndefined = kHighsInf;
 const double kHighsTiny = 1e-14;
@@ -34,11 +34,13 @@ const std::string kHighsOnString = "on";
 const HighsInt kHighsMaxStringLength = 512;
 const HighsInt kSimplexConcurrencyLimit = 8;
 const double kRunningAverageMultiplier = 0.05;
-const double kExcessivelyLargeBoundValue = 1e10;
-const double kExcessivelyLargeCostValue = 1e10;
-const double kExcessivelySmallBoundValue = 1e-4;
-const double kExcessivelySmallCostValue = 1e-4;
 
+const double kExcessivelySmallObjectiveCoefficient = 1e-4;
+const double kExcessivelyLargeObjectiveCoefficient = 1e6;
+const double kExcessivelySmallBoundValue = 1e-4;
+const double kExcessivelyLargeBoundValue = 1e6;
+
+const HighsInt kNoThreadInstance = -1;
 const bool kAllowDeveloperAssert = false;
 const bool kExtendInvertWhenAddingRows = false;
 
@@ -144,6 +146,9 @@ enum BasisValidity {
   kBasisValidityMax = kBasisValidityValid
 };
 
+const std::string kHighsBasisFileV1 = "v1";  // Deprecated
+const std::string kHighsBasisFileV2 = "v2";
+
 enum SolutionStyle {
   kSolutionStyleOldRaw = -1,
   kSolutionStyleRaw = 0,
@@ -163,6 +168,10 @@ enum GlpsolCostRowLocation {
 };
 
 const std::string kHighsFilenameDefault = "";
+const std::string kHighsMinimalColNamePrefix = "c";
+const std::string kHighsMinimalrowNamePrefix = "r";
+const std::string kHighsUniqueColNamePrefix = "c_ekk";
+const std::string kHighsUniquerowNamePrefix = "r_ekk";
 
 enum class HighsPresolveStatus {
   kNotPresolved = -1,
@@ -211,8 +220,9 @@ enum class HighsModelStatus {
   kSolutionLimit,
   kInterrupt,
   kMemoryLimit,
+  kHighsInterrupt,
   kMin = kNotset,
-  kMax = kMemoryLimit
+  kMax = kHighsInterrupt
 };
 
 enum HighsCallbackType : int {
@@ -262,19 +272,54 @@ enum PresolveRuleType : int {
   kPresolveRuleDependentFreeCols,
   kPresolveRuleAggregator,
   kPresolveRuleParallelRowsAndCols,
-  kPresolveRuleMax = kPresolveRuleParallelRowsAndCols,
+  kPresolveRuleSparsify,
+  kPresolveRuleProbing,
+  kPresolveRuleMax = kPresolveRuleProbing,
   kPresolveRuleLastAllowOff = kPresolveRuleMax,
-  kPresolveRuleCount,
+  kPresolveRuleCount
 };
 
-enum IisStrategy {
+enum IisStrategy : int {
   kIisStrategyMin = 0,
-  kIisStrategyFromLpRowPriority = kIisStrategyMin,  // 0
-  kIisStrategyFromLpColPriority,                    // 1
-  //  kIisStrategyFromRayRowPriority,                     // 2
-  //  kIisStrategyFromRayColPriority,                     // 3
-  kIisStrategyMax = kIisStrategyFromLpColPriority
+  kIisStrategyLight = kIisStrategyMin,  // 0
+  kIisStrategyFromRay = 1,
+  kIisStrategyFromLp = 2,
+  kIisStrategyIrreducible = 4,
+  kIisStrategyColPriority = 8,
+  kIisStrategyRelaxation = 16,
+  kIisStrategyDefault = kIisStrategyLight,
+  kIisStrategyMax = kIisStrategyFromRay + kIisStrategyFromLp +
+                    kIisStrategyIrreducible + kIisStrategyColPriority +
+                    kIisStrategyRelaxation
 };
+
+enum IisStatus {
+  kIisStatusMin = -1,
+  kIisStatusNotInConflict = kIisStatusMin,  // -1
+  kIisStatusMaybeInConflict,                // 0
+  kIisStatusInConflict,                     // 1
+  kIisStatusMax = kIisStatusInConflict
+};
+
+enum SubSolverIndex : int {
+  kSubSolverMip = 0,
+  kSubSolverSimplexBasis,
+  kSubSolverSimplexNoBasis,
+  kSubSolverHipo,
+  kSubSolverIpx,
+  kSubSolverHipoAc,
+  kSubSolverIpxAc,
+  kSubSolverPdlp,
+  kSubSolverQpAsm,
+  kSubSolverSubMip,
+  kSubSolverCount
+};
+
+// Default KKT tolerance
+const double kDefaultKktTolerance = 1e-7;
+
+// Default QP Hessian regularization value
+const double kHessianRegularizationValue = 1e-7;
 
 // Default and max allowed power-of-two matrix scale factor
 const HighsInt kDefaultAllowedMatrixPow2Scale = 20;
@@ -285,6 +330,11 @@ const HighsInt kMaxAllowedMatrixPow2Scale = 30;
 const double kHighsIllegalInfeasibilityMeasure = kHighsInf;
 const HighsInt kHighsIllegalInfeasibilityCount = -1;
 
+// Illegal values of num/max/sum residual - used to indicate that true
+// values aren't known
+const double kHighsIllegalResidualMeasure = kHighsInf;
+const HighsInt kHighsIllegalResidualCount = -1;
+
 // Illegal values for HighsError - used to indicate that true
 // values aren't known
 const double kHighsIllegalErrorValue = kHighsInf;
@@ -293,6 +343,7 @@ const HighsInt kHighsIllegalErrorIndex = -1;
 // Illegal values for complementarity violations used to indicate that true
 // values aren't known
 const double kHighsIllegalComplementarityViolation = kHighsInf;
+const HighsInt kHighsIllegalComplementarityCount = -1;
 
 // Maximum upper bound on semi-variables
 const double kMaxSemiVariableUpper = 1e5;

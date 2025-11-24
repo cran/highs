@@ -199,14 +199,23 @@ SEXP new_solver(SEXP mpt) {
     highs->setLogCallback(R_message_handler);
 
     if (Rf_isNull(mpt)) {
-        return highs;
+        return Rcpp::List::create(
+            Named("status") = 0,
+            Named("solver") = highs
+        );
     }
     Rcpp::XPtr<HighsModel>model(mpt);
     HighsStatus return_status = highs->passModel(*model.get());
-    if (return_status != HighsStatus::kOk) {
-        return R_NilValue;
+    if (return_status == HighsStatus::kError) {
+        return Rcpp::List::create(
+            Named("status") = static_cast<int32_t>(return_status),
+            Named("solver") = R_NilValue
+        );
     }
-    return highs;
+    return Rcpp::List::create(
+        Named("status") = static_cast<int32_t>(return_status),
+        Named("solver") = highs
+    );
 }
 
 

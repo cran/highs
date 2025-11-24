@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -60,7 +61,8 @@ public enum HighsModelStatus
     kUnknown,
     kSolutionLimit,
     kInterrupt,
-    kMemoryLimit
+    kMemoryLimit,
+    kHighsInterrupt
 }
 
 public enum HighsIntegrality
@@ -417,6 +419,9 @@ public class HighsLpSolver : IDisposable
     private static extern int Highs_changeRowBounds(IntPtr highs, int row, double lower, double upper);
 
     [DllImport(highslibname)]
+    private static extern int Highs_changeRowsBoundsByRange(IntPtr highs, int from_row, int to_row, double[] lower, double[] upper);
+
+    [DllImport(highslibname)]
     private static extern int Highs_changeRowsBoundsBySet(IntPtr highs, int num_set_entries, int[] set, double[] lower, double[] upper);
 
     [DllImport(highslibname)]
@@ -457,6 +462,9 @@ public class HighsLpSolver : IDisposable
 
     [DllImport(highslibname)]
     private static extern int Highs_setSolution(IntPtr highs, double[] col_value, double[] row_value, double[] col_dual, double[] row_dual);
+
+    [DllImport(highslibname)]
+    private static extern int Highs_setSparseSolution(IntPtr highs, int num_entries, int[] index, double[] value);
 
     [DllImport(highslibname)]
     private static extern int Highs_getColsByRange(
@@ -914,6 +922,11 @@ public class HighsLpSolver : IDisposable
         return (HighsStatus)HighsLpSolver.Highs_changeRowBounds(this.highs, row, lower, upper);
     }
 
+    public HighsStatus changeRowsBoundsByRange(int from, int to, double[] lower, double[] upper)
+    {
+        return (HighsStatus)HighsLpSolver.Highs_changeRowsBoundsByRange(this.highs, from, to, lower, upper);
+    }
+
     public HighsStatus changeRowsBoundsBySet(int[] rows, double[] lower, double[] upper)
     {
         return (HighsStatus)HighsLpSolver.Highs_changeRowsBoundsBySet(this.highs, rows.Length, rows, lower, upper);
@@ -1006,7 +1019,18 @@ public class HighsLpSolver : IDisposable
 
     public HighsStatus setSolution(HighsSolution solution)
     {
-        return (HighsStatus)HighsLpSolver.Highs_setSolution(this.highs, solution.colvalue, solution.coldual, solution.rowvalue, solution.rowdual);
+        return (HighsStatus)HighsLpSolver.Highs_setSolution(this.highs, solution.colvalue, solution.rowvalue, solution.coldual, solution.rowdual);
+    }
+
+    /// <summary>Set a partial primal solution by passing values for a set of variables</summary>
+    /// <param name="valuesByIndex">A dictionary that maps variable indices to variable values</param>
+    /// <remarks>The sparse solution set by this function has values for a subset of the model's variables.
+    /// For each entry in <paramref name="valuesByIndex"/>, the key identifies a variable by index, and
+    /// the value indicates the variable's value in the sparse solution.</remarks>
+    /// <returns>A <see cref="HighsStatus"/> constant indicating whether the call succeeded</returns>
+    public HighsStatus setSparseSolution(IReadOnlyDictionary<int, double> valuesByIndex)
+    {
+        return (HighsStatus)Highs_setSparseSolution(this.highs, valuesByIndex.Count, valuesByIndex.Keys.ToArray(), valuesByIndex.Values.ToArray());
     }
 
     public HighsStatus getBasicVariables(ref int[] basic_variables)
