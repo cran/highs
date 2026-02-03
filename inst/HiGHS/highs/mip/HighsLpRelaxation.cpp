@@ -174,7 +174,7 @@ HighsLpRelaxation::HighsLpRelaxation(const HighsMipSolver& mipsolver)
     : mipsolver(mipsolver) {
   lpsolver.setOptionValue("output_flag", false);
   lpsolver.setOptionValue("random_seed", mipsolver.options_mip_->random_seed);
-  // Set primal feasiblity tolerance for LP solves according to
+  // Set primal feasibility tolerance for LP solves according to
   // mip_feasibility_tolerance, and smaller tolerance for dual
   // feasibility
   double mip_primal_feasibility_tolerance =
@@ -238,11 +238,12 @@ void HighsLpRelaxation::loadModel() {
   for (HighsInt i = 0; i != lpmodel.num_row_; ++i)
     lprows.push_back(LpRow::model(i));
   lpmodel.integrality_.clear();
+  HighsInt num_col = lpmodel.num_col_;
   lpsolver.clearSolver();
   lpsolver.clearModel();
   lpsolver.passModel(std::move(lpmodel));
-  colLbBuffer.resize(lpmodel.num_col_);
-  colUbBuffer.resize(lpmodel.num_col_);
+  colLbBuffer.resize(num_col);
+  colUbBuffer.resize(num_col);
 }
 
 void HighsLpRelaxation::resetToGlobalDomain() {
@@ -564,7 +565,7 @@ void HighsLpRelaxation::removeCuts(HighsInt ndelcuts,
     assert(lpsolver.getLp().num_row_ == (HighsInt)lprows.size());
     basis.debug_origin_name = "HighsLpRelaxation::removeCuts";
     lpsolver.setBasis(basis);
-    lpsolver.run();
+    lpsolver.optimizeLp();
     if (!mipsolver.submip) {
       const HighsSubSolverCallTime& sub_solver_call_time =
           lpsolver.getSubSolverCallTime();
@@ -839,7 +840,7 @@ bool HighsLpRelaxation::computeDualProof(const HighsDomain& globaldomain,
 
     if (!removeValue &&
         (globaldomain.col_lower_[i] == globaldomain.col_upper_[i] ||
-         mipsolver.variableType(i) == HighsVarType::kContinuous)) {
+         mipsolver.isColContinuous(i))) {
       if (val > 0)
         removeValue =
             lpsolver.getSolution().col_value[i] - globaldomain.col_lower_[i] <=
@@ -949,7 +950,7 @@ void HighsLpRelaxation::storeDualInfProof() {
 
     if (!removeValue &&
         (globaldomain.col_lower_[i] == globaldomain.col_upper_[i] ||
-         mipsolver.variableType(i) == HighsVarType::kContinuous)) {
+         mipsolver.isColContinuous(i))) {
       // remove continuous entries and globally fixed entries whenever the
       // local LP's bound is not tighter than the global bound
       if (val > 0)
@@ -1141,7 +1142,7 @@ HighsLpRelaxation::Status HighsLpRelaxation::run(bool resolve_on_error) {
       NULL;
       Rcpp::stop("Something went wrong!");
     }
-    callstatus = lpsolver.run();
+    callstatus = lpsolver.optimizeLp();
     if (ipm_logging) lpsolver.setOptionValue("output_flag", false);
     if (callstatus == HighsStatus::kError) {
       highsLogDev(
@@ -1153,7 +1154,7 @@ HighsLpRelaxation::Status HighsLpRelaxation::run(bool resolve_on_error) {
     }
   }
   if (use_simplex) {
-    callstatus = lpsolver.run();
+    callstatus = lpsolver.optimizeLp();
   }
   // Revert the value of lpsolver.options_.solver
   lpsolver.setOptionValue("solver", solver);
@@ -1357,7 +1358,7 @@ HighsLpRelaxation::Status HighsLpRelaxation::run(bool resolve_on_error) {
           (void)output_flag;
           ipm.setOptionValue("output_flag", !mipsolver.submip);
         }
-        ipm.run();
+        ipm.optimizeLp();
         if (ipm_logging) ipm.setOptionValue("output_flag", false);
         if (use_hipo && !ipm.getBasis().valid) {
           // HiPO has failed to get a solution, so try IPX
@@ -1366,7 +1367,7 @@ HighsLpRelaxation::Status HighsLpRelaxation::run(bool resolve_on_error) {
                       "basis: status = %s Try IPX\n",
                       ipm.modelStatusToString(ipm.getModelStatus()).c_str());
           ipm.setOptionValue("solver", kIpxString);
-          ipm.run();
+          ipm.optimizeLp();
         }
         const HighsSubSolverCallTime& sub_solver_call_time =
             ipm.getSubSolverCallTime();
@@ -1583,7 +1584,7 @@ HighsLpRelaxation::Status HighsLpRelaxation::resolveLp(HighsDomain* domain) {
               fixSol[i] = lpsolver.getLp().col_lower_[i];
             else if (fixSol[i] > lpsolver.getLp().col_upper_[i])
               fixSol[i] = lpsolver.getLp().col_upper_[i];
-            else if (mipsolver.variableType(i) != HighsVarType::kContinuous)
+            else if (mipsolver.isColIntegral(i))
               fixSol[i] = std::round(fixSol[i]);
           }
 

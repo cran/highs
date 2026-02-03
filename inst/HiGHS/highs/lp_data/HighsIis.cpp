@@ -539,7 +539,7 @@ HighsStatus HighsIis::compute(const HighsLp& lp, const HighsOptions& options,
     HighsIisInfo iis_info;
     iis_info.simplex_time = -highs.getRunTime();
     iis_info.simplex_iterations = -info.simplex_iteration_count;
-    run_status = highs.run();
+    run_status = highs.optimizeModel();
     assert(run_status == HighsStatus::kOk);
     if (run_status != HighsStatus::kOk) return run_status;
     HighsModelStatus model_status = highs.getModelStatus();
@@ -555,7 +555,7 @@ HighsStatus HighsIis::compute(const HighsLp& lp, const HighsOptions& options,
       highs.getOptionValue("simplex_strategy", simplex_strategy);
       highs.setOptionValue("simplex_strategy", kSimplexStrategyPrimal);
       // Solve the LP
-      run_status = highs.run();
+      run_status = highs.optimizeModel();
       if (run_status != HighsStatus::kOk) return run_status;
       highs.writeSolution("", kSolutionStylePretty);
       const HighsInt* basic_index = highs.getBasicVariablesArray();
@@ -826,8 +826,6 @@ HighsStatus HighsIis::compute(const HighsLp& lp, const HighsOptions& options,
   return HighsStatus::kOk;
 }
 
-bool indexStatusOkReturn(const bool return_value) { return return_value; }
-
 bool HighsIis::indexStatusOk(const HighsLp& lp) const {
   HighsInt num_col = lp.num_col_;
   HighsInt num_row = lp.num_row_;
@@ -865,15 +863,15 @@ bool HighsIis::indexStatusOk(const HighsLp& lp) const {
   const HighsInt illegal_status = -99;
   for (HighsInt iX = 0; iX < num_iis_col; iX++) {
     HighsInt iCol = this->col_index_[iX];
-    if (col_status_[iCol] != true_iis ? kIisStatusInConflict
-                                      : kIisStatusMaybeInConflict)
+    if (col_status_[iCol] !=
+        (true_iis ? kIisStatusInConflict : kIisStatusMaybeInConflict))
       return indexStatusOkReturn(false);
     col_status[iCol] = illegal_status;
   }
   for (HighsInt iX = 0; iX < num_iis_row; iX++) {
     HighsInt iRow = this->row_index_[iX];
-    if (row_status_[iRow] != true_iis ? kIisStatusInConflict
-                                      : kIisStatusMaybeInConflict)
+    if (row_status_[iRow] !=
+        (true_iis ? kIisStatusInConflict : kIisStatusMaybeInConflict))
       return indexStatusOkReturn(false);
     row_status[iRow] = illegal_status;
   }
@@ -888,8 +886,6 @@ bool HighsIis::indexStatusOk(const HighsLp& lp) const {
   }
   return indexStatusOkReturn(true);
 }
-
-bool lpDataOkReturn(const bool return_value) { return return_value; }
 
 bool HighsIis::lpDataOk(const HighsLp& lp, const HighsOptions& options) const {
   const HighsLp& iis_lp = this->model_.lp_;
@@ -1048,8 +1044,6 @@ bool HighsIis::lpDataOk(const HighsLp& lp, const HighsOptions& options) const {
   return lpDataOkReturn(true);
 }
 
-bool lpOkReturn(const bool return_value) { return return_value; }
-
 bool HighsIis::lpOk(const HighsOptions& options) const {
   // Check that the IIS LP is OK (infeasible and optimal if
   // any bound is relaxed)
@@ -1069,7 +1063,12 @@ bool HighsIis::lpOk(const HighsOptions& options) const {
   h.setOptionValue("output_flag", false);
   h.passModel(iis_lp);
   h.writeModel("");
-  h.run();
+  HighsStatus status = h.optimizeModel();
+  if (status != HighsStatus::kOk) {
+    highsLogUser(log_options, HighsLogType::kError,
+                 "HighsIis: Solve failure for IIS LP\n");
+    return lpOkReturn(false);
+  }
   if (h.getModelStatus() != HighsModelStatus::kInfeasible) {
     highsLogUser(log_options, HighsLogType::kError,
                  "HighsIis: IIS LP is not infeasible\n");
@@ -1078,7 +1077,7 @@ bool HighsIis::lpOk(const HighsOptions& options) const {
   if (!(this->status_ == kIisModelStatusIrreducible)) return lpOkReturn(true);
   auto optimal = [&]() -> bool {
     if (options.log_dev_level > 0) h.writeModel("");
-    h.run();
+    h.optimizeModel();
     return h.getModelStatus() == HighsModelStatus::kOptimal;
   };
   for (HighsInt iisCol = 0; iisCol < num_iis_col; iisCol++) {

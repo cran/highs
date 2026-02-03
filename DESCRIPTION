@@ -1,7 +1,7 @@
 Package: highs
 Type: Package
 Title: 'HiGHS' Optimization Solver
-Version: 1.12.0-1
+Version: 1.12.0-2
 Authors@R: c(person("Florian", "Schwendinger", email = "FlorianSchwendinger@gmx.at", role = c("aut", "cre")),
              person("Dirk", "Schumacher", role = "aut"),
              person("Julian", "Hall", role = "cph"),
@@ -22,7 +22,7 @@ LinkingTo: Rcpp
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 NeedsCompilation: yes
-Packaged: 2025-11-23 19:06:19 UTC; f
+Packaged: 2026-02-02 20:28:13 UTC; f
 Author: Florian Schwendinger [aut, cre],
   Dirk Schumacher [aut],
   Julian Hall [cph],
@@ -31,4 +31,4 @@ Author: Florian Schwendinger [aut, cre],
   Michael Feldmeier [cph]
 Maintainer: Florian Schwendinger <FlorianSchwendinger@gmx.at>
 Repository: CRAN
-Date/Publication: 2025-11-24 07:30:02 UTC
+Date/Publication: 2026-02-03 08:50:15 UTC

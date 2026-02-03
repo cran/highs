@@ -1926,9 +1926,10 @@ HighsStatus Highs::getIisInterface() {
   // light strategy
   if (options_.iis_strategy == kIisStrategyLight)
     return this->getIisInterfaceReturn(HighsStatus::kOk);
-  const bool ray_option =
+  bool ray_option =
       // kIisStrategyFromRay & options.iis_strategy;
       false;
+  const bool lp_option = kIisStrategyFromLp & options_.iis_strategy;
   if (this->model_status_ == HighsModelStatus::kInfeasible && ray_option &&
       !ekk_instance_.status_.has_invert) {
     // Model is known to be infeasible, and a dual ray option is
@@ -1940,7 +1941,7 @@ HighsStatus Highs::getIisInterface() {
     HighsIisInfo iis_info;
     iis_info.simplex_time = -this->getRunTime();
     iis_info.simplex_iterations = -info_.simplex_iteration_count;
-    HighsStatus run_status = this->run();
+    HighsStatus run_status = this->optimizeModel();
     options_.presolve = presolve;
     if (run_status != HighsStatus::kOk) return run_status;
     iis_info.simplex_time += this->getRunTime();
@@ -1960,10 +1961,11 @@ HighsStatus Highs::getIisInterface() {
   }
   const bool has_dual_ray = ekk_instance_.dual_ray_record_.index != kNoRayIndex;
   if (ray_option && !has_dual_ray)
-    highsLogUser(
-        options_.log_options, HighsLogType::kWarning,
-        "No known dual ray from which to compute IIS: using whole model\n");
-  if (ray_option && has_dual_ray) {
+    highsLogUser(options_.log_options, HighsLogType::kWarning,
+                 "No known dual ray from which to compute IIS\n");
+  ray_option = ray_option && has_dual_ray;
+  if (ray_option) {
+    assert(has_dual_ray);
     // Compute the dual ray to identify an infeasible subset of rows
     assert(ekk_instance_.status_.has_invert);
     assert(!lp.is_moved_);
@@ -1977,7 +1979,7 @@ HighsStatus Highs::getIisInterface() {
                         true);
     for (HighsInt iRow = 0; iRow < lp.num_row_; iRow++)
       if (dual_ray_value[iRow]) this->iis_.row_index_.push_back(iRow);
-  } else {
+  } else if (lp_option) {
     // Full LP option chosen or no dual ray to use
     //
     // Working on the whole model so clear all solver data
@@ -1993,6 +1995,9 @@ HighsStatus Highs::getIisInterface() {
     assert(check_lp_before.a_matrix_.equivalent(check_lp_after.a_matrix_));
     if (return_status != HighsStatus::kOk) return return_status;
   }
+  // Don't continue if not using the ray or elasticity LP strategies
+  if (!ray_option && !lp_option)
+    return this->getIisInterfaceReturn(HighsStatus::kOk);
   // Due to the actions of Highs::elasticityFilter have to clear all
   // solver data, retaining a copy of Highs::iis_ to restore it
   HighsIis iis = this->iis_;
@@ -2157,14 +2162,14 @@ HighsStatus Highs::elasticityFilter(const double global_lower_penalty,
   // elastic variables given by the local/global penalties
   //
   // col_of_ecol lists the column indices corresponding to the entries in
-  // bound_of_col_of_ecol so that the results can be interpreted
+  // bound_of_col_of_ecol_is_lower so that the results can be interpreted
   //
   // row_of_ecol lists the row indices corresponding to the entries in
-  // bound_of_row_of_ecol so that the results can be interpreted
+  // bound_of_row_of_ecol_is_lower so that the results can be interpreted
   std::vector<HighsInt> col_of_ecol;
   std::vector<HighsInt> row_of_ecol;
-  std::vector<double> bound_of_row_of_ecol;
-  std::vector<double> bound_of_col_of_ecol;
+  std::vector<bool> bound_of_row_of_ecol_is_lower;
+  std::vector<bool> bound_of_col_of_ecol_is_lower;
   std::vector<double> erow_lower;
   std::vector<double> erow_upper;
   std::vector<HighsInt> erow_start;
@@ -2275,7 +2280,7 @@ HighsStatus Highs::elasticityFilter(const double global_lower_penalty,
                               lp.col_names_[iCol] + "_lower");
         // Save the original lower bound on this column and free its
         // lower bound
-        bound_of_col_of_ecol.push_back(lower);
+        bound_of_col_of_ecol_is_lower.push_back(true);
         col_lower[iCol] = -kHighsInf;
         erow_index.push_back(evar_ix);
         erow_value.push_back(1);
@@ -2290,7 +2295,7 @@ HighsStatus Highs::elasticityFilter(const double global_lower_penalty,
                               lp.col_names_[iCol] + "_upper");
         // Save the original upper bound on this column and free its
         // upper bound
-        bound_of_col_of_ecol.push_back(upper);
+        bound_of_col_of_ecol_is_lower.push_back(false);
         col_upper[iCol] = kHighsInf;
         erow_index.push_back(evar_ix);
         erow_value.push_back(-1);
@@ -2375,7 +2380,7 @@ HighsStatus Highs::elasticityFilter(const double global_lower_penalty,
         if (has_row_names)
           ecol_name.push_back("row_" + std::to_string(iRow) + "_" +
                               lp.row_names_[iRow] + "_lower");
-        bound_of_row_of_ecol.push_back(lower);
+        bound_of_row_of_ecol_is_lower.push_back(true);
         // Define the sub-matrix column
         ecol_index.push_back(iRow);
         ecol_value.push_back(1);
@@ -2389,7 +2394,7 @@ HighsStatus Highs::elasticityFilter(const double global_lower_penalty,
         if (has_row_names)
           ecol_name.push_back("row_" + std::to_string(iRow) + "_" +
                               lp.row_names_[iRow] + "_upper");
-        bound_of_row_of_ecol.push_back(upper);
+        bound_of_row_of_ecol_is_lower.push_back(false);
         // Define the sub-matrix column
         ecol_index.push_back(iRow);
         ecol_value.push_back(-1);
@@ -2436,7 +2441,7 @@ HighsStatus Highs::elasticityFilter(const double global_lower_penalty,
     HighsIisInfo iis_info;
     iis_info.simplex_time = -this->getRunTime();
     iis_info.simplex_iterations = -info_.simplex_iteration_count;
-    run_status = this->run();
+    run_status = this->optimizeModel();
     assert(run_status == HighsStatus::kOk);
     if (run_status != HighsStatus::kOk) return run_status;
     iis_info.simplex_time += this->getRunTime();
@@ -2485,11 +2490,14 @@ HighsStatus Highs::elasticityFilter(const double global_lower_penalty,
             this->options_.primal_feasibility_tolerance) {
           if (kIisDevReport)
             Rprintf(
-                "E-col %2d (column %2d) corresponds to column %2d with bound "
-                "%g "
-                "and has solution value %g\n",
+                "E-col %2d (column %2d) corresponds to column %2d with %s "
+                "bound "
+                "%11.4g "
+                "and has solution value %11.4g\n",
                 int(eCol), int(col_ecol_offset + eCol), int(iCol),
-                bound_of_col_of_ecol[eCol],
+                bound_of_col_of_ecol_is_lower[eCol] ? "lower" : "upper",
+                bound_of_col_of_ecol_is_lower[eCol] ? lp.col_lower_[iCol]
+                                                    : lp.col_upper_[iCol],
                 solution.col_value[col_ecol_offset + eCol]);
           this->changeColBounds(col_ecol_offset + eCol, 0, 0);
           num_fixed++;
@@ -2503,11 +2511,14 @@ HighsStatus Highs::elasticityFilter(const double global_lower_penalty,
             this->options_.primal_feasibility_tolerance) {
           if (kIisDevReport)
             Rprintf(
-                "E-row %2d (column %2d) corresponds to    row %2d with bound "
-                "%g "
-                "and has solution value %g\n",
+                "E-row %2d (column %2d) corresponds to    row %2d with %s "
+                "bound "
+                "%11.4g "
+                "and has solution value %11.4g\n",
                 int(eCol), int(row_ecol_offset + eCol), int(iRow),
-                bound_of_row_of_ecol[eCol],
+                bound_of_row_of_ecol_is_lower[eCol] ? "lower" : "upper",
+                bound_of_row_of_ecol_is_lower[eCol] ? lp.row_lower_[iRow]
+                                                    : lp.row_upper_[iRow],
                 solution.col_value[row_ecol_offset + eCol]);
           this->changeColBounds(row_ecol_offset + eCol, 0, 0);
           num_fixed++;
@@ -2539,11 +2550,14 @@ HighsStatus Highs::elasticityFilter(const double global_lower_penalty,
       if (lp.col_upper_[col_ecol_offset + eCol] == 0) {
         num_enforced_col_ecol++;
         Rprintf(
-            "Col e-col %2d (column %2d) corresponds to column %2d with bound "
-            "%g "
+            "Col e-col %2d (column %2d) corresponds to column %2d with %s "
+            "bound "
+            "%11.4g "
             "and is enforced\n",
             int(eCol), int(col_ecol_offset + eCol), int(iCol),
-            bound_of_col_of_ecol[eCol]);
+            bound_of_col_of_ecol_is_lower[eCol] ? "lower" : "upper",
+            bound_of_col_of_ecol_is_lower[eCol] ? lp.col_lower_[iCol]
+                                                : lp.col_upper_[iCol]);
       }
     }
   }
@@ -2560,10 +2574,13 @@ HighsStatus Highs::elasticityFilter(const double global_lower_penalty,
         */
         if (kIisDevReport)
           Rprintf(
-              "Row e-col %2d (column %2d) corresponds to    row %2d with bound "
-              "%g and is enforced\n",
+              "Row e-col %2d (column %2d) corresponds to    row %2d with %s "
+              "bound "
+              "%11.4g and is enforced\n",
               int(eCol), int(row_ecol_offset + eCol), int(iRow),
-              bound_of_row_of_ecol[eCol]);
+              bound_of_row_of_ecol_is_lower[eCol] ? "lower" : "upper",
+              bound_of_row_of_ecol_is_lower[eCol] ? lp.row_lower_[iRow]
+                                                  : lp.row_upper_[iRow]);
       }
     }
   }
@@ -2654,12 +2671,9 @@ HighsStatus Highs::elasticityFilter(const double global_lower_penalty,
       HighsInt iX = in_row_index[iRow];
       // Should only have one bound assigned
       assert(iis.row_bound_[iX] == -1);
-      if (bound_of_row_of_ecol[eCol] == lp.row_lower_[iRow]) {
-        iis.row_bound_[iX] = kIisBoundStatusLower;
-      } else {
-        assert(bound_of_row_of_ecol[eCol] == lp.row_upper_[iRow]);
-        iis.row_bound_[iX] = kIisBoundStatusUpper;
-      }
+      iis.row_bound_[iX] = bound_of_row_of_ecol_is_lower[eCol]
+                               ? kIisBoundStatusLower
+                               : kIisBoundStatusUpper;
     }
   }
   assert(iis.row_bound_.size() == iis.row_index_.size());
@@ -2919,7 +2933,7 @@ HighsStatus Highs::lpKktCheck(const HighsLp& lp, const std::string& message) {
       info.dual_solution_status = kSolutionStatusFeasible;
     }
     // Overrule feasibility if large relative tolerance failures have
-    // ocurred - pretty inconceivable since absolute residuals should
+    // occurred - pretty inconceivable since absolute residuals should
     // be small with a basis
     if (max_primal_tolerance_relative_violation >
         max_allowed_tolerance_relative_violation)
@@ -3189,11 +3203,69 @@ void Highs::restoreInfCost(HighsStatus& return_status) {
   }
 }
 
+HighsStatus Highs::userScale(HighsUserScaleData& data) {
+  if (!options_.user_objective_scale && !options_.user_bound_scale)
+    return HighsStatus::kOk;
+  // User objective and bound scaling data are accumulated in the
+  // HighsUserScaleData struct, in particular, there is a local copy
+  // of the user objective and bound scaling options values, and
+  // records of resulting extreme data values that prevent the user
+  // objective and bound scaling from being applied.
+  initialiseUserScaleData(this->options_, data);
+  // Determine whether user scaling yields excessively large cost,
+  // Hessian values, column/row bounds or matrix values. If not,
+  // then apply the user scaling to the model...
+  if (this->userScaleModel(data) == HighsStatus::kError)
+    return HighsStatus::kError;
+  // ... and the solution
+  this->userScaleSolution(data);
+  // Indicate that the scaling has been applied
+  data.applied = true;
+  return HighsStatus::kOk;
+}
+
+HighsStatus Highs::userUnscale(HighsUserScaleData& data) {
+  if (!data.applied) return HighsStatus::kOk;
+  // Unscale the incumbent model and solution
+  HighsStatus status = HighsStatus::kOk;
+  // Flip the scaling sign
+  data.user_objective_scale *= -1;
+  data.user_bound_scale *= -1;
+  HighsStatus unscale_status = this->userScaleModel(data);
+  if (unscale_status == HighsStatus::kError) {
+    highsLogUser(
+        this->options_.log_options, HighsLogType::kError,
+        "Unexpected error removing user scaling from the incumbent model\n");
+    assert(unscale_status != HighsStatus::kError);
+  }
+  const bool update_kkt = true;
+  unscale_status = this->userScaleSolution(data, update_kkt);
+  highsLogUser(this->options_.log_options, HighsLogType::kInfo,
+               "After solving the user-scaled model, the unscaled solution "
+               "has objective value %.12g\n",
+               this->info_.objective_function_value);
+  if (model_status_ == HighsModelStatus::kOptimal &&
+      unscale_status != HighsStatus::kOk) {
+    // KKT errors in the unscaled optimal solution, so log a warning and
+    // return
+    highsLogUser(
+        this->options_.log_options, HighsLogType::kWarning,
+        "User scaled problem solved to optimality, but unscaled solution "
+        "does not satisfy feasibility and optimality tolerances\n");
+    status = HighsStatus::kWarning;
+  }
+  return status;
+}
+
 HighsStatus Highs::userScaleModel(HighsUserScaleData& data) {
+  // Consider applying user objective and bound scaling to the model
+  // by first identifying whether it causes any errors due to creating
+  // extreme data values...
   userScaleLp(this->model_.lp_, data, false);
   userScaleHessian(this->model_.hessian_, data, false);
   HighsStatus return_status = userScaleStatus(this->options_.log_options, data);
   if (return_status == HighsStatus::kError) return HighsStatus::kError;
+  // ... and, if not, actually apply the scaling
   userScaleLp(this->model_.lp_, data);
   userScaleHessian(this->model_.hessian_, data);
   return return_status;
@@ -3953,7 +4025,7 @@ bool Highs::hasRepeatedLinearObjectivePriorities(
 
 static bool comparison(std::pair<HighsInt, HighsInt> x1,
                        std::pair<HighsInt, HighsInt> x2) {
-  return x1.first >= x2.first;
+  return x1.first > x2.first;
 }
 
 HighsStatus Highs::returnFromLexicographicOptimization(
@@ -4328,8 +4400,10 @@ void HighsSubSolverCallTime::initialise() {
   this->num_call.assign(kSubSolverCount, 0);
   this->run_time.assign(kSubSolverCount, 0);
   this->name.assign(kSubSolverCount, "");
-  this->name[kSubSolverSimplexBasis] = "Simplex (basis)";
-  this->name[kSubSolverSimplexNoBasis] = "Simplex (no basis)";
+  this->name[kSubSolverDuSimplexBasis] = "Du simplex (basis)";
+  this->name[kSubSolverDuSimplexNoBasis] = "Du simplex (no basis)";
+  this->name[kSubSolverPrSimplexBasis] = "Pr simplex (basis)";
+  this->name[kSubSolverPrSimplexNoBasis] = "Pr simplex (no basis)";
   this->name[kSubSolverHipo] = "HiPO";
   this->name[kSubSolverIpx] = "IPX";
   this->name[kSubSolverHipoAc] = "HiPO (AC)";
@@ -4360,7 +4434,7 @@ void Highs::reportSubSolverCallTime() const {
   std::stringstream ss;
   ss.str(std::string());
   ss << highsFormatToString(
-      "\nSub-solver timing\nSolver                 Calls    Time       "
+      "\nSub-solver timing\nSolver                    Calls    Time       "
       "Time/call");
   if (mip_time > 0) ss << "  MIP%";
   highsLogUser(options_.log_options, HighsLogType::kInfo, "%s\n",
@@ -4371,7 +4445,7 @@ void Highs::reportSubSolverCallTime() const {
     if (this->sub_solver_call_time_.num_call[Ix]) {
       ss.str(std::string());
       ss << highsFormatToString(
-          "%-18s %9d %11.4e %11.4e",
+          "%-21s %9d %11.4e %11.4e",
           this->sub_solver_call_time_.name[Ix].c_str(),
           int(this->sub_solver_call_time_.num_call[Ix]),
           this->sub_solver_call_time_.run_time[Ix],
@@ -4390,7 +4464,7 @@ void Highs::reportSubSolverCallTime() const {
   }
   if (mip_time > 0)
     highsLogUser(options_.log_options, HighsLogType::kInfo,
-                 "TOTAL (excluding AC)         %11.4e             %5.1f\n",
+                 "TOTAL (excluding AC)            %11.4e             %5.1f\n",
                  sum_mip_sub_solve_time,
                  1e2 * sum_mip_sub_solve_time / mip_time);
 }

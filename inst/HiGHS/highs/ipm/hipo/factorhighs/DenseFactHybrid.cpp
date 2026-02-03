@@ -24,9 +24,7 @@ Int denseFactFH(char format, Int n, Int k, Int nb, double* A, double* B,
   // BLAS calls: dcopy, dscal, daxpy, dgemm, dtrsm
   // ===========================================================================
 
-#if HIPO_TIMING_LEVEL >= 2
-  Clock clock;
-#endif
+  HIPO_CLOCK_CREATE;
 
   // check input
   if (n < 0 || k < 0 || !A || (k < n && !B)) return kRetInvalidInput;
@@ -38,7 +36,7 @@ Int denseFactFH(char format, Int n, Int k, Int nb, double* A, double* B,
   const Int n_blocks = (k - 1) / nb + 1;
 
   // start of diagonal blocks
-  std::vector<Int> diag_start(n_blocks);
+  std::vector<Int64> diag_start(n_blocks);
   getDiagStart(n, k, nb, n_blocks, diag_start);
 
   // size of blocks
@@ -64,6 +62,8 @@ Int denseFactFH(char format, Int n, Int k, Int nb, double* A, double* B,
   for (Int j = 0; j < n_blocks; ++j) {
     // j is the index of the block column
 
+    HIPO_CLOCK_START(2);
+
     // jb is the number of columns
     const Int jb = std::min(nb, k - nb * j);
 
@@ -78,7 +78,7 @@ Int denseFactFH(char format, Int n, Int k, Int nb, double* A, double* B,
     const Int M = n - nb * j - jb;
 
     // block of columns below diagonal block j
-    const Int R_pos = diag_start[j] + this_diag_size;
+    const Int64 R_pos = diag_start[j] + this_diag_size;
     double* R = &A[R_pos];
 
     // ===========================================================================
@@ -86,7 +86,7 @@ Int denseFactFH(char format, Int n, Int k, Int nb, double* A, double* B,
     // ===========================================================================
     double max_in_R = -1.0;
     if (jb == 1) {
-      for (Int i = 0; i < M * jb; ++i)
+      for (Int64 i = 0; i < M * jb; ++i)
         max_in_R = std::max(max_in_R, std::abs(R[i]));
     }
 
@@ -152,7 +152,7 @@ Int denseFactFH(char format, Int n, Int k, Int nb, double* A, double* B,
 
       // check entries of L
       /*double max_in_R = -1.0;
-      for (Int i = 0; i < M * jb; ++i) {
+      for (Int64 i = 0; i < M * jb; ++i) {
         max_in_R = std::max(max_in_R, std::abs(R[i]));
       }
       if (max_in_R > 1e8) Rprintf("%.1e, %5d %5d\n", max_in_R, jb, M);*/
@@ -160,7 +160,7 @@ Int denseFactFH(char format, Int n, Int k, Int nb, double* A, double* B,
       // ===========================================================================
       // UPDATE FRONTAL
       // ===========================================================================
-      Int offset{};
+      Int64 offset{};
 
       // go through remaining blocks of columns
       for (Int jj = j + 1; jj < n_blocks; ++jj) {
@@ -183,17 +183,14 @@ Int denseFactFH(char format, Int n, Int k, Int nb, double* A, double* B,
 
         offset += jb * col_jj;
       }
-
-#if HIPO_TIMING_LEVEL >= 2
-      data.sumTime(kTimeDenseFact_main, clock.stop());
-      clock.start();
-#endif
-
+      HIPO_CLOCK_STOP(2, data, kTimeDenseFact_main);
+      
       // ===========================================================================
       // UPDATE SCHUR COMPLEMENT
       // ===========================================================================
+      HIPO_CLOCK_START(2);
       if (k < n) {
-        Int B_offset{};
+        Int64 B_offset{};
 
         // go through blocks of columns of the Schur complement
         for (Int sb = 0; sb < s_blocks; ++sb) {
@@ -232,10 +229,7 @@ Int denseFactFH(char format, Int n, Int k, Int nb, double* A, double* B,
           offset += jb * ncol;
         }
       }
-#if HIPO_TIMING_LEVEL >= 2
-      data.sumTime(kTimeDenseFact_schur, clock.stop());
-      clock.start();
-#endif
+      HIPO_CLOCK_STOP(2, data, kTimeDenseFact_schur);
     }
   }
 
@@ -250,14 +244,12 @@ Int denseFactFP2FH(double* A, Int nrow, Int ncol, Int nb, DataCollector& data) {
   // BLAS calls: dcopy
   // ===========================================================================
 
-#if HIPO_TIMING_LEVEL >= 2
-  Clock clock;
-#endif
+  HIPO_CLOCK_CREATE;
 
   std::vector<double> buf(nrow * nb);
 
-  Int startAtoBuf = 0;
-  Int startBuftoA = 0;
+  Int64 startAtoBuf = 0;
+  Int64 startBuftoA = 0;
 
   for (Int k = 0; k <= (ncol - 1) / nb; ++k) {
     // Number of columns in the block. Can be smaller than nb for last block.
@@ -280,9 +272,7 @@ Int denseFactFP2FH(double* A, Int nrow, Int ncol, Int nb, DataCollector& data) {
     }
   }
 
-#if HIPO_TIMING_LEVEL >= 2
-  data.sumTime(kTimeDenseFact_convert, clock.stop());
-#endif
+  HIPO_CLOCK_STOP(2, data, kTimeDenseFact_convert);
 
   return kRetOk;
 }

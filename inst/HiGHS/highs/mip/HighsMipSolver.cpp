@@ -221,15 +221,7 @@ restart:
   search.setLpRelaxation(&mipdata_->lp);
   sepa.setLpRelaxation(&mipdata_->lp);
 
-  double prev_lower_bound = mipdata_->lower_bound;
-
-  mipdata_->lower_bound = mipdata_->nodequeue.getBestLowerBound();
-
-  bool bound_change = mipdata_->lower_bound != prev_lower_bound;
-  if (!submip && bound_change)
-    mipdata_->updatePrimalDualIntegral(prev_lower_bound, mipdata_->lower_bound,
-                                       mipdata_->upper_bound,
-                                       mipdata_->upper_bound);
+  mipdata_->updateLowerBound(mipdata_->nodequeue.getBestLowerBound());
 
   mipdata_->printDisplayLine();
   search.installNode(mipdata_->nodequeue.popBestBoundNode());
@@ -369,16 +361,8 @@ restart:
     search.flushStatistics();
 
     if (limit_reached) {
-      double prev_lower_bound = mipdata_->lower_bound;
-
-      mipdata_->lower_bound = std::min(mipdata_->upper_bound,
-                                       mipdata_->nodequeue.getBestLowerBound());
-
-      bool bound_change = mipdata_->lower_bound != prev_lower_bound;
-      if (!submip && bound_change)
-        mipdata_->updatePrimalDualIntegral(
-            prev_lower_bound, mipdata_->lower_bound, mipdata_->upper_bound,
-            mipdata_->upper_bound);
+      mipdata_->updateLowerBound(std::min(
+          mipdata_->upper_bound, mipdata_->nodequeue.getBestLowerBound()));
       mipdata_->printDisplayLine();
       break;
     }
@@ -400,29 +384,13 @@ restart:
     if (mipdata_->domain.infeasible()) {
       mipdata_->nodequeue.clear();
       mipdata_->pruned_treeweight = 1.0;
-
-      double prev_lower_bound = mipdata_->lower_bound;
-
-      mipdata_->lower_bound = std::min(kHighsInf, mipdata_->upper_bound);
-
-      bool bound_change = mipdata_->lower_bound != prev_lower_bound;
-      if (!submip && bound_change)
-        mipdata_->updatePrimalDualIntegral(
-            prev_lower_bound, mipdata_->lower_bound, mipdata_->upper_bound,
-            mipdata_->upper_bound);
+      mipdata_->updateLowerBound(std::min(kHighsInf, mipdata_->upper_bound));
       mipdata_->printDisplayLine();
       break;
     }
 
-    double prev_lower_bound = mipdata_->lower_bound;
-
-    mipdata_->lower_bound = std::min(mipdata_->upper_bound,
-                                     mipdata_->nodequeue.getBestLowerBound());
-    bool bound_change = mipdata_->lower_bound != prev_lower_bound;
-    if (!submip && bound_change)
-      mipdata_->updatePrimalDualIntegral(
-          prev_lower_bound, mipdata_->lower_bound, mipdata_->upper_bound,
-          mipdata_->upper_bound);
+    mipdata_->updateLowerBound(std::min(
+        mipdata_->upper_bound, mipdata_->nodequeue.getBestLowerBound()));
     mipdata_->printDisplayLine();
     if (mipdata_->nodequeue.empty()) break;
 
@@ -595,15 +563,9 @@ restart:
           mipdata_->nodequeue.clear();
           mipdata_->pruned_treeweight = 1.0;
 
-          double prev_lower_bound = mipdata_->lower_bound;
+          mipdata_->updateLowerBound(
+              std::min(kHighsInf, mipdata_->upper_bound));
 
-          mipdata_->lower_bound = std::min(kHighsInf, mipdata_->upper_bound);
-
-          bool bound_change = mipdata_->lower_bound != prev_lower_bound;
-          if (!submip && bound_change)
-            mipdata_->updatePrimalDualIntegral(
-                prev_lower_bound, mipdata_->lower_bound, mipdata_->upper_bound,
-                mipdata_->upper_bound);
           analysis_.mipTimerStop(kMipClockNodePrunedLoop);
           break;
         }
@@ -614,16 +576,9 @@ restart:
         }
 
         //	analysis_.mipTimerStart(kMipClockStoreBasis);
-        double prev_lower_bound = mipdata_->lower_bound;
+        mipdata_->updateLowerBound(std::min(
+            mipdata_->upper_bound, mipdata_->nodequeue.getBestLowerBound()));
 
-        mipdata_->lower_bound = std::min(
-            mipdata_->upper_bound, mipdata_->nodequeue.getBestLowerBound());
-
-        bool bound_change = mipdata_->lower_bound != prev_lower_bound;
-        if (!submip && bound_change)
-          mipdata_->updatePrimalDualIntegral(
-              prev_lower_bound, mipdata_->lower_bound, mipdata_->upper_bound,
-              mipdata_->upper_bound);
         mipdata_->printDisplayLine();
 
         if (!mipdata_->domain.getChangedCols().empty()) {
@@ -649,9 +604,14 @@ restart:
       analysis_.mipTimerStop(kMipClockNodePrunedLoop);
 
       // the node is still not fathomed, so perform separation
-      analysis_.mipTimerStart(kMipClockNodeSearchSeparation);
-      sepa.separate(search.getLocalDomain());
-      analysis_.mipTimerStop(kMipClockNodeSearchSeparation);
+      if (options_mip_->mip_allow_cut_separation_at_nodes) {
+        analysis_.mipTimerStart(kMipClockNodeSearchSeparation);
+        sepa.separate(search.getLocalDomain());
+        analysis_.mipTimerStop(kMipClockNodeSearchSeparation);
+      } else {
+        // perform aging
+        mipdata_->cutpool.performAging();
+      }
 
       if (mipdata_->domain.infeasible()) {
         search.cutoffNode();
@@ -662,15 +622,7 @@ restart:
         mipdata_->pruned_treeweight = 1.0;
 
         analysis_.mipTimerStart(kMipClockStoreBasis);
-        double prev_lower_bound = mipdata_->lower_bound;
-
-        mipdata_->lower_bound = std::min(kHighsInf, mipdata_->upper_bound);
-
-        bool bound_change = mipdata_->lower_bound != prev_lower_bound;
-        if (!submip && bound_change)
-          mipdata_->updatePrimalDualIntegral(
-              prev_lower_bound, mipdata_->lower_bound, mipdata_->upper_bound,
-              mipdata_->upper_bound);
+        mipdata_->updateLowerBound(std::min(kHighsInf, mipdata_->upper_bound));
         break;
       }
 
