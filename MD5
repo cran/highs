@@ -1,4 +1,4 @@
-0e7544919b80a04c233729b19763561f *DESCRIPTION
+80a10f3cbbf7e1b77ee81be5b8bae750 *DESCRIPTION
 e44f3c234357317d2d3128d9c7667c0c *NAMESPACE
 1e2d944b24fb6be277275ef2e0909f40 *NEWS.md
 268bd525ac1d773a0eb9cbcbb2821811 *R/RcppExports.R
@@ -630,7 +630,7 @@ ae8487b7915032b7249983dbf6fdd357 *inst/HiGHS/nuget/generatePackage.ps1
 517bf0be9eb228644445fa818784736c *inst/HiGHS/subprojects/pybind11.wrap
 10406ff1cb1c1fa1a90acd736c17bdb5 *inst/HiGHS/tests/test_highspy.py
 736f2a902d0b8c9227591c4a70b9766d *inst/HiGHS/version.rc.in
-102a9512246c5167d185f39e690116f4 *inst/build_highs.sh
+b26417e60943006c34bf2555fcec617d *inst/build_highs.sh
 7b23692ecc19c1b87f75b318ac365ec6 *inst/tinytest/test_lp-solver.R
 ffabcd13f3f17e489dd64ee49b95e417 *inst/tinytest/test_model-api.R
 2246f626abd777d323a5be1974423645 *inst/tinytest/test_qp-solver.R

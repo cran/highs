@@ -41,8 +41,12 @@ R_INCLUDE_DIR=`"${R_HOME}/bin/Rscript" -e 'writeLines(R.home("include"))'`
 R_INCLUDE_DIR="-I${R_INCLUDE_DIR}"
 
 export CC=`"${R_HOME}/bin/R" CMD config CC`
-export CXX=`"${R_HOME}/bin/R" CMD config CXX11`
-export CXX11=`"${R_HOME}/bin/R" CMD config CXX11`
+export CXX=`"${R_HOME}/bin/R" CMD config CXX`
+if test -z "$CXX"; then
+    echo "a C++ compiler is required"
+    exit 127;
+fi
+#export CXX11=`"${R_HOME}/bin/R" CMD config CXX11`
 export CPPFLAGS="${CPPFLAGS} ${RCPP_FLAGS} ${R_INCLUDE_DIR}"
 export CFLAGS="${CFLAGS} ${R_INCLUDE_DIR}"
 export CXXFLAGS="${CXXFLAGS} ${RCPP_FLAGS} ${R_INCLUDE_DIR}"
@@ -54,7 +58,7 @@ echo "CMAKE VERSION: '`${CMAKE_EXE} --version | head -n 1`'"
 echo "arch: '$(arch)'"
 echo "CC: '${CC}'"
 echo "CXX: '${CXX}'"
-echo "CXX11: '${CXX}'"
+#echo "CXX11: '${CXX}'"
 echo "CXXFLAGS: '${CXXFLAGS}'"
 echo "CFLAGS: '${CFLAGS}'"
 echo "CPPFLAGS: '${CPPFLAGS}'"
