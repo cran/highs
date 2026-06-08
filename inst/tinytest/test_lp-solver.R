@@ -36,7 +36,8 @@ test_milp2 <- function() {
     A <- rbind(c(-1, 2, 1), c(0, 4, -3), c(1, -3, 2))
     rhs <- c(4, 2, 3)
     types <- c("I", "C", "I")
-    s <- highs_solve(L = L, lower = 0, A = A, rhs = rhs, types = types, maximum = TRUE)
+    s <- highs_solve(L = L, lower = 0, A = A, rhs = rhs, types = types,
+                     maximum = TRUE, start = c(NA, NA, 3))
     expect_equal(s[["objective_value"]], 26.75)
 }
 

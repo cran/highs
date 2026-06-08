@@ -146,8 +146,9 @@ HighsInt HighsHessian::numNz() const {
 
 void HighsHessian::print() const {
   HighsInt num_nz = this->numNz();
-  Rprintf("Hessian of dimension %" HIGHSINT_FORMAT " and %" HIGHSINT_FORMAT
+  Rprintf("%s Hessian of dimension %" HIGHSINT_FORMAT " and %" HIGHSINT_FORMAT
          " entries\n",
+         this->format_ == HessianFormat::kTriangular ? "Triangular" : "Square",
          dim_, num_nz);
   Rprintf("Start; Index; Value of sizes %d; %d; %d\n", (int)this->start_.size(),
          (int)this->index_.size(), (int)this->value_.size());
@@ -158,16 +159,16 @@ void HighsHessian::print() const {
   Rprintf("-----");
   for (int iCol = 0; iCol < dim_; iCol++) Rprintf("-----");
   Rprintf("\n");
-  std::vector<double> col;
-  col.assign(dim_, 0);
+  std::vector<std::string> col;
+  col.assign(dim_, "");
   for (HighsInt iCol = 0; iCol < dim_; iCol++) {
     for (HighsInt iEl = this->start_[iCol]; iEl < this->start_[iCol + 1]; iEl++)
-      col[this->index_[iEl]] = this->value_[iEl];
+      col[this->index_[iEl]] = highsFormatToString("%4g", this->value_[iEl]);
     Rprintf("%4d|", (int)iCol);
-    for (int iRow = 0; iRow < dim_; iRow++) Rprintf(" %4g", col[iRow]);
+    for (int iRow = 0; iRow < dim_; iRow++) Rprintf(" %4s", col[iRow].c_str());
     Rprintf("\n");
     for (HighsInt iEl = this->start_[iCol]; iEl < this->start_[iCol + 1]; iEl++)
-      col[this->index_[iEl]] = 0;
+      col[this->index_[iEl]] = "";
   }
 }
 bool HighsHessian::operator==(const HighsHessian& hessian) const {
@@ -191,6 +192,23 @@ void HighsHessian::product(const std::vector<double>& solution,
       product[iRow] += this->value_[iEl] * solution[iCol];
       if (triangular && iRow != iCol)
         product[iCol] += this->value_[iEl] * solution[iRow];
+    }
+  }
+}
+
+void HighsHessian::alphaProductPlusY(const double alpha,
+                                     const std::vector<double>& x,
+                                     std::vector<double>& y) const {
+  if (this->dim_ <= 0) return;
+
+  const bool triangular = this->format_ == HessianFormat::kTriangular;
+  for (HighsInt iCol = 0; iCol < this->dim_; iCol++) {
+    for (HighsInt iEl = this->start_[iCol]; iEl < this->start_[iCol + 1];
+         iEl++) {
+      const HighsInt iRow = this->index_[iEl];
+      y[iRow] += alpha * this->value_[iEl] * x[iCol];
+      if (triangular && iRow != iCol)
+        y[iCol] += alpha * this->value_[iEl] * x[iRow];
     }
   }
 }
@@ -226,4 +244,21 @@ HighsCDouble HighsHessian::objectiveCDoubleValue(
           solution[iCol] * this->value_[iEl] * solution[this->index_[iEl]];
   }
   return objective_function_value;
+}
+
+bool HighsHessian::empty() const { return dim_ <= 0; }
+bool HighsHessian::isDiagonal() const {
+  for (HighsInt iCol = 0; iCol < this->dim_; iCol++) {
+    for (HighsInt iEl = this->start_[iCol]; iEl < this->start_[iCol + 1];
+         iEl++) {
+      const HighsInt iRow = this->index_[iEl];
+      if (iRow != iCol) return false;
+    }
+  }
+  return true;
+}
+double HighsHessian::diag(HighsInt i) const {
+  assert(i < dim_);
+  assert(index_[start_[i]] == i);
+  return value_[start_[i]];
 }

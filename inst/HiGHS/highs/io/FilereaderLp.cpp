@@ -93,7 +93,7 @@ FilereaderRetcode FilereaderLp::readModelFromFile(const HighsOptions& options,
     unsigned int qnnz = 0;
     for (std::shared_ptr<Variable> var : m.variables)
       for (size_t i = 0; i < mat[var].size(); i++)
-        if (mat2[var][i]) qnnz++;
+        if (mat2[var][i] != 0.0) qnnz++;
     if (qnnz) {
       hessian.dim_ = m.variables.size();
       qnnz = 0;
@@ -105,7 +105,7 @@ FilereaderRetcode FilereaderLp::readModelFromFile(const HighsOptions& options,
         hessian.start_.push_back(qnnz);
         for (size_t i = 0; i < mat[var].size(); i++) {
           double value = mat2[var][i];
-          if (value) {
+          if (value != 0.0) {
             hessian.index_.push_back(varindex[mat[var][i]->name]);
             hessian.value_.push_back(value);
             qnnz++;
@@ -179,7 +179,7 @@ FilereaderRetcode FilereaderLp::readModelFromFile(const HighsOptions& options,
       lp.a_matrix_.start_.push_back(num_nz);
       for (size_t j = 0; j < consofvarmap_index[var].size(); j++) {
         double value = consofvarmap_value[var][j];
-        if (value) {
+        if (value != 0.0) {
           lp.a_matrix_.index_.push_back(consofvarmap_index[var][j]);
           lp.a_matrix_.value_.push_back(value);
           num_nz++;
@@ -213,7 +213,7 @@ FilereaderRetcode FilereaderLp::readModelFromFile(const HighsOptions& options,
         // row
         HighsInt iRow = matrix.index_[iEl];
         double value = matrix.value_[iEl];
-        if (value) {
+        if (value != 0.0) {
           column[iRow] += value;
           nz_count[iRow]++;
         } else {
@@ -226,7 +226,7 @@ FilereaderRetcode FilereaderLp::readModelFromFile(const HighsOptions& options,
       matrix.start_[iCol] = num_nz;
       for (HighsInt iEl = from_el; iEl < matrix.start_[iCol + 1]; iEl++) {
         HighsInt iRow = matrix.index_[iEl];
-        if (column[iRow]) {
+        if (column[iRow] != 0.0) {
           assert(num_nz <= iEl);
           matrix.index_[num_nz] = iRow;
           matrix.value_[num_nz] = column[iRow];

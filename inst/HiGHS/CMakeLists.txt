@@ -67,7 +67,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
 endif()
 
 # MSVC
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+# set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 message(STATUS "Git hash: " ${GITHASH})
 # By default only build the C++ library.
@@ -121,6 +121,9 @@ if (PYTHON_BUILD_SETUP)
   set(ZLIB OFF)
 endif()
 
+option(BUILD_EXAMPLES "Build examples" ON)
+message(STATUS "Build examples: ${BUILD_EXAMPLES}")
+
 option(HIGHS_COVERAGE "Activate the code coverage compilation" OFF)
 
 # Address | Thread | Leak
@@ -138,6 +141,14 @@ message(STATUS "Build pdlp with GPU: ${CUPDLP_GPU}")
 
 option(CUPDLP_FIND_CUDA "Build pdlp with GPU" OFF)
 message(STATUS "Use FindCUDAConf: ${CUPDLP_FIND_CUDA}")
+
+option(HIGHS_GPU_LIB "Build highs GPU as a single lib" OFF)
+message(STATUS "Build GPU with delayed loading: ${HIGHS_GPU_LIB}")
+
+# For now
+if (HIGHS_GPU_LIB)
+  set(CUPDLP_GPU ON)
+endif()
 
 if(CUPDLP_GPU AND CMAKE_VERSION VERSION_LESS "3.25.0")
     message("CUPDLP FindCUDAConf requires CMake version minumum 3.24. Please use a higher version of CMake.")
@@ -217,9 +228,9 @@ if(BUILD_STATIC_EXE)
   endif()
 
   # Windows: link runtime statically
-  if(MSVC)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  endif()
+  # if(MSVC)
+  #   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  # endif()
 endif()
 
 
@@ -562,7 +573,23 @@ if(ZLIB AND NOT TARGET ZLIB::ZLIB)
   find_package(ZLIB 1.2.3)
 endif()
 
-install(FILES README.md LICENSE.txt DESTINATION .)
+if (PYTHON_BUILD_SETUP OR CMAKE_INSTALL_DOCDIR STREQUAL "" OR NOT BUILD_CXX)
+  install(FILES
+      README.md
+      LICENSE.txt
+      THIRD_PARTY_NOTICES.md
+      DESTINATION .)
+else()
+  install(FILES
+      README.md
+      LICENSE.txt
+      AUTHORS
+
+      CODE_OF_CONDUCT.md
+      CONTRIBUTING.md
+      FEATURES.md
+      DESTINATION ${CMAKE_INSTALL_DOCDIR})
+endif()
 
 # Set default generator based on platform
 if(WIN32)
@@ -797,6 +824,7 @@ if(NOT FAST_BUILD)
     ${PROJECT_SOURCE_DIR}/highs
     ${PROJECT_SOURCE_DIR}/highs/io
     ${PROJECT_SOURCE_DIR}/highs/pdlp/cupdlp
+    ${PROJECT_SOURCE_DIR}/highs/pdlp/hipdlp
     ${PROJECT_SOURCE_DIR}/highs/ipm/ipx
     ${PROJECT_SOURCE_DIR}/highs/ipm/basiclu
     ${PROJECT_SOURCE_DIR}/highs/lp_data
@@ -830,8 +858,6 @@ if(NOT FAST_BUILD)
 else(FAST_BUILD)
   message(STATUS "FAST_BUILD set to on.")
 
-  option(BUILD_EXAMPLES "Build examples" ON)
-  message(STATUS "Build examples: ${BUILD_EXAMPLES}")
 
   CMAKE_DEPENDENT_OPTION(BUILD_CXX_EXAMPLE "Build cxx example" ON "BUILD_EXAMPLES;BUILD_CXX" OFF)
   message(STATUS "Build C++ example: ${BUILD_CXX_EXAMPLE}")
@@ -878,6 +904,10 @@ else(FAST_BUILD)
   endif()
 
 endif()
+
+# Prevent nested directory structure in the archive
+set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
+set(CPACK_COMPONENT_INCLUDE_TOPLEVEL_DIRECTORY OFF)
 
 # Detect system information
 if(UNIX AND NOT APPLE)

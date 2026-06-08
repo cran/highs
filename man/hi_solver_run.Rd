@@ -4,16 +4,22 @@
 \alias{hi_solver_run}
 \title{Run the Solver}
 \usage{
-hi_solver_run(solver)
+hi_solver_run(solver, verbose = FALSE)
 }
 \arguments{
 \item{solver}{An object of class "highs_solver".}
+
+\item{verbose}{a logical if TRUE, prints solver log messages to the console.}
 }
 \value{
-The solver instance after optimization.
+An integer status code (-1 = error, 0 = success, 1 = warning).
 }
 \description{
-This function executes the optimization solver on the current model.
+Executes the optimization solver on the current model.
+}
+\details{
+Solver output is controlled by the `output_flag` option:
+use `hi_solver_set_option(solver, "output_flag", "off")` to suppress logging.
 }
 \examples{
 solver <- example_solver()

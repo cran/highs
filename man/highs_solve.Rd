@@ -15,6 +15,7 @@ highs_solve(
   types = rep.int(1L, length(L)),
   maximum = FALSE,
   offset = 0,
+  start = NULL,
   control = highs_control()
 )
 }
@@ -45,6 +46,10 @@ constraints, and columns are decision variables.}
 if \code{FALSE} the solver searches for a minimum.}
 
 \item{offset}{a numeric value giving the offset (default is \code{0}).}
+
+\item{start}{a numeric vector giving the start solution.
+Missing values can be used to specify that particular
+variables should have their starting values calculated automatically.}
 
 \item{control}{a list giving additional options for the solver,
 see \link{highs_available_solver_options} or the \code{README} file

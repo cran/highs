@@ -56,6 +56,48 @@ enum class RawTokenType {
   ASTERISK
 };
 
+/*
+  // Useful for debugging
+static std::string tokenTypeToString(const RawTokenType& type) {
+  switch (type) {
+  case RawTokenType::NONE:
+    return "None";
+  case RawTokenType::STR:
+    return "String";
+  case RawTokenType::CONS:
+    return "Constraint ";
+  case RawTokenType::LESS:
+    return "<=";
+  case RawTokenType::GREATER:
+    return ">=";
+  case RawTokenType::EQUAL:
+    return "=";
+  case RawTokenType::COLON:
+    return ":";
+  case RawTokenType::LNEND:
+    return "\\n";
+  case RawTokenType::FLEND:
+    return "EOF";
+  case RawTokenType::BRKOP:
+    return "(";
+  case RawTokenType::BRKCL:
+    return ")";
+  case RawTokenType::PLUS:
+    return "+";
+  case RawTokenType::MINUS:
+    return "-";
+  case RawTokenType::HAT:
+    return "^";
+  case RawTokenType::SLASH:
+    return "/";
+  case RawTokenType::ASTERISK:
+    return "*";
+  default:
+    return "Unknown";
+  }
+}
+*/
+
 struct RawToken {
   RawTokenType type = RawTokenType::NONE;
   std::string svalue;
@@ -245,6 +287,7 @@ class Reader {
                        std::vector<ProcessedToken>::iterator end,
                        std::shared_ptr<Expression> expr, bool isobj);
 
+  //  void printRawTokens();
  public:
   Reader(std::string filename) {
 #ifdef ZLIB_FOUND
@@ -873,8 +916,13 @@ void Reader::splittokens() {
 void Reader::processtokens() {
   std::string svalue_lc;
   while (!rawtokens[0].istype(RawTokenType::FLEND)) {
-    NULL;
-
+    if (rawtokens[0].type == RawTokenType::STR) {
+      if (parsesectionkeyword(rawtokens[0].svalue) != LpSectionKeyword::NONE) {
+	// Found an LP section keyword so check it's not a constraint name!
+	if (rawtokens[1].type == RawTokenType::COLON)
+	  rawtokens[0].type = RawTokenType::CONS;
+      }
+    }
     // Slash + asterisk: comment, skip everything up to next asterisk + slash
     if (rawtokens[0].istype(RawTokenType::SLASH) &&
         rawtokens[1].istype(RawTokenType::ASTERISK)) {
@@ -1120,6 +1168,8 @@ void Reader::processtokens() {
     assert(!rawtokens[0].istype(RawTokenType::FLEND));
 
     // catch all unknown symbols
+    //
+    //    printRawTokens();
     lpassert(false);
     break;
   }
@@ -1310,3 +1360,17 @@ bool Reader::readnexttoken(RawToken& t) {
   lpassert(false);
   return false;
 }
+
+/*
+  // Useful for debugging
+void Reader::printRawTokens() {
+  for(int iToken=0; iToken < NRAWTOKEN; iToken++) {
+    const RawToken& rawtoken = rawtokens[iToken];
+    Rprintf("rawtokens[%d]: ", int(iToken));
+    Rprintf("type = %-12s", tokenTypeToString(rawtoken.type).c_str());
+    Rprintf("; svalue = %8s: ", rawtoken.svalue.c_str());
+    if (iToken < NRAWTOKEN-1) Rprintf("; ");
+  }
+  Rprintf("\n");
+}
+*/

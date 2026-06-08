@@ -17,7 +17,15 @@ class HighsR: public Highs {
 */
 
 static void R_message_handler(HighsLogType type, const char* message, void* log_callback_data) {
-    Rcpp::Rcout << message << std::endl;
+    // Only print if log_callback_data is valid and output_flag is true
+    if (log_callback_data) {
+        Highs* highs = static_cast<Highs*>(log_callback_data);
+        const HighsOptions& options = highs->getOptions();
+        if (options.log_options.output_flag &&
+            *options.log_options.output_flag) {
+            Rcpp::Rcout << message << std::endl;
+        }
+    }
 }
 
 
@@ -196,7 +204,7 @@ RCPP_MODULE(RcppHighs) {
 // [[Rcpp::export]]
 SEXP new_solver(SEXP mpt) {
     Rcpp::XPtr<Highs> highs(new Highs(), true);
-    highs->setLogCallback(R_message_handler);
+    highs->setLogCallback(R_message_handler, highs.get());
 
     if (Rf_isNull(mpt)) {
         return Rcpp::List::create(
@@ -765,10 +773,10 @@ int32_t solver_add_rows(SEXP hi, NumericVector lhs, NumericVector rhs,
     IntegerVector start, IntegerVector index, NumericVector value) {
     Rcpp::XPtr<Highs>highs(hi);
     HighsStatus return_status = highs->addRows(
-        lhs.size(), //!< num_new_row = Number of new rows
+        static_cast<int32_t>(lhs.size()), //!< num_new_row = Number of new rows
         &(lhs[0]),  //!< lower = Array of size num_new_row with lower bounds
         &(rhs[0]),  //!< upper = Array of size num_new_row with upper bounds
-        value.size(), //!< num_new_nz = Number of new nonzeros
+        static_cast<int32_t>(value.size()), //!< num_new_nz = Number of new nonzeros
         &(start[0]),   //!< starts = Array of size num_new_row with start indices of the rows
         &(index[0]),   //!< indices = Array of size num_new_nz with column indices for all rows
         &(value[0])    //!< values = Array of size num_new_nz with column values for all rows
@@ -783,11 +791,11 @@ int32_t solver_add_cols(SEXP hi, NumericVector costs,
     IntegerVector start, IntegerVector index, NumericVector value) {
     Rcpp::XPtr<Highs>highs(hi);
     HighsStatus return_status = highs->addCols(
-        lower.size(), //!< num_new_col = Number of new columns
+        static_cast<int32_t>(lower.size()), //!< num_new_col = Number of new columns
         &(costs[0]),   //!< costs = Array of size num_new_col with costs
         &(lower[0]),   //!< lower = Array of size num_new_col with lower bounds
         &(upper[0]),   //!< upper = Array of size num_new_col with upper bounds
-        value.size(), //!< num_new_nz = Number of new nonzeros
+        static_cast<int32_t>(value.size()), //!< num_new_nz = Number of new nonzeros
         &(start[0]),   //!< starts = Array of size num_new_row with start indices of the columns
         &(index[0]),   //!< indices = Array of size num_new_nz with row indices for all columns
         &(value[0])    //!< values = Array of size num_new_nz with row values for all columns
@@ -881,7 +889,7 @@ std::vector<double> solver_get_row_upper(SEXP hi) {
 IntegerVector solver_get_integrality(SEXP hi) {
     Rcpp::XPtr<Highs>highs(hi);
     HighsModel model = highs->getModel();
-    int len = model.lp_.integrality_.size();
+    int len = static_cast<int>(model.lp_.integrality_.size());
     IntegerVector vec(len);
     for (int32_t i = 0; i < len; i++) {
         vec[i] = static_cast<int>(model.lp_.integrality_[i]);
@@ -912,7 +920,7 @@ Rcpp::List solver_get_constraint_matrix(SEXP hi) {
 Rcpp::IntegerVector solver_get_vartype(SEXP hi) {
     Rcpp::XPtr<Highs>highs(hi);
     const HighsLp& lp = highs->getLp();
-    int32_t m = lp.integrality_.size();
+    int32_t m = static_cast<int32_t>(lp.integrality_.size());
     IntegerVector type(m);
     for (int32_t i = 0; i < type.size(); ++i) {
         type[i] = static_cast<int32_t>(lp.integrality_[i]);
@@ -974,9 +982,195 @@ int32_t solver_set_solution_obj(SEXP hi,
 // [[Rcpp::export]]
 int32_t solver_set_solution_vec(SEXP hi, IntegerVector idx, NumericVector val) {
     Rcpp::XPtr<Highs>highs(hi);
-    HighsStatus return_status = highs->setSolution(idx.size(), &(idx[0]), &(val[0]));
+    HighsStatus return_status = highs->setSolution(static_cast<int32_t>(idx.size()), &(idx[0]), &(val[0]));
     return static_cast<int32_t>(return_status);
+}
+
+
+// [[Rcpp::export]]
+Rcpp::List solver_get_dual_ray(SEXP hi) {
+    Rcpp::XPtr<Highs>highs(hi);
+    bool has_dual_ray = false;
+    HighsInt num_row = highs->getNumRow();
+    std::vector<double> dual_ray_value(num_row);
+    HighsStatus return_status =
+        highs->getDualRay(has_dual_ray, num_row > 0 ? dual_ray_value.data() : nullptr);
+
+    Rcpp::List ret = Rcpp::List::create(
+        Named("status") = static_cast<int32_t>(return_status),
+        Named("has_dual_ray") = has_dual_ray
+    );
+    if (has_dual_ray && num_row > 0) {
+        ret["dual_ray"] = Rcpp::NumericVector(dual_ray_value.begin(), dual_ray_value.end());
+    } else {
+        ret["dual_ray"] = R_NilValue;
+    }
+    return ret;
+}
+
+
+// [[Rcpp::export]]
+Rcpp::List solver_get_primal_ray(SEXP hi) {
+    Rcpp::XPtr<Highs>highs(hi);
+    bool has_primal_ray = false;
+    HighsInt num_col = highs->getNumCol();
+    std::vector<double> primal_ray_value(num_col);
+    HighsStatus return_status =
+        highs->getPrimalRay(has_primal_ray, num_col > 0 ? primal_ray_value.data() : nullptr);
+
+    Rcpp::List ret = Rcpp::List::create(
+        Named("status") = static_cast<int32_t>(return_status),
+        Named("has_primal_ray") = has_primal_ray
+    );
+    if (has_primal_ray && num_col > 0) {
+        ret["primal_ray"] = Rcpp::NumericVector(primal_ray_value.begin(), primal_ray_value.end());
+    } else {
+        ret["primal_ray"] = R_NilValue;
+    }
+    return ret;
 }
 
 // solver_set_hotstart
 // HighsStatus return_status = highs->setHotStart(hotstart);
+
+
+// [[Rcpp::export]]
+Rcpp::List solver_get_basis(SEXP hi) {
+    Rcpp::XPtr<Highs>highs(hi);
+    const HighsBasis& basis = highs->getBasis();
+    int ncol = highs->getNumCol();
+    int nrow = highs->getNumRow();
+    IntegerVector col_status(ncol);
+    IntegerVector row_status(nrow);
+    for (int i = 0; i < ncol; i++) {
+        col_status[i] = static_cast<int>(basis.col_status[i]);
+    }
+    for (int i = 0; i < nrow; i++) {
+        row_status[i] = static_cast<int>(basis.row_status[i]);
+    }
+    List z = List::create(
+        Named("valid") = basis.valid,
+        Named("col_status") = col_status,
+        Named("row_status") = row_status
+    );
+    return z;
+}
+
+
+// [[Rcpp::export]]
+int32_t solver_set_basis(SEXP hi, IntegerVector col_status, IntegerVector row_status) {
+    Rcpp::XPtr<Highs>highs(hi);
+    HighsBasis basis;
+    basis.valid = true;
+    basis.alien = true;
+    basis.col_status.resize(col_status.size());
+    for (int i = 0; i < col_status.size(); i++) {
+        if (col_status[i] < 0 || col_status[i] > 4) {
+            Rcpp::stop("Invalid column basis status %d at index %d (must be 0-4)",
+                        col_status[i], i);
+        }
+        basis.col_status[i] = static_cast<HighsBasisStatus>(col_status[i]);
+    }
+    basis.row_status.resize(row_status.size());
+    for (int i = 0; i < row_status.size(); i++) {
+        if (row_status[i] < 0 || row_status[i] > 4) {
+            Rcpp::stop("Invalid row basis status %d at index %d (must be 0-4)",
+                        row_status[i], i);
+        }
+        basis.row_status[i] = static_cast<HighsBasisStatus>(row_status[i]);
+    }
+    HighsStatus return_status = highs->setBasis(basis, "R_highs_package");
+    if (return_status == HighsStatus::kError) {
+        Rcpp::stop("HiGHS setBasis failed");
+    }
+    return static_cast<int32_t>(return_status);
+}
+
+
+// [[Rcpp::export]]
+int32_t solver_clear_basis(SEXP hi) {
+    Rcpp::XPtr<Highs>highs(hi);
+    HighsStatus return_status = highs->setBasis();
+    return static_cast<int32_t>(return_status);
+}
+
+
+// [[Rcpp::export]]
+Rcpp::List solver_get_ranging(SEXP hi) {
+    Rcpp::XPtr<Highs>highs(hi);
+    HighsRanging ranging;
+    HighsStatus status = highs->getRanging(ranging);
+    if (status == HighsStatus::kError) {
+        Rcpp::stop("HiGHS getRanging failed");
+    }
+    auto pack_record = [](const HighsRangingRecord& rec) {
+        return List::create(
+            Named("value") = rec.value_,
+            Named("objective") = rec.objective_,
+            Named("in_var") = rec.in_var_,
+            Named("ou_var") = rec.ou_var_
+        );
+    };
+    List z = List::create(
+        Named("valid") = ranging.valid,
+        Named("col_cost_up") = pack_record(ranging.col_cost_up),
+        Named("col_cost_dn") = pack_record(ranging.col_cost_dn),
+        Named("col_bound_up") = pack_record(ranging.col_bound_up),
+        Named("col_bound_dn") = pack_record(ranging.col_bound_dn),
+        Named("row_bound_up") = pack_record(ranging.row_bound_up),
+        Named("row_bound_dn") = pack_record(ranging.row_bound_dn)
+    );
+    return z;
+}
+
+
+// [[Rcpp::export]]
+std::string solver_version(SEXP hi) {
+    Rcpp::XPtr<Highs>highs(hi);
+    return highs->version();
+}
+
+
+// [[Rcpp::export]]
+double solver_get_run_time(SEXP hi) {
+    Rcpp::XPtr<Highs>highs(hi);
+    return highs->getRunTime();
+}
+
+
+// [[Rcpp::export]]
+int32_t solver_presolve(SEXP hi) {
+    Rcpp::XPtr<Highs>highs(hi);
+    HighsStatus return_status = highs->presolve();
+    return static_cast<int32_t>(return_status);
+}
+
+
+// [[Rcpp::export]]
+int32_t solver_postsolve_solution(SEXP hi,
+                                   NumericVector col_value,
+                                   NumericVector col_dual,
+                                   NumericVector row_value,
+                                   NumericVector row_dual) {
+    Rcpp::XPtr<Highs>highs(hi);
+    HighsSolution solution;
+    solution.value_valid = true;
+    solution.dual_valid = true;
+    solution.col_value = Rcpp::as<std::vector<double>>(col_value);
+    solution.col_dual = Rcpp::as<std::vector<double>>(col_dual);
+    solution.row_value = Rcpp::as<std::vector<double>>(row_value);
+    solution.row_dual = Rcpp::as<std::vector<double>>(row_dual);
+    HighsStatus return_status = highs->postsolve(solution);
+    return static_cast<int32_t>(return_status);
+}
+
+
+// [[Rcpp::export]]
+int32_t solver_read_model(SEXP hi, std::string filename) {
+    Rcpp::XPtr<Highs>highs(hi);
+    HighsStatus return_status = highs->readModel(filename);
+    if (return_status == HighsStatus::kError) {
+        Rcpp::stop("HiGHS readModel failed for file: %s", filename.c_str());
+    }
+    return static_cast<int32_t>(return_status);
+}

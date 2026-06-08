@@ -2,6 +2,6 @@
 #ifndef DELETE_7_H_
 #define DELETE_7_H_
 // ISO C forbids an empty translation unit [-Wpedantic]
-int silly_pedantic_rules = 0;
+static int silly_pedantic_rules_7 = 0;
 #endif
 

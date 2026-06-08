@@ -27,18 +27,14 @@ control <- list(
   parallel = "on",
   ranging = "off",
   time_limit = 100.0,
-  
   primal_feasibility_tolerance = 1e-7,
   dual_feasibility_tolerance = 1e-7,
   random_seed = 1234,
   threads = 4,
-  
   output_flag = TRUE,
   log_to_console = TRUE,
-  
   run_crossover = "on",
   allow_unbounded_or_infeasible = FALSE,
-  
   mip_detect_symmetry = TRUE,
   mip_max_nodes = 10000,
   mip_max_leaves = 5000,

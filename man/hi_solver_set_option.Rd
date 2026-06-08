@@ -30,7 +30,7 @@ Sets the value of a specific option for a HiGHS solver instance.
 }
 \examples{
 solver <- example_solver()
-hi_solver_set_option(solver, "output_flag", "FALSE")
+hi_solver_set_option(solver, "output_flag", FALSE)
 hi_solver_set_option(solver, "solver", "simplex", type = "string")
 
 }

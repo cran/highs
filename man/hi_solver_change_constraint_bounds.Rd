@@ -9,7 +9,7 @@ hi_solver_change_constraint_bounds(solver, idx, lhs, rhs)
 \arguments{
 \item{solver}{An object of class "highs_solver".}
 
-\item{idx}{An integer vector specifying the constraint indices.}
+\item{idx}{An integer vector specifying the constraint indices. Note that idx starts at 0.}
 
 \item{lhs}{The new left-hand side bound.}
 
@@ -20,6 +20,11 @@ The solver instance with updated constraint bounds.
 }
 \description{
 This function updates the bounds of an existing constraint in the model.
+}
+\details{
+This is a low-level wrapper for `highs.changeRowsBounds` that only does basic
+checks to prevent segfaults, but otherwise behaves exactly like
+`highs.changeRowsBounds`.
 }
 \examples{
 solver <- example_solver()

@@ -400,6 +400,9 @@ highs_write_model <- function(model, file) {
 #' @param maximum a logical if \code{TRUE} the solver searches for a maximum,
 #'                if \code{FALSE} the solver searches for a minimum.
 #' @param offset a numeric value giving the offset (default is \code{0}).
+#' @param start a numeric vector giving the start solution.
+#' Missing values can be used to specify that particular
+#' variables should have their starting values calculated automatically.
 #' @param control a list giving additional options for the solver,
 #'                see \link{highs_available_solver_options} or the \code{README} file
 #'                for a list of all available options.
@@ -455,12 +458,14 @@ highs_solve <- function(
   types = rep.int(1L, length(L)),
   maximum = FALSE,
   offset = 0,
+  start = NULL,
   control = highs_control()
 ) {
   checkmate::assert_list(control)
   if (!inherits(control, "highs_control")) {
     control <- do.call(highs_control, control)
   }
+  verbose <- control$log_to_console %||% FALSE
   model <- highs_model(
     Q = Q,
     L = L,
@@ -477,8 +482,11 @@ highs_solve <- function(
   set_number_of_threads(control$threads)
   solver <- hi_new_solver(model)
   hi_solver_set_options(solver, control)
+  if (!is.null(start)) {
+    hi_solver_set_start(solver, start)
+  }
 
-  run_status <- hi_solver_run(solver)
+  run_status <- hi_solver_run(solver, verbose = verbose)
   status <- solver_status(solver)
   status_message <- solver_status_message(solver)
 
@@ -557,7 +565,7 @@ solver_get_amatrix <- function(solver) {
   mat <- solver_get_constraint_matrix(solver)
   mat_formats <- c("colwise", "rowwise", "rowwise_partitioned")
   mat[["format"]] <- mat_formats[mat[["format"]]]
-  structure(mat, "highs_sparse_matrix")
+  structure(mat, class = "highs_sparse_matrix")
 }
 
 
@@ -715,6 +723,26 @@ highs_solver <- function(model, control = highs_control()) {
       assert_numeric(upper, any.missing = FALSE, len = length(i))
       solver_set_variable_bounds(solver, as.integer(i) - 1L, lower, upper)
     }
+  }
+  get_basis <- function() {
+    solver_get_basis(solver)
+  }
+  set_basis <- function(col_status, row_status) {
+    solver_set_basis(solver, as.integer(col_status), as.integer(row_status))
+  }
+  clear_basis <- function() {
+    solver_clear_basis(solver)
+  }
+  set_solution <- function(col_value, row_value, col_dual, row_dual,
+                           value_valid = TRUE, dual_valid = TRUE) {
+    solver_set_solution_obj(solver, value_valid, dual_valid,
+                            col_value, col_dual, row_value, row_dual)
+  }
+  get_dual_ray <- function() {
+    solver_get_dual_ray(solver)
+  }
+  get_primal_ray <- function() {
+    solver_get_primal_ray(solver)
   }
   maximum <- function(maximize) {
     if (missing(maximize)) {

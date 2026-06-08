@@ -313,3 +313,47 @@ solver_set_solution_vec <- function(hi, idx, val) {
     .Call(`_highs_solver_set_solution_vec`, hi, idx, val)
 }
 
+solver_get_dual_ray <- function(hi) {
+    .Call(`_highs_solver_get_dual_ray`, hi)
+}
+
+solver_get_primal_ray <- function(hi) {
+    .Call(`_highs_solver_get_primal_ray`, hi)
+}
+
+solver_get_basis <- function(hi) {
+    .Call(`_highs_solver_get_basis`, hi)
+}
+
+solver_set_basis <- function(hi, col_status, row_status) {
+    .Call(`_highs_solver_set_basis`, hi, col_status, row_status)
+}
+
+solver_clear_basis <- function(hi) {
+    .Call(`_highs_solver_clear_basis`, hi)
+}
+
+solver_get_ranging <- function(hi) {
+    .Call(`_highs_solver_get_ranging`, hi)
+}
+
+solver_version <- function(hi) {
+    .Call(`_highs_solver_version`, hi)
+}
+
+solver_get_run_time <- function(hi) {
+    .Call(`_highs_solver_get_run_time`, hi)
+}
+
+solver_presolve <- function(hi) {
+    .Call(`_highs_solver_presolve`, hi)
+}
+
+solver_postsolve_solution <- function(hi, col_value, col_dual, row_value, row_dual) {
+    .Call(`_highs_solver_postsolve_solution`, hi, col_value, col_dual, row_value, row_dual)
+}
+
+solver_read_model <- function(hi, filename) {
+    .Call(`_highs_solver_read_model`, hi, filename)
+}
+

@@ -1,14 +1,7 @@
 **R** HIGHS Interface
 ================
 Florian Schwendinger</br>
-Updated: 2025-11-23
-
-<!-- badges: start -->
-
-[![CRAN
-status](https://www.r-pkg.org/badges/version/highs)](https://CRAN.R-project.org/package=highs)
-[![Licence](https://img.shields.io/cran/l/highs)](https://www.gnu.org/licenses/gpl-2.0.en.html)
-<!-- badges: end -->
+Updated: 2026-06-07
 
 This repository contains an **R** interface to the
 [**HiGHS**](https://github.com/ERGO-Code/HiGHS) solver. The
@@ -24,12 +17,6 @@ The package can be installed from
 
 ``` r
 install.packages("highs")
-```
-
-or [**GitLab**](https://gitlab.com/roigrp/solver/highs).
-
-``` r
-remotes::install_gitlab("roigrp/solver/highs")
 ```
 
 ### 1.0.1 Using a preinstalled HiGHS library
@@ -49,8 +36,6 @@ to install the **HiGHS** library to `/Z/bin/highslib`
 ``` r
 Sys.setenv(R_HIGHS_LIB_DIR = "/Z/bin/highslib")
 install.packages("highs")
-# or 
-# remotes::install_gitlab("roigrp/solver/highs")
 ```
 
 # 2 Package
@@ -58,6 +43,9 @@ install.packages("highs")
 The **highs** package provides an API similar to **Rglpk** and a low
 level API to the **HiGHS** solver. For most users using `highs_solve` as
 shown below should be the best choice.
+
+> **Note:** The low-level API is only meant for developers. Most users
+> should avoid it and just use the high-level API (`highs_solve`).
 
 The package functions can be grouped into the following categories:
 
@@ -131,18 +119,24 @@ writeLines(ls("package:highs", pattern = "^hi(|_new)_solver"))
 #> hi_solver_change_constraint_bounds
 #> hi_solver_change_variable_bounds
 #> hi_solver_clear
+#> hi_solver_clear_basis
 #> hi_solver_clear_model
 #> hi_solver_clear_solver
+#> hi_solver_get_basis
 #> hi_solver_get_bool_option
 #> hi_solver_get_constraint_bounds
 #> hi_solver_get_constraint_matrix
 #> hi_solver_get_dbl_option
+#> hi_solver_get_dual_ray
 #> hi_solver_get_int_option
 #> hi_solver_get_lp_costs
 #> hi_solver_get_num_col
 #> hi_solver_get_num_row
 #> hi_solver_get_option
 #> hi_solver_get_options
+#> hi_solver_get_primal_ray
+#> hi_solver_get_ranging
+#> hi_solver_get_run_time
 #> hi_solver_get_sense
 #> hi_solver_get_solution
 #> hi_solver_get_str_option
@@ -150,7 +144,11 @@ writeLines(ls("package:highs", pattern = "^hi(|_new)_solver"))
 #> hi_solver_get_vartype
 #> hi_solver_infinity
 #> hi_solver_info
+#> hi_solver_postsolve
+#> hi_solver_presolve
+#> hi_solver_read_model
 #> hi_solver_run
+#> hi_solver_set_basis
 #> hi_solver_set_coeff
 #> hi_solver_set_constraint_bounds
 #> hi_solver_set_integrality
@@ -159,9 +157,13 @@ writeLines(ls("package:highs", pattern = "^hi(|_new)_solver"))
 #> hi_solver_set_option
 #> hi_solver_set_options
 #> hi_solver_set_sense
+#> hi_solver_set_solution
+#> hi_solver_set_sparse_solution
+#> hi_solver_set_start
 #> hi_solver_set_variable_bounds
 #> hi_solver_status
 #> hi_solver_status_message
+#> hi_solver_version
 #> hi_solver_write_basis
 #> hi_solver_write_model
 ```
@@ -198,7 +200,7 @@ library("highs")
 args(highs_solve)
 #> function (Q = NULL, L, lower, upper, A = NULL, lhs = NULL, rhs = NULL, 
 #>     types = rep.int(1L, length(L)), maximum = FALSE, offset = 0, 
-#>     control = highs_control()) 
+#>     start = NULL, control = highs_control()) 
 #> NULL
 ```
 
@@ -386,16 +388,17 @@ knitr::kable(d, row.names = FALSE)
 | `infinite_bound`                                | double  |
 | `small_matrix_value`                            | double  |
 | `large_matrix_value`                            | double  |
+| `kkt_tolerance`                                 | double  |
 | `primal_feasibility_tolerance`                  | double  |
 | `dual_feasibility_tolerance`                    | double  |
-| `ipm_optimality_tolerance`                      | double  |
 | `primal_residual_tolerance`                     | double  |
 | `dual_residual_tolerance`                       | double  |
+| `optimality_tolerance`                          | double  |
 | `objective_bound`                               | double  |
 | `objective_target`                              | double  |
 | `threads`                                       | integer |
+| `user_objective_scale`                          | integer |
 | `user_bound_scale`                              | integer |
-| `user_cost_scale`                               | integer |
 | `highs_debug_level`                             | integer |
 | `highs_analysis_level`                          | integer |
 | `simplex_strategy`                              | integer |
@@ -414,18 +417,29 @@ knitr::kable(d, row.names = FALSE)
 | `write_solution_style`                          | integer |
 | `glpsol_cost_row_location`                      | integer |
 | `write_presolved_model_file`                    | string  |
+| `write_iis_model_file`                          | string  |
 | `output_flag`                                   | bool    |
 | `log_to_console`                                | bool    |
 | `timeless_log`                                  | bool    |
+| `ipm_optimality_tolerance`                      | double  |
 | `ipm_iteration_limit`                           | integer |
-| `pdlp_native_termination`                       | bool    |
-| `pdlp_scaling`                                  | bool    |
+| `hipo_system`                                   | string  |
+| `hipo_parallel_type`                            | string  |
+| `hipo_ordering`                                 | string  |
+| `hipo_block_size`                               | integer |
+| `pdlp_features_off`                             | integer |
 | `pdlp_iteration_limit`                          | integer |
-| `pdlp_e_restart_method`                         | integer |
-| `pdlp_d_gap_tol`                                | double  |
+| `pdlp_scaling_mode`                             | integer |
+| `pdlp_ruiz_iterations`                          | integer |
+| `pdlp_restart_strategy`                         | integer |
+| `pdlp_cupdlpc_restart_method`                   | integer |
+| `pdlp_step_size_strategy`                       | integer |
+| `pdlp_optimality_tolerance`                     | double  |
 | `qp_iteration_limit`                            | integer |
 | `qp_nullspace_limit`                            | integer |
+| `qp_regularization_value`                       | double  |
 | `iis_strategy`                                  | integer |
+| `iis_time_limit`                                | double  |
 | `blend_multi_objectives`                        | bool    |
 | `log_dev_level`                                 | integer |
 | `log_githash`                                   | bool    |
@@ -496,17 +510,21 @@ knitr::kable(d, row.names = FALSE)
 | `mip_rel_gap`                                   | double  |
 | `mip_abs_gap`                                   | double  |
 | `mip_heuristic_effort`                          | double  |
-| `mip_min_logging_interval`                      | double  |
+| `mip_heuristic_run_feasibility_jump`            | bool    |
 | `mip_heuristic_run_rins`                        | bool    |
 | `mip_heuristic_run_rens`                        | bool    |
 | `mip_heuristic_run_root_reduced_cost`           | bool    |
 | `mip_heuristic_run_zi_round`                    | bool    |
 | `mip_heuristic_run_shifting`                    | bool    |
+| `mip_min_logging_interval`                      | double  |
+| `mip_lp_solver`                                 | string  |
+| `mip_ipm_solver`                                | string  |
 | `mip_improving_solution_save`                   | bool    |
 | `mip_improving_solution_report_sparse`          | bool    |
 | `mip_improving_solution_file`                   | string  |
 | `mip_root_presolve_only`                        | bool    |
 | `mip_lifting_for_probing`                       | integer |
+| `mip_allow_cut_separation_at_nodes`             | bool    |
 
 for additional information see the [HiGHS homepage](https://highs.dev/).
 
@@ -532,5 +550,9 @@ HiGHS currently has the following status codes defined in `HConst.h"`.
 | `kTimeLimit`             |     13 | `"Time limit reached"`             |
 | `kIterationLimit`        |     14 | `"Iteration limit reached"`        |
 | `kUnknown`               |     15 | `"Unknown"`                        |
+| `kSolutionLimit`         |     16 | `"Solution limit reached"`         |
+| `kInterrupt`             |     17 | `"Interrupted by user"`            |
+| `kMemoryLimit`           |     18 | `"Memory limit reached"`           |
+| `kHighsInterrupt`        |     19 | `"Interrupted by HiGHS"`           |
 | `kMin`                   |      0 | `"Not Set"`                        |
-| `kMax`                   |     15 | `"Unknown"`                        |
+| `kMax`                   |     19 | `"Interrupted by HiGHS"`           |
