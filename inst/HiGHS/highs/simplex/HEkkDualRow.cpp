@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -133,7 +132,7 @@ HighsInt HEkkDualRow::chooseFinal() {
   if (ekk_instance_.debug_iteration_report_) {
     report_bfrt = debug_bfrt_report_on;
     if (report_bfrt)
-      Rprintf("HEkkDualRow::chooseFinal Check iter = %d\n",
+      printf("HEkkDualRow::chooseFinal Check iter = %d\n",
              (int)ekk_instance_.iteration_count_);
   }
   HighsInt fullCount = workCount;
@@ -177,7 +176,7 @@ HighsInt HEkkDualRow::chooseFinal() {
   }
 
   if (use_heap_sort) {
-    Rprintf("CHUZC: Using heap sort\n");
+    printf("CHUZC: Using heap sort\n");
     // Take a copy of workData and workCount for the independent
     // heap-based code
     original_workData = workData;
@@ -254,7 +253,7 @@ HighsInt HEkkDualRow::chooseFinal() {
   workCount = 0;
   if (use_quad_sort) {
     if (report_bfrt) {
-      Rprintf(
+      printf(
           "CHUZC(%d) breakGroup = %d/%d; breakIndex = %d/%d; workPivot = %d; "
           "workCount = %d\n",
           (int)ekk_instance_.iteration_count_, (int)breakGroup,
@@ -271,7 +270,7 @@ HighsInt HEkkDualRow::chooseFinal() {
     for (HighsInt i = workGroup[breakGroup]; i < workGroup[breakGroup + 1]; i++)
       if (report_bfrt) debugReportBfrtVar(i, workData);
   } else {
-    Rprintf("DebugHeapSortCHUZC: Pivot = %4d; alpha = %11.4g; theta = %11.4g\n",
+    printf("DebugHeapSortCHUZC: Pivot = %4d; alpha = %11.4g; theta = %11.4g\n",
            (int)workPivot, workAlpha, workTheta);
     debugReportBfrtVar(-1, sorted_workData);
     for (HighsInt i = 0; i < alt_workGroup[breakGroup]; i++) {
@@ -625,7 +624,7 @@ void HEkkDualRow::computeDevexWeight(const HighsInt slice) {
   }
   if (rp_computed_edge_weight) {
     if (slice >= 0)
-      Rprintf("HEkkDualRow::computeDevexWeight: Slice %1" HIGHSINT_FORMAT
+      printf("HEkkDualRow::computeDevexWeight: Slice %1" HIGHSINT_FORMAT
              "; computed_edge_weight = "
              "%11.4g\n",
              slice, computed_edge_weight);
@@ -660,7 +659,7 @@ HighsInt HEkkDualRow::debugChooseColumnInfeasibilities() const {
     const double infeasibility_after_flip = -move * new_dual;
     const bool infeasible = infeasibility_after_flip < -Td;
     if (infeasible) {
-      Rprintf(
+      printf(
           "%3d: iCol = %4d; dual = %11.4g; value = %11.4g; move = %2d; delta = "
           "%11.4g; new_dual = %11.4g; infeasibility = %11.4g: %d\n",
           (int)i, (int)iCol, dual, value, (int)move, delta_dual, new_dual,
@@ -676,7 +675,7 @@ void HEkkDualRow::debugReportBfrtVar(
     const HighsInt ix,
     const std::vector<std::pair<HighsInt, double>>& pass_workData) const {
   if (ix < 0) {
-    Rprintf(
+    printf(
         "Ix iCol Mv       Lower      Primal       Upper       Value        "
         "Dual       Ratio      NwDual Ifs\n");
     return;
@@ -690,7 +689,7 @@ void HEkkDualRow::debugReportBfrtVar(
   const double new_dual = dual - move_out * move * workTheta * value;
   const double new_dual_infeasibility = move * new_dual;
   const bool infeasible = new_dual_infeasibility < -Td;
-  Rprintf("%2d %4d %2d %11.4g %11.4g %11.4g %11.4g %11.4g %11.4g %11.4g %3d\n",
+  printf("%2d %4d %2d %11.4g %11.4g %11.4g %11.4g %11.4g %11.4g %11.4g %3d\n",
          (int)ix, (int)iCol, (int)move, ekk_instance_.info_.workLower_[iCol],
          ekk_instance_.info_.workValue_[iCol],
          ekk_instance_.info_.workUpper_[iCol], value, dual, fabs(dual / value),

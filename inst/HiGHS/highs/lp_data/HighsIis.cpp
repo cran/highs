@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -64,25 +63,25 @@ void HighsIis::report(const std::string& message, const HighsLp& lp) const {
   HighsInt num_iis_col = this->col_index_.size();
   HighsInt num_iis_row = this->row_index_.size();
   if (num_iis_col > 10 || num_iis_row > 10) return;
-  Rprintf("\nIIS %s\n===\n", message.c_str());
-  Rprintf("Column: ");
-  for (HighsInt iCol = 0; iCol < num_iis_col; iCol++) Rprintf("%9d ", int(iCol));
-  Rprintf("\nStatus: ");
+  printf("\nIIS %s\n===\n", message.c_str());
+  printf("Column: ");
+  for (HighsInt iCol = 0; iCol < num_iis_col; iCol++) printf("%9d ", int(iCol));
+  printf("\nStatus: ");
   for (HighsInt iCol = 0; iCol < num_iis_col; iCol++)
-    Rprintf("%9s ", iisBoundStatusToString(this->col_bound_[iCol]).c_str());
-  Rprintf("\nLower:  ");
+    printf("%9s ", iisBoundStatusToString(this->col_bound_[iCol]).c_str());
+  printf("\nLower:  ");
   for (HighsInt iCol = 0; iCol < num_iis_col; iCol++)
-    Rprintf("%9.2g ", lp.col_lower_[iCol]);
-  Rprintf("\nUpper:  ");
+    printf("%9.2g ", lp.col_lower_[iCol]);
+  printf("\nUpper:  ");
   for (HighsInt iCol = 0; iCol < num_iis_col; iCol++)
-    Rprintf("%9.2g ", lp.col_upper_[iCol]);
-  Rprintf("\n");
-  Rprintf("Row:    Status     Lower     Upper\n");
+    printf("%9.2g ", lp.col_upper_[iCol]);
+  printf("\n");
+  printf("Row:    Status     Lower     Upper\n");
   for (HighsInt iRow = 0; iRow < num_iis_row; iRow++)
-    Rprintf("%2d   %9s %9.2g %9.2g\n", int(iRow),
+    printf("%2d   %9s %9.2g %9.2g\n", int(iRow),
            iisBoundStatusToString(this->row_bound_[iRow]).c_str(),
            lp.row_lower_[iRow], lp.row_upper_[iRow]);
-  Rprintf("\n");
+  printf("\n");
 }
 
 void HighsIis::reportIteration(const HighsOptions& options, const HighsInt iter,
@@ -642,13 +641,6 @@ HighsStatus HighsIis::compute(const HighsLp& lp, const HighsOptions& options,
   HighsStatus run_status = highs.passModel(lp);
   assert(run_status == HighsStatus::kOk);
   if (basis) highs.setBasis(*basis);
-
-  // Initial logging
-  this->clearLogInfo();
-  HighsInt iter = 0;
-  highsLogUser(log_options, HighsLogType::kInfo,
-               "\nRunning deletion filter to identify an IIS\n");
-  this->reportIteration(options, iter, num_rows, true);
   // Zero the objective
   std::vector<double> cost;
   cost.assign(lp.num_col_, 0);
@@ -673,7 +665,7 @@ HighsStatus HighsIis::compute(const HighsLp& lp, const HighsOptions& options,
     HighsModelStatus model_status = highs.getModelStatus();
     if (use_sensitivity_filter &&
         model_status == HighsModelStatus::kInfeasible) {
-      Rprintf("\nHighsIis::compute %s deletion for %d and %s bound\n",
+      printf("\nHighsIis::compute %s deletion for %d and %s bound\n",
              row_deletion ? "Row" : "Col", int(iX),
              drop_lower ? "Lower" : "Upper");
       bool output_flag;
@@ -731,7 +723,7 @@ HighsStatus HighsIis::compute(const HighsLp& lp, const HighsOptions& options,
             std::fabs(dual) < options.dual_feasibility_tolerance) {
           num_zero_dual++;
           // Small dual for nonbasic variable
-          Rprintf(
+          printf(
               "HighsIis::compute Column %d [%g, %g, %g] with status %s has "
               "dual %g\n",
               int(iCol), lower, value, upper,
@@ -749,7 +741,7 @@ HighsStatus HighsIis::compute(const HighsLp& lp, const HighsOptions& options,
             std::fabs(dual) < options.dual_feasibility_tolerance) {
           num_zero_dual++;
           // Small dual for nonbasic variable
-          Rprintf(
+          printf(
               "HighsIis::compute Row    %d [%g, %g, %g] with status %s has "
               "dual %g\n",
               int(iRow), lower, value, upper,
@@ -781,6 +773,13 @@ HighsStatus HighsIis::compute(const HighsLp& lp, const HighsOptions& options,
   assert(highs.getModelStatus() == HighsModelStatus::kInfeasible);
   IisModelStatus iis_status = kIisModelStatusIrreducible;
   HighsStatus search_return_status = HighsStatus::kOk;
+
+  // Initial logging
+  this->clearLogInfo();
+  HighsInt iter = 0;
+  highsLogUser(log_options, HighsLogType::kInfo,
+               "\nRunning deletion filter to identify an IIS\n");
+  this->reportIteration(options, iter, num_rows, true);
 
   // Pass twice: rows before columns, or columns before rows, according to
   // row_priority

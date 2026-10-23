@@ -6,7 +6,7 @@ if test -z "${R_HIGHS_LIB_DIR}"; then
     R_HIGHS_PKG_HOME=`pwd`
     bash inst/build_highs.sh
     cd ${R_HIGHS_PKG_HOME}
-    rm -rf inst/HiGHS
+    # (installed-package exclusion of inst/HiGHS is handled by .Rinstignore)
     R_HIGHS_LIB_DIR=${R_HIGHS_PKG_HOME}/src/highslib
 fi
 

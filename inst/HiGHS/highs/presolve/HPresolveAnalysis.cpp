@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -97,11 +96,11 @@ void HPresolveAnalysis::startPresolveRuleLog(const HighsInt rule_type) {
   logging_on_ = false;
   const HighsInt check_rule = kPresolveRuleIllegal;
   if (debug_print)
-    Rprintf("   startPresolveRuleLog [%6d, %6d] for (%2d) %s\n",
+    printf("   startPresolveRuleLog [%6d, %6d] for (%2d) %s\n",
            int(*numDeletedRows), int(*numDeletedCols), int(rule_type),
            utilPresolveRuleTypeToString(rule_type).c_str());
   if (rule_type == check_rule) {
-    Rprintf(">> startPresolveRuleLog [%6d, %6d] for (%2d) %s\n", int(check_rule),
+    printf(">> startPresolveRuleLog [%6d, %6d] for (%2d) %s\n", int(check_rule),
            int(*numDeletedRows), int(*numDeletedCols),
            utilPresolveRuleTypeToString(check_rule).c_str());
   }
@@ -112,13 +111,13 @@ void HPresolveAnalysis::startPresolveRuleLog(const HighsInt rule_type) {
   // Check that no un-logged reductions have been performed
   if (num_deleted_rows0_ != *numDeletedRows ||
       num_deleted_cols0_ != *numDeletedCols) {
-    Rprintf(
+    printf(
         "ERROR: Model %s: "
         "%d = num_deleted_rows0_ != *numDeletedRows = %d ||"
         "%d = num_deleted_cols0_ != *numDeletedCols = %d\n",
         model->model_name_.c_str(), int(num_deleted_rows0_),
         int(*numDeletedRows), int(num_deleted_cols0_), int(*numDeletedCols));
-    NULL;
+    fflush(stdout);
   }
   assert(num_deleted_rows0_ == *numDeletedRows);
   assert(num_deleted_cols0_ == *numDeletedCols);
@@ -128,7 +127,7 @@ void HPresolveAnalysis::startPresolveRuleLog(const HighsInt rule_type) {
   const int check_num_deleted_cols0_ = -688;
   if (num_deleted_rows0_ == check_num_deleted_rows0_ &&
       num_deleted_cols0_ == check_num_deleted_cols0_) {
-    Rprintf("num_deleted (%d, %d)\n", int(num_deleted_rows0_),
+    printf("num_deleted (%d, %d)\n", int(num_deleted_rows0_),
            int(num_deleted_cols0_));
   }
 }
@@ -138,12 +137,12 @@ void HPresolveAnalysis::stopPresolveRuleLog(const HighsInt rule_type) {
   assert(logging_on_);
   assert(rule_type == log_rule_type_);
   if (debug_print)
-    Rprintf("    stopPresolveRuleLog [%6d, %6d] for (%2d) %s\n",
+    printf("    stopPresolveRuleLog [%6d, %6d] for (%2d) %s\n",
            int(*numDeletedRows), int(*numDeletedCols), int(rule_type),
            utilPresolveRuleTypeToString(rule_type).c_str());
   const int check_rule = kPresolveRuleIllegal;
   if (rule_type == check_rule) {
-    Rprintf(">>  stopPresolveRuleLog [%6d, %6d] for (%2d) %s\n", int(check_rule),
+    printf(">>  stopPresolveRuleLog [%6d, %6d] for (%2d) %s\n", int(check_rule),
            int(*numDeletedRows), int(*numDeletedCols),
            utilPresolveRuleTypeToString(check_rule).c_str());
   }
@@ -162,7 +161,7 @@ void HPresolveAnalysis::stopPresolveRuleLog(const HighsInt rule_type) {
 
   const bool report = false;
   if (report)
-    Rprintf("%-25s Call %9d: (%3d, %3d) (%3d, %3d)\n",
+    printf("%-25s Call %9d: (%3d, %3d) (%3d, %3d)\n",
            utilPresolveRuleTypeToString(rule_type).c_str(),
            (int)presolve_log_.rule[rule_type].call, (int)num_removed_col,
            (int)num_removed_row, (int)presolve_log_.rule[rule_type].col_removed,
@@ -171,7 +170,7 @@ void HPresolveAnalysis::stopPresolveRuleLog(const HighsInt rule_type) {
   const int check_num_deleted_cols0_ = -637;
   if (num_deleted_rows0_ == check_num_deleted_rows0_ &&
       num_deleted_cols0_ == check_num_deleted_cols0_) {
-    Rprintf("num_deleted (%d, %d)\n", int(num_deleted_rows0_),
+    printf("num_deleted (%d, %d)\n", int(num_deleted_rows0_),
            int(num_deleted_cols0_));
   }
 }
@@ -223,7 +222,7 @@ bool HPresolveAnalysis::analysePresolveRuleLog(const bool report) {
       highsLogDev(log_options, HighsLogType::kError,
                   "%d = sum_removed_row != numDeletedRows = %d\n",
                   (int)sum_removed_row, (int)*numDeletedRows);
-      NULL;
+      fflush(stdout);
       assert(sum_removed_row == *numDeletedRows);
       return false;
     }
@@ -231,7 +230,7 @@ bool HPresolveAnalysis::analysePresolveRuleLog(const bool report) {
       highsLogDev(log_options, HighsLogType::kError,
                   "%d = sum_removed_col != numDeletedCols = %d\n",
                   (int)sum_removed_col, (int)*numDeletedCols);
-      NULL;
+      fflush(stdout);
       assert(sum_removed_col == *numDeletedCols);
       return false;
     }

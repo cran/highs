@@ -199,7 +199,7 @@ bool computeScatterDataRegressionError(HighsScatterData& scatter_data,
 double nearestPowerOfTwoScale(const double value);
 
 // If assert_condition is false then, if NDEBUG is defined message is
-// printed and  is called, otherwise assert is called
+// printed and abort() is called, otherwise assert is called
 void highsAssert(const bool assert_condition, const std::string& message = "");
 
 // If pause_condition is true, then keyboard input is required. Allows

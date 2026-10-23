@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /*!
 \file gk_proto.h
 \brief This file contains function prototypes
@@ -10,6 +9,8 @@
 
 #ifndef _GK_PROTO_H_
 #define _GK_PROTO_H_
+
+#include "gk_mangle.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,14 +24,14 @@ void gk_free(void **ptr1);
 /*-------------------------------------------------------------
  * error.c
  *-------------------------------------------------------------*/
-void gk_errRcpp::stop("Something went wrong!");
+void gk_errexit(char *,...);
 
 /*-------------------------------------------------------------
  * random.c
  *-------------------------------------------------------------*/
 uint64_t gk_randint64(unsigned *rng_state);
 uint32_t gk_randint32(unsigned *rng_state);
-int my_rand_r(unsigned *rng_state);
+int gk_rand_r(unsigned *rng_state);
 
 
 /* mcore.c */

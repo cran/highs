@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -183,28 +182,28 @@ void Basis::report() {
 
   const bool print_basis = num_inactive_in_basis + num_active_in_basis < 100;
   if (print_basis) {
-    Rprintf("basis: ");
+    printf("basis: ");
     for (HighsInt a_ : active_constraint_index) {
       if (a_ < qp_num_con) {
-        Rprintf("c%-3d ", int(a_));
+        printf("c%-3d ", int(a_));
       } else {
-        Rprintf("v%-3d ", int(a_ - qp_num_con));
+        printf("v%-3d ", int(a_ - qp_num_con));
       }
     }
-    Rprintf(" - ");
+    printf(" - ");
     for (HighsInt n_ : non_active_constraint_index) {
       if (n_ < qp_num_con) {
-        Rprintf("c%-3d ", int(n_));
+        printf("c%-3d ", int(n_));
       } else {
-        Rprintf("v%-3d ", int(n_ - qp_num_con));
+        printf("v%-3d ", int(n_ - qp_num_con));
       }
     }
-    Rprintf("\n");
+    printf("\n");
   }
 
-  Rprintf("Basis::report: QP(%6d [inact %6d; act %6d], %6d)", int(qp_num_var),
+  printf("Basis::report: QP(%6d [inact %6d; act %6d], %6d)", int(qp_num_var),
          int(num_inactive_in_basis), int(num_active_in_basis), int(qp_num_con));
-  Rprintf(
+  printf(
       " (inact / lo / up / basis) for var (%6d / %6d / %6d / %6d) and con (%6d "
       "/ %6d / %6d / %6d)\n",
       int(num_var_inactive), int(num_var_active_at_lower),
@@ -223,7 +222,7 @@ void Basis::report() {
 // move that constraint into V section basis (will correspond to Nullspace
 // from now on)
 void Basis::deactivate(HighsInt conid) {
-  // Rprintf("deact %" HIGHSINT_FORMAT "\n", conid);
+  // printf("deact %" HIGHSINT_FORMAT "\n", conid);
   assert(contains(active_constraint_index, conid));
   basisstatus[conid] = BasisStatus::kInactiveInBasis;
   remove(active_constraint_index, conid);
@@ -233,18 +232,18 @@ void Basis::deactivate(HighsInt conid) {
 QpSolverStatus Basis::activate(const Settings& settings, HighsInt conid,
                                BasisStatus newstatus,
                                HighsInt nonactivetoremove, Pricing* pricing) {
-  // Rprintf("activ %" HIGHSINT_FORMAT "\n", conid);
+  // printf("activ %" HIGHSINT_FORMAT "\n", conid);
   if (!contains(active_constraint_index, (HighsInt)conid)) {
     basisstatus[nonactivetoremove] = BasisStatus::kInactive;
     basisstatus[conid] = newstatus;
     active_constraint_index.push_back(conid);
   } else {
-    Rprintf("Degeneracy? constraint %" HIGHSINT_FORMAT " already in basis\n",
+    printf("Degeneracy? constraint %" HIGHSINT_FORMAT " already in basis\n",
            conid);
     return QpSolverStatus::DEGENERATE;
   }
 
-  // Rprintf("drop %d\n", nonactivetoremove);
+  // printf("drop %d\n", nonactivetoremove);
   // remove non-active row from basis
   HighsInt rowtoremove = constraintindexinbasisfactor[nonactivetoremove];
 
@@ -368,7 +367,7 @@ QpVector Basis::recomputex(const Instance& inst) {
   for (HighsInt i = 0; i < inst.num_var; i++) {
     HighsInt con = active_constraint_index[i];
     if (constraintindexinbasisfactor[con] == -1) {
-      Rprintf("error\n");
+      printf("error\n");
     }
     if (basisstatus[con] == BasisStatus::kActiveAtLower) {
       if (con < inst.num_con) {

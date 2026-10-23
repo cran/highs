@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -316,27 +315,27 @@ struct Matrix {
 
   void report(std::string name = "") const {
     if (name != "") {
-      Rprintf("%s:", name.c_str());
+      printf("%s:", name.c_str());
     }
-    Rprintf("[%" HIGHSINT_FORMAT " x %" HIGHSINT_FORMAT "]\n", mat.num_row,
+    printf("[%" HIGHSINT_FORMAT " x %" HIGHSINT_FORMAT "]\n", mat.num_row,
            mat.num_col);
-    Rprintf("start: ");
+    printf("start: ");
     for (HighsInt i : mat.start) {
-      Rprintf("%" HIGHSINT_FORMAT " ", i);
+      printf("%" HIGHSINT_FORMAT " ", i);
     }
-    Rprintf("\n");
+    printf("\n");
 
-    Rprintf("index: ");
+    printf("index: ");
     for (HighsInt i : mat.index) {
-      Rprintf("%" HIGHSINT_FORMAT " ", i);
+      printf("%" HIGHSINT_FORMAT " ", i);
     }
-    Rprintf("\n");
+    printf("\n");
 
-    Rprintf("value: ");
+    printf("value: ");
     for (double d : mat.value) {
-      Rprintf("%lf ", d);
+      printf("%lf ", d);
     }
-    Rprintf("\n");
+    printf("\n");
   }
 };
 

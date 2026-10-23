@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -2103,7 +2102,7 @@ double HMpsFF::getValue(const std::string& word, bool& is_nan,
   dD2e(local_word);
   const double value = atof(local_word.c_str());
   is_nan = false;
-  //  Rprintf("value(%d) = %g\n", int(id), value);
+  //  printf("value(%d) = %g\n", int(id), value);
   //  if (std::isnan(value)) return true;
   //  // atof('nan') yields 0 with some Windows compilers, so try a string
   //  // comparison

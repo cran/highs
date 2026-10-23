@@ -68,10 +68,15 @@ test_options_roundtrip <- function() {
 
 
 test_infeasible_model <- function() {
-    # Create an infeasible LP: x >= 10 and x <= 5
+    # Create an infeasible LP: x >= 10 and x <= 5.  hi_new_solver() surfaces
+    # HiGHS's "inconsistent bounds" message as an R warning by design (the
+    # 1.14.0-2 controllable-output mechanism) -- assert it instead of letting
+    # it leak into the test log.
     L <- 1
     A <- matrix(1, nrow = 1)
-    s <- highs_solve(L = L, lower = 10, upper = 5, A = A, lhs = 0, rhs = 100)
+    expect_warning(
+      s <- highs_solve(L = L, lower = 10, upper = 5, A = A, lhs = 0, rhs = 100),
+      pattern = "inconsistent bounds")
     expect_true(s$status != 7L)  # Not optimal
 }
 

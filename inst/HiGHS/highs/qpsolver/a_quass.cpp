@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -93,7 +92,7 @@ static QpAsmStatus quass2highs(Instance& instance, Settings& settings,
       false;  // instance.num_var + instance.num_con < 100;
   for (HighsInt i = 0; i < instance.num_var; i++) {
     if (debug_report)
-      Rprintf("Column %2d: status %s\n", int(i),
+      printf("Column %2d: status %s\n", int(i),
              qpBasisStatusToString(qp_solution.status_var[i]).c_str());
     if (qp_solution.status_var[i] == BasisStatus::kActiveAtLower) {
       highs_basis.col_status[i] = HighsBasisStatus::kLower;
@@ -109,7 +108,7 @@ static QpAsmStatus quass2highs(Instance& instance, Settings& settings,
 
   for (HighsInt i = 0; i < instance.num_con; i++) {
     if (debug_report)
-      Rprintf("Row    %2d: status %s\n", int(i),
+      printf("Row    %2d: status %s\n", int(i),
              qpBasisStatusToString(qp_solution.status_con[i]).c_str());
     if (qp_solution.status_con[i] == BasisStatus::kActiveAtLower) {
       highs_basis.row_status[i] = HighsBasisStatus::kLower;

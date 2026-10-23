@@ -7,10 +7,16 @@
 highs_available_solver_options()
 }
 \value{
-A \code{data.frame} containing the available solver options.
+A \code{data.frame} containing the available solver options:
+  columns \code{option}, \code{type}, and \code{advanced} (\code{TRUE}
+  for options 'HiGHS' registers past its user-settable set).
 }
 \description{
-Reference for the available solver options.
+Reference for the available solver options, enumerated at runtime from the
+bundled 'HiGHS' library's own option registry
+(\code{Highs::getNumOptions()} / \code{getOptionName()} /
+\code{getOptionType()}), so it can never drift from the solver actually
+compiled into the package.
 }
 \examples{
 highs_available_solver_options()

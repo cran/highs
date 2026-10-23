@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -100,7 +99,7 @@ void HighsTableauSeparator::separateLpSolution(HighsLpRelaxation& lpRelaxation,
   if ((HighsInt)fractionalBasisvars.size() > maxTries) {
     const double* edgeWt = lpRelaxation.getLpSolver().getDualEdgeWeights();
     if (edgeWt) {
-      // Rprintf("choosing %ld/%zu with DSE weights\n", maxTries,
+      // printf("choosing %ld/%zu with DSE weights\n", maxTries,
       // fractionalBasisvars.size());
       pdqsort(
           fractionalBasisvars.begin(), fractionalBasisvars.end(),
@@ -118,7 +117,7 @@ void HighsTableauSeparator::separateLpSolution(HighsLpRelaxation& lpRelaxation,
                                               numTries + fracint2.basisIndex));
           });
     } else {
-      // Rprintf("choosing %ld/%zu without DSE weights\n", maxTries,
+      // printf("choosing %ld/%zu without DSE weights\n", maxTries,
       // fractionalBasisvars.size());
       pdqsort(
           fractionalBasisvars.begin(), fractionalBasisvars.end(),
@@ -198,7 +197,7 @@ void HighsTableauSeparator::separateLpSolution(HighsLpRelaxation& lpRelaxation,
       break;
 
     assert(lpAggregator.isEmpty());
-    for (std::pair<HighsInt, double> rowWeight : fracvar.row_ep)
+    for (const auto& rowWeight : fracvar.row_ep)
       lpAggregator.addRow(rowWeight.first, rowWeight.second);
 
     lpAggregator.getCurrentAggregation(baseRowInds, baseRowVals, false);
@@ -231,12 +230,12 @@ void HighsTableauSeparator::separateLpSolution(HighsLpRelaxation& lpRelaxation,
 
     double rhs = 0;
     cutGen.generateCut(transLp, baseRowInds, baseRowVals, rhs);
-    if (mip.mipdata_->domain.infeasible()) break;
+    if (transLp.getGlobaldom().infeasible()) break;
 
     lpAggregator.getCurrentAggregation(baseRowInds, baseRowVals, true);
     rhs = 0;
     cutGen.generateCut(transLp, baseRowInds, baseRowVals, rhs);
-    if (mip.mipdata_->domain.infeasible()) break;
+    if (transLp.getGlobaldom().infeasible()) break;
 
     lpAggregator.clear();
     if (bestScore == -1.0 && cutpool.getNumCuts() != numCuts)

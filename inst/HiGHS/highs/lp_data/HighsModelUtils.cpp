@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -1516,6 +1515,12 @@ std::string utilPresolveRuleTypeToString(const HighsInt rule_type) {
     return "Probing";
   } else if (rule_type == kPresolveRuleEnumeration) {
     return "Enumeration";
+  } else if (rule_type == kPresolveRuleDualFixing) {
+    return "Dual fixing";
+  } else if (rule_type == kPresolveRuleColStuffing) {
+    return "Col stuffing";
+  } else if (rule_type == kPresolveRuleInitialSweep) {
+    return "Initial sweep";
   }
   assert(1 == 0);
   return "????";
@@ -1603,7 +1608,7 @@ std::string findModelObjectiveName(const HighsLp* lp,
     // If there are no row names, then the objective name is certainly
     // OK
     if (lp->row_names_.size() == 0) break;
-    if (pass != 0) objective_name += pass;
+    if (pass != 0) objective_name += std::to_string(pass);
     // Ensure that the objective name doesn't clash with any row names
     bool ok_objective_name = true;
     for (HighsInt iRow = 0; iRow < lp->num_row_; iRow++) {
@@ -1624,11 +1629,11 @@ std::string findModelObjectiveName(const HighsLp* lp,
 /*
 void print_map(std::string comment, const std::map<std::string, HighsInt>& m)
 {
-    Rcpp::Rcout << comment;
+    hi_shim_cout() << comment;
 
   for (const auto& n : m)
-      Rcpp::Rcout << n.first << " = " << n.second << "; ";
-    Rcpp::Rcout << '\n';
+      hi_shim_cout() << n.first << " = " << n.second << "; ";
+    hi_shim_cout() << '\n';
 }
 */
 
@@ -1641,7 +1646,7 @@ bool repeatedNames(const std::vector<std::string> name) {
   for (HighsInt ix = 0; ix < num_name; ix++) {
     auto search = name_map.find(name[ix]);
     if (search != name_map.end()) return true;
-    //    Rprintf("Search for %s yields %d\n", name[ix].c_str(),
+    //    printf("Search for %s yields %d\n", name[ix].c_str(),
     //    int(search->second));
     name_map.insert({name[ix], ix});
     //    print_map("Map\n", name_map);

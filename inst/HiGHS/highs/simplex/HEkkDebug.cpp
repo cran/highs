@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -60,7 +59,7 @@ void HEkk::debugInitialise() {
   const HighsInt debug_basis_id = -999;
   debug_basis_report_ = basis_.debug_id == debug_basis_id;
   if (debug_solve_report_) {
-    Rprintf("HEkk::solve call %d\n", (int)debug_solve_call_num_);
+    printf("HEkk::solve call %d\n", (int)debug_solve_call_num_);
     debugReporting(-1);
     debugReporting(0, kHighsLogDevLevelVerbose);  // Detailed); //
   }
@@ -69,7 +68,7 @@ void HEkk::debugInitialise() {
     timeReporting(0);
   }
   if (debug_basis_report_) {
-    Rprintf("HEkk::solve basis %d\n", (int)debug_basis_id);
+    printf("HEkk::solve basis %d\n", (int)debug_basis_id);
   }
 }
 
@@ -176,7 +175,7 @@ void HEkk::timeReporting(const HighsInt save_mod_recover) {
       bool output_flag = true;
       bool log_to_console = false;
       HighsInt log_dev_level = kHighsLogDevLevelVerbose;
-      NULL;
+      log_options.log_stream = stdout;
       log_options.output_flag = &output_flag;
       log_options.log_to_console = &log_to_console;
       log_options.log_dev_level = &log_dev_level;
@@ -1511,7 +1510,7 @@ HighsDebugStatus HEkk::devDebugDualSteepestEdgeWeights(
     const HighsInt alt_debug_level = check_all_dual_edge_weights
                                          ? (HighsInt)kHighsDebugLevelExpensive
                                          : (HighsInt)kHighsDebugLevelCostly;
-    //    Rprintf("Performing level %1d check %s for dual steepest edge
+    //    printf("Performing level %1d check %s for dual steepest edge
     //    weights\n", (int)alt_debug_level, message.c_str());
     return debugDualSteepestEdgeWeights(alt_debug_level);
   } else {
@@ -1578,7 +1577,7 @@ HighsDebugStatus HEkk::debugDualSteepestEdgeWeights(
         (int)iteration_count_, (int)num_check_weight,
         dual_steepest_edge_weight_error, dual_steepest_edge_weight_norm,
         relative_dual_steepest_edge_weight_error);
-    NULL;
+    fflush(stdout);
     debug_max_relative_dual_steepest_edge_weight_error =
         relative_dual_steepest_edge_weight_error;
     if (relative_dual_steepest_edge_weight_error >
@@ -1590,12 +1589,12 @@ HighsDebugStatus HEkk::debugDualSteepestEdgeWeights(
 
 HighsDebugStatus HEkk::debugRowMatrix() const {
   /*
-  Rprintf("Checking row-wise matrix\n");
+  printf("Checking row-wise matrix\n");
   for (HighsInt row = 0; row < numRow; row++) {
     for (HighsInt el = ARstart[row]; el < AR_Nend[row]; el++) {
       HighsInt col = ARindex[el];
       if (!nonbasicFlag_[col]) {
-        Rprintf("Row-wise matrix error: col %" HIGHSINT_FORMAT ", (el = %"
+        printf("Row-wise matrix error: col %" HIGHSINT_FORMAT ", (el = %"
   HIGHSINT_FORMAT " for row %" HIGHSINT_FORMAT ") is basic\n", col, el, row);
         return false;
       }
@@ -1603,7 +1602,7 @@ HighsDebugStatus HEkk::debugRowMatrix() const {
     for (HighsInt el = AR_Nend[row]; el < ARstart[row + 1]; el++) {
       HighsInt col = ARindex[el];
       if (nonbasicFlag_[col]) {
-        Rprintf(
+        printf(
             "Row-wise matrix error: col %" HIGHSINT_FORMAT ", (el = %"
   HIGHSINT_FORMAT " for row %" HIGHSINT_FORMAT ") is nonbasic\n", col, el, row);
         return false;
@@ -1666,11 +1665,11 @@ HighsDebugStatus HEkk::debugComputeDual(const bool initialise) const {
     num_delta_dual_values++;
   }
   if (num_delta_dual_values) {
-    Rprintf(
+    printf(
         "\nHEkk::debugComputeDual Iteration %d: Number of dual sign changes = "
         "%d\n",
         (int)iteration_count_, (int)num_dual_sign_change);
-    Rprintf("   |cB| = %g; |cN| = %g; zero delta dual = %g\n", norm_basic_costs,
+    printf("   |cB| = %g; |cN| = %g; zero delta dual = %g\n", norm_basic_costs,
            norm_nonbasic_costs, zero_delta_dual);
     //    analyseVectorValues(&options.log_options, "Previous duals", num_tot,
     //    previous_dual); analyseVectorValues(&options.log_options, "New duals",
@@ -1686,7 +1685,7 @@ HighsDebugStatus HEkk::debugSimplexDualInfeasible(const std::string message,
   const HighsSimplexInfo& info = this->info_;
   computeSimplexDualInfeasible();
   if (info.num_dual_infeasibilities || force_report)
-    Rprintf(
+    printf(
         "Iteration %6d: %s num / max / sum dual infeasibilities is %d / %g / "
         "%g\n",
         (int)iteration_count_, message.c_str(),

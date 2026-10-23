@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 #include "parallel/HighsParallel.h"
 #include "lp_data/HighsCallback.h"
 #include "ipm/ipx/control.h"
@@ -120,7 +119,7 @@ void Control::ResetTimer() {
 void Control::MakeStream() {
     output_.clear();
     if (parameters_.display)
-        output_.add(Rcpp::Rcout);
+        output_.add(hi_shim_cout());
     if (logfile_.is_open())
         output_.add(logfile_);
 }

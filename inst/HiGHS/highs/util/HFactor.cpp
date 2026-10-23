@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -383,7 +382,7 @@ HighsInt HFactor::build(HighsTimerClock* factor_timer_clock_pointer) {
   // Build the L, U factor
   buildSimple();
   if (report_lu) {
-    Rprintf("\nAfter units and singletons\n");
+    printf("\nAfter units and singletons\n");
     reportLu(kReportLuBoth, false);
   }
   factor_timer.stop(FactorInvertSimple, factor_timer_clock_pointer);
@@ -427,7 +426,7 @@ HighsInt HFactor::build(HighsTimerClock* factor_timer_clock_pointer) {
   }
   // Complete INVERT
   if (report_lu) {
-    Rprintf("\nFactored INVERT\n");
+    printf("\nFactored INVERT\n");
     reportLu(kReportLuBoth, false);
   }
   factor_timer.start(FactorInvertFinish, factor_timer_clock_pointer);
@@ -585,7 +584,7 @@ void HFactor::buildSimple() {
   HighsInt BcountX = 0;
   fill_n(mr_count_before.data(), num_row, 0);
   nwork = 0;
-  if (report_anything) Rprintf("\nFactor\n");
+  if (report_anything) printf("\nFactor\n");
   // Compile a vector iwork of the indices within basic_index of the
   // its nwork non-unit structural columns: they will be formed into
   // the B matrix as the kernel
@@ -596,7 +595,7 @@ void HFactor::buildSimple() {
   for (HighsInt iCol = 0; iCol < num_basic; iCol++) {
     if (progress_report && iCol) {
       if (iCol % progress_frequency == 0)
-        Rprintf("HFactor::buildSimple stage = %6d\n", (int)iCol);
+        printf("HFactor::buildSimple stage = %6d\n", (int)iCol);
     }
 
     HighsInt iMat = basic_index[iCol];
@@ -617,7 +616,7 @@ void HFactor::buildSimple() {
       HighsInt lc_iRow = iMat - num_col;
       if (mr_count_before[lc_iRow] >= 0) {
         if (report_unit)
-          Rprintf("Stage %d: Logical\n", (int)(l_start.size() - 1));
+          printf("Stage %d: Logical\n", (int)(l_start.size() - 1));
         pivot_type = kPivotLogical;
         iRow = lc_iRow;
       } else {
@@ -642,7 +641,7 @@ void HFactor::buildSimple() {
             a_value[start] == 1 && mr_count_before[a_index[start]] >= 0;
       }
       if (ok_unit_col) {
-        if (report_unit) Rprintf("Stage %d: Unit\n", (int)(l_start.size() - 1));
+        if (report_unit) printf("Stage %d: Unit\n", (int)(l_start.size() - 1));
         // Don't exploit this special case in case the matrix is
         // re-factorized after scaling has been applied, making this
         // column non-unit.
@@ -724,7 +723,7 @@ void HFactor::buildSimple() {
         // 2.2 Deal with row singleton
         const double pivot_multiplier = 1 / b_value[pivot_k];
         if (report_singletons)
-          Rprintf("Stage %d: Row singleton (%4d, %g)\n",
+          printf("Stage %d: Row singleton (%4d, %g)\n",
                  (int)(l_start.size() - 1), (int)pivot_k, pivot_multiplier);
         for (HighsInt section = 0; section < 2; section++) {
           HighsInt p0 = section == 0 ? start : pivot_k + 1;
@@ -733,13 +732,13 @@ void HFactor::buildSimple() {
             HighsInt iRow = b_index[k];
             if (mr_count_before[iRow] > 0) {
               if (report_singletons)
-                Rprintf("Row singleton: L En (%4d, %11.4g)\n", (int)iRow,
+                printf("Row singleton: L En (%4d, %11.4g)\n", (int)iRow,
                        b_value[k] * pivot_multiplier);
               l_index.push_back(iRow);
               l_value.push_back(b_value[k] * pivot_multiplier);
             } else {
               if (report_singletons)
-                Rprintf("Row singleton: U En (%4d, %11.4g)\n", (int)iRow,
+                printf("Row singleton: U En (%4d, %11.4g)\n", (int)iRow,
                        b_value[k]);
               u_index.push_back(iRow);
               u_value.push_back(b_value[k]);
@@ -753,7 +752,7 @@ void HFactor::buildSimple() {
         l_start.push_back(l_index.size());
 
         if (report_singletons)
-          Rprintf("Row singleton: U Pv (%4d, %11.4g)\n", (int)iRow,
+          printf("Row singleton: U Pv (%4d, %11.4g)\n", (int)iRow,
                  b_value[pivot_k]);
         u_pivot_index.push_back(iRow);
         u_pivot_value.push_back(b_value[pivot_k]);
@@ -765,18 +764,18 @@ void HFactor::buildSimple() {
         this->refactor_info_.pivot_type.push_back(kPivotRowSingleton);
       } else if (count == 1) {
         if (report_singletons)
-          Rprintf("Stage %d: Col singleton \n", (int)(l_start.size() - 1));
+          printf("Stage %d: Col singleton \n", (int)(l_start.size() - 1));
         // 2.3 Deal with column singleton
         for (HighsInt k = start; k < pivot_k; k++) {
           if (report_singletons)
-            Rprintf("Col singleton: U En (%4d, %11.4g)\n", (int)b_index[k],
+            printf("Col singleton: U En (%4d, %11.4g)\n", (int)b_index[k],
                    b_value[k]);
           u_index.push_back(b_index[k]);
           u_value.push_back(b_value[k]);
         }
         for (HighsInt k = pivot_k + 1; k < end; k++) {
           if (report_singletons)
-            Rprintf("Col singleton: U En (%4d, %11.4g)\n", (int)b_index[k],
+            printf("Col singleton: U En (%4d, %11.4g)\n", (int)b_index[k],
                    b_value[k]);
           u_index.push_back(b_index[k]);
           u_value.push_back(b_value[k]);
@@ -788,7 +787,7 @@ void HFactor::buildSimple() {
         l_start.push_back(l_index.size());
 
         if (report_singletons)
-          Rprintf("Col singleton: U Pv (%4d, %11.4g)\n", (int)iRow,
+          printf("Col singleton: U Pv (%4d, %11.4g)\n", (int)iRow,
                  b_value[pivot_k]);
         u_pivot_index.push_back(iRow);
         u_pivot_value.push_back(b_value[pivot_k]);
@@ -887,7 +886,7 @@ HighsInt HFactor::buildKernel() {
 
   const HighsInt check_nwork = -11;
   while (nwork-- > 0) {
-    //    Rprintf("\nnwork = %d\n", (int)nwork);
+    //    printf("\nnwork = %d\n", (int)nwork);
     if (nwork == check_nwork) {
       reportAsm();
     }
@@ -939,7 +938,7 @@ HighsInt HFactor::buildKernel() {
             break;
           }
         }
-        Rprintf(
+        printf(
             "HFactor::buildKernel stage = %6d: min_col_count = %3d; "
             "min_row_count = %3d\n",
             (int)search_k, (int)min_col_count, (int)min_row_count);
@@ -1720,7 +1719,7 @@ void HFactor::ftranU(HVector& rhs, const double expected_density,
     factor_timer.stop(use_clock, factor_timer_clock_pointer);
     if (report_ftran_upper_sparse) {
       const double final_density = 1.0 * rhs.count * inv_num_row;
-      Rprintf(
+      printf(
           "FactorFtranUpperSps: expected_density = %10.4g; current_density = "
           "%10.4g; final_density = %10.4g\n",
           expected_density, current_density, final_density);

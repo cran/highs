@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -16,7 +15,7 @@
 
 #include "test_kkt/DevKkt.h"
 
-using Rcpp::Rcout;
+
 using std::endl;
 using std::get;
 using std::pair;

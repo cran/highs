@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -340,10 +339,10 @@ HighsDebugStatus HSimplexNla::debugReportInvertSolutionError(
       report_level = HighsLogType::kInfo;
     }
     if (force) report_level = HighsLogType::kInfo;
-    //    Rprintf("%s\n", value_adjective.c_str());
-    //    Rprintf("%g\n", solve_error_norm);
-    //    Rprintf("%s\n", type.c_str());
-    //    Rprintf("%s\n", source.c_str());
+    //    printf("%s\n", value_adjective.c_str());
+    //    printf("%g\n", solve_error_norm);
+    //    printf("%s\n", type.c_str());
+    //    printf("%s\n", source.c_str());
     highsLogDev(options->log_options, report_level,
                 "CheckINVERT:   %-9s (%9.4g) norm for %s%s solve error\n",
                 value_adjective.c_str(), solve_error_norm, type.c_str(),

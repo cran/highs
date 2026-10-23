@@ -10,7 +10,9 @@ test_hi_solver_run_output_capturable <- function() {
   )
   solver <- hi_new_solver(model)
   hi_solver_set_option(solver, "solver", "simplex")
-  hi_solver_set_option(solver, "presolve", FALSE)
+  # "presolve" is a string option ("off"/"choose"/"on"); FALSE (as shipped in
+  # 1.14.0-2) made HiGHS log an option error on every run of this test
+  hi_solver_set_option(solver, "presolve", "off")
 
   output <- capture.output(hi_solver_run(solver))
 
@@ -64,3 +66,9 @@ test_solver_with_log_control <- function() {
 
   expect_equal(result, 0L)
 }
+
+# Actually run the tests: as shipped in 1.14.0-2 the three functions above
+# were defined but never invoked, so the file executed 0 expectations.
+test_hi_solver_run_output_capturable()
+test_highs_solve_output_capturable()
+test_solver_with_log_control()

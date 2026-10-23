@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -48,7 +47,7 @@ void appendNonbasicColsToBasis(HighsLp& lp, HighsBasis& highs_basis,
                                HighsInt XnumNewCol) {
   assert(highs_basis.valid);
   if (!highs_basis.valid) {
-    Rprintf("\n!!Appending columns to invalid basis!!\n\n");
+    printf("\n!!Appending columns to invalid basis!!\n\n");
   }
   // Add nonbasic structurals
   if (XnumNewCol == 0) return;
@@ -125,7 +124,7 @@ void appendBasicRowsToBasis(HighsLp& lp, HighsBasis& highs_basis,
                             HighsInt XnumNewRow) {
   assert(highs_basis.valid);
   if (!highs_basis.valid) {
-    Rprintf("\n!!Appending columns to invalid basis!!\n\n");
+    printf("\n!!Appending rows to invalid basis!!\n\n");
   }
   // Add basic logicals
   if (XnumNewRow == 0) return;

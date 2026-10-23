@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -307,28 +306,28 @@ void HighsCliqueTable::bronKerboschRecurse(BronKerboschData& data,
 #if 0
 static void printRow(const HighsDomain& domain, const HighsInt* inds,
                      const double* vals, HighsInt len, double lhs, double rhs) {
-  Rprintf("%g <= ", lhs);
+  printf("%g <= ", lhs);
 
   for (HighsInt i = 0; i != len; ++i) {
     char sign = vals[i] > 0 ? '+' : '-';
     char var = domain.isBinary(inds[i]) ? 'x' : 'y';
-    Rprintf("%c%g %c%" HIGHSINT_FORMAT " ", sign, std::abs(vals[i]), var, inds[i]);
+    printf("%c%g %c%" HIGHSINT_FORMAT " ", sign, std::abs(vals[i]), var, inds[i]);
   }
 
-  Rprintf("<= %g\n", rhs);
+  printf("<= %g\n", rhs);
 }
 
 static void printClique(
     const std::vector<HighsCliqueTable::CliqueVar>& clique) {
   bool first = true;
   for (HighsCliqueTable::CliqueVar v : clique) {
-    if (!first) Rprintf("+ ");
+    if (!first) printf("+ ");
     char complemented = v.val == 0 ? '~' : ' ';
-    Rprintf("%cx%" HIGHSINT_FORMAT " ", complemented, v.col);
+    printf("%cx%" HIGHSINT_FORMAT " ", complemented, v.col);
     first = false;
   }
 
-  Rprintf("<= 1\n");
+  printf("<= 1\n");
 }
 #endif
 
@@ -485,7 +484,8 @@ void HighsCliqueTable::queryNeighbourhood(
 
   if (numCliques(v) == 0) return;
 
-  if (numEntries - sizeTwoCliques.size() * 2 < minEntriesForParallelism) {
+  if (!allowParallel ||
+      numEntries - sizeTwoCliques.size() * 2 < minEntriesForParallelism) {
     for (HighsInt i = 0; i < N; ++i) {
       if (haveCommonClique(numQueries, v, q[i])) neighbourhoodInds.push_back(i);
     }
@@ -648,7 +648,7 @@ bool HighsCliqueTable::processNewEdge(HighsDomain& globaldom, CliqueVar v1,
 void HighsCliqueTable::addClique(const HighsMipSolver& mipsolver,
                                  CliqueVar* cliquevars, HighsInt numcliquevars,
                                  bool equality, HighsInt origin) {
-  HighsDomain& globaldom = mipsolver.mipdata_->domain;
+  HighsDomain& globaldom = mipsolver.mipdata_->getDomain();
   mipsolver.mipdata_->debugSolution.checkClique(cliquevars, numcliquevars);
   const HighsInt maxNumCliqueVars = 100;
 
@@ -747,7 +747,7 @@ void HighsCliqueTable::addClique(const HighsMipSolver& mipsolver,
                   ++itV2;
                 } else {
                   // if (!mipsolver.submip)
-                  //   Rprintf("node %d can be pruned\n", itV2->second);
+                  //   printf("node %d can be pruned\n", itV2->second);
                   HighsInt prunedNode = itV2->second;
                   ++itV1;
                   ++itV2;
@@ -842,7 +842,7 @@ void HighsCliqueTable::extractCliques(
     HighsInt nbin, std::vector<HighsInt>& perm, std::vector<CliqueVar>& clique,
     double feastol) {
   HighsImplications& implics = mipsolver.mipdata_->implications;
-  HighsDomain& globaldom = mipsolver.mipdata_->domain;
+  HighsDomain& globaldom = mipsolver.mipdata_->getDomain();
 
   perm.resize(inds.size());
   std::iota(perm.begin(), perm.end(), 0);
@@ -910,7 +910,7 @@ void HighsCliqueTable::extractCliques(
 
   // check if this is a set packing constraint (or easily transformable
   // into one)
-  if (std::abs(vals[0] - vals[perm[nbin - 1]]) <= feastol &&
+  if (std::abs(vals[perm[0]] - vals[perm[nbin - 1]]) <= feastol &&
       rhs < 2 * vals[perm[nbin - 1]] - feastol) {
     // the coefficients on the binary variables are all equal and the
     // right hand side is strictly below two times the coefficient value.
@@ -930,7 +930,7 @@ void HighsCliqueTable::extractCliques(
 
     addClique(mipsolver, clique.data(), nbin);
     if (globaldom.infeasible()) return;
-    // Rprintf("extracted this clique:\n");
+    // printf("extracted this clique:\n");
     // printClique(clique);
     return;
   }
@@ -959,7 +959,7 @@ void HighsCliqueTable::extractCliques(
     else
       clique.emplace_back(inds[perm[k]], 1);
 
-    // Rprintf("extracted this clique:\n");
+    // printf("extracted this clique:\n");
     // printClique(clique);
 
     if (clique.size() >= 2) {
@@ -1082,7 +1082,7 @@ void HighsCliqueTable::extractCliquesFromCut(const HighsMipSolver& mipsolver,
   if (isFull()) return;
 
   HighsImplications& implics = mipsolver.mipdata_->implications;
-  HighsDomain& globaldom = mipsolver.mipdata_->domain;
+  HighsDomain& globaldom = mipsolver.mipdata_->getDomain();
 
   const double feastol = mipsolver.mipdata_->feastol;
 
@@ -1167,7 +1167,7 @@ void HighsCliqueTable::extractCliquesFromCut(const HighsMipSolver& mipsolver,
               coef = implcolub - globaldom.col_upper_[col];
               constant = globaldom.col_upper_[col];
             }
-            // Rprintf("extracted VUB from cut: x%" HIGHSINT_FORMAT " <= %g*y%"
+            // printf("extracted VUB from cut: x%" HIGHSINT_FORMAT " <= %g*y%"
             // HIGHSINT_FORMAT " + %g\n", col, coef,
             //        bincol, constant);
             implics.addVUB(col, bincol, coef, constant);
@@ -1194,11 +1194,11 @@ void HighsCliqueTable::extractCliquesFromCut(const HighsMipSolver& mipsolver,
               constant = globaldom.col_lower_[col];
             }
 
-            // Rprintf("extracted VLB from cut: x%" HIGHSINT_FORMAT " >= %g*y%"
+            // printf("extracted VLB from cut: x%" HIGHSINT_FORMAT " >= %g*y%"
             // HIGHSINT_FORMAT " + %g\n", col, coef,
             //        bincol, constant);
             implics.addVLB(col, bincol, coef, constant);
-            // Rprintf("extracted VLB from cut\n");
+            // printf("extracted VLB from cut\n");
           }
         }
       }
@@ -1250,10 +1250,10 @@ void HighsCliqueTable::extractCliquesFromCut(const HighsMipSolver& mipsolver,
     else
       clique.emplace_back(inds[perm[k]], 1);
 
-    // Rprintf("extracted this clique:\n");
+    // printf("extracted this clique:\n");
     // printClique(clique);
     if (clique.size() >= 2) {
-      // Rprintf("extracted clique from cut\n");
+      // printf("extracted clique from cut\n");
       // if (clique.size() > 2) runCliqueSubsumption(globaldom, clique);
 
       addClique(mipsolver, clique.data(), static_cast<HighsInt>(clique.size()));
@@ -1277,7 +1277,7 @@ void HighsCliqueTable::extractCliques(HighsMipSolver& mipsolver,
 
   double rhs;
 
-  HighsDomain& globaldom = mipsolver.mipdata_->domain;
+  HighsDomain& globaldom = mipsolver.mipdata_->getDomain();
 
   for (HighsInt i = 0; i != mipsolver.numRow(); ++i) {
     HighsInt start = mipsolver.mipdata_->ARstart_[i];
@@ -1381,7 +1381,7 @@ void HighsCliqueTable::extractObjCliques(HighsMipSolver& mipsolver) {
   HighsInt nbin =
       mipsolver.mipdata_->objectiveFunction.getNumBinariesInObjective();
   if (nbin <= 1) return;
-  HighsDomain& globaldom = mipsolver.mipdata_->domain;
+  HighsDomain& globaldom = mipsolver.mipdata_->getDomain();
   if (globaldom.getObjectiveLowerBound() == -kHighsInf) return;
 
   const double* vals;
@@ -1445,10 +1445,10 @@ void HighsCliqueTable::extractObjCliques(HighsMipSolver& mipsolver) {
     else
       clique.emplace_back(inds[perm[k]], 1);
 
-    // Rprintf("extracted this clique from obj:\n");
+    // printf("extracted this clique from obj:\n");
     // printClique(clique);
     if (clique.size() >= 2) {
-      // Rprintf("extracted clique from obj\n");
+      // printf("extracted clique from obj\n");
       // if (clique.size() > 2) runCliqueSubsumption(globaldom, clique);
 
       addClique(mipsolver, clique.data(), static_cast<HighsInt>(clique.size()));
@@ -1604,7 +1604,9 @@ void HighsCliqueTable::vertexInfeasible(HighsDomain& globaldom, HighsInt col,
 
 void HighsCliqueTable::separateCliques(const HighsMipSolver& mipsolver,
                                        const std::vector<double>& sol,
-                                       HighsCutPool& cutpool, double feastol) {
+                                       HighsCutPool& cutpool, double feastol,
+                                       HighsRandom& randgen,
+                                       int64_t& localNumNeighbourhoodQueries) {
   BronKerboschData data(sol);
   data.feastol = feastol;
   data.maxNeighbourhoodQueries = 1000000 +
@@ -1612,7 +1614,7 @@ void HighsCliqueTable::separateCliques(const HighsMipSolver& mipsolver,
                                  mipsolver.mipdata_->total_lp_iterations * 1000;
   if (numNeighbourhoodQueries > data.maxNeighbourhoodQueries) return;
   data.maxNeighbourhoodQueries -= numNeighbourhoodQueries;
-  const HighsDomain& globaldom = mipsolver.mipdata_->domain;
+  const HighsDomain& globaldom = mipsolver.mipdata_->getDomain();
 
   for (HighsInt i : mipsolver.mipdata_->integral_cols) {
     if (colsubstituted[i] || colDeleted[i]) continue;
@@ -1644,7 +1646,7 @@ void HighsCliqueTable::separateCliques(const HighsMipSolver& mipsolver,
 
   // auto t2 = std::chrono::high_resolution_clock::now();
 
-  // Rprintf(
+  // printf(
   //     "bron kerbosch: %" HIGHSINT_FORMAT " calls, %" HIGHSINT_FORMAT "
   //     cliques, %ldms\n", data.ncalls, int(data.cliques.size()),
   //     std::chrono::duration_cast<std::chrono::milliseconds>(t2 -
@@ -1699,9 +1701,9 @@ void HighsCliqueTable::separateCliques(const HighsMipSolver& mipsolver,
                    false, false);
   }
 
-  numNeighbourhoodQueries += data.numNeighbourhoodQueries;
+  localNumNeighbourhoodQueries += data.numNeighbourhoodQueries;
 
-  if (runcliquesubsumption) {
+  if (runcliquesubsumption && &randgen == &this->randgen) {
     for (std::vector<CliqueVar>& clique : data.cliques) {
       HighsInt nremoved = runCliqueSubsumption(globaldom, clique);
 
@@ -1715,7 +1717,7 @@ std::vector<std::vector<HighsCliqueTable::CliqueVar>>
 HighsCliqueTable::separateCliques(const std::vector<double>& sol,
                                   const HighsDomain& globaldom,
                                   double feastol) {
-  Rcpp::stop("Something went wrong!");
+  exit(0);
 #if 0
   BronKerboschData data(sol);
   data.feastol = feastol;
@@ -1842,7 +1844,7 @@ void HighsCliqueTable::cleanupFixed(HighsDomain& globaldom) {
   if (nfixings != oldnfixings) propagateAndCleanup(globaldom);
 }
 
-HighsInt HighsCliqueTable::getNumImplications(HighsInt col) {
+HighsInt HighsCliqueTable::getNumImplications(HighsInt col) const {
   // first count all cliques as one implication, so that cliques of size two
   // are accounted for already
   HighsInt i0 = CliqueVar(col, 0).index();
@@ -1861,7 +1863,7 @@ HighsInt HighsCliqueTable::getNumImplications(HighsInt col) {
   return numimplics;
 }
 
-HighsInt HighsCliqueTable::getNumImplications(HighsInt col, bool val) {
+HighsInt HighsCliqueTable::getNumImplications(HighsInt col, bool val) const {
   HighsInt iVal = CliqueVar(col, val).index();
 
   // each size two clique is one implication
@@ -2133,7 +2135,7 @@ void HighsCliqueTable::runCliqueMerging(HighsDomain& globaldomain) {
     processInfeasibleVertices(globaldomain);
 
     if (numEntries >= maxNewEntries) break;
-    // Rprintf("nonzeroDelta: %d, maxNonzeroDelta: %d\n", nonzeroDelta,
+    // printf("nonzeroDelta: %d, maxNonzeroDelta: %d\n", nonzeroDelta,
     // maxNonzeroDelta);
   }
 
@@ -2143,7 +2145,7 @@ void HighsCliqueTable::runCliqueMerging(HighsDomain& globaldomain) {
       if (cliques[k].origin != -1) continue;
       // if (cliques[k].end - cliques[k].start <= 1000) continue;
 
-      // Rprintf("numEntries before: %d\n", numEntries);
+      // printf("numEntries before: %d\n", numEntries);
       extensionvars.clear();
       extensionvars.insert(extensionvars.end(),
                            cliqueentries.begin() + cliques[k].start,
@@ -2197,6 +2199,7 @@ void HighsCliqueTable::rebuild(
         numvars != oldnumvars ? false : cliques[i].equality, origin);
   }
 
+  newCliqueTable.setAllowParallel(allowParallel);
   *this = std::move(newCliqueTable);
 }
 
@@ -2206,7 +2209,7 @@ void HighsCliqueTable::buildFrom(const HighsLp* origModel,
   HighsInt ncols = init.colsubstituted.size();
   HighsCliqueTable newCliqueTable(ncols);
   newCliqueTable.setPresolveFlag(inPresolve);
-  newCliqueTable.setPresolveFlag(minEntriesForParallelism);
+  newCliqueTable.setMinEntriesForParallelism(minEntriesForParallelism);
   HighsInt ncliques = init.cliques.size();
   std::vector<CliqueVar> clqBuffer;
   clqBuffer.reserve(2 * static_cast<size_t>(origModel->num_col_));
@@ -2233,5 +2236,7 @@ void HighsCliqueTable::buildFrom(const HighsLp* origModel,
 
   newCliqueTable.colsubstituted = init.colsubstituted;
   newCliqueTable.substitutions = init.substitutions;
+  // Currently assume buildFrom is always used for sub-mips
+  newCliqueTable.setAllowParallel(false);
   *this = std::move(newCliqueTable);
 }

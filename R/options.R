@@ -1,13 +1,26 @@
+.highs_registry_cache <- new.env(parent = emptyenv())
+
 #' Available Solver Options
 #'
-#' Reference for the available solver options.
+#' Reference for the available solver options, enumerated at runtime from the
+#' bundled 'HiGHS' library's own option registry
+#' (\code{Highs::getNumOptions()} / \code{getOptionName()} /
+#' \code{getOptionType()}), so it can never drift from the solver actually
+#' compiled into the package.
 #'
-#' @returns A \code{data.frame} containing the available solver options.
+#' @returns A \code{data.frame} containing the available solver options:
+#'   columns \code{option}, \code{type}, and \code{advanced} (\code{TRUE}
+#'   for options 'HiGHS' registers past its user-settable set).
 #' @examples
 #' highs_available_solver_options()
 #' @export
 highs_available_solver_options <- function() {
-  HIGHS_OPTIONS
+  # side-effect-free: solver_option_registry() mutes the shim console for its
+  # scope (thread-local), so the Highs constructor banner never reaches R
+  if (is.null(.highs_registry_cache$table)) {
+    .highs_registry_cache$table <- solver_option_registry()
+  }
+  .highs_registry_cache$table
 }
 
 

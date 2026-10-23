@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -110,11 +109,14 @@ void HighsSymmetries::clear() {
   numGenerators = 0;
 }
 
-void HighsSymmetries::mergeOrbits(HighsInt v1, HighsInt v2) {
+void HighsSymmetries::mergeOrbits(HighsInt v1, HighsInt v2,
+                                  std::vector<HighsInt>& orbitPartition,
+                                  std::vector<HighsInt>& orbitSize,
+                                  std::vector<HighsInt>& linkCompressionStack) {
   if (v1 == v2) return;
 
-  HighsInt orbit1 = getOrbit(v1);
-  HighsInt orbit2 = getOrbit(v2);
+  const HighsInt orbit1 = getOrbit(v1, orbitPartition, linkCompressionStack);
+  const HighsInt orbit2 = getOrbit(v2, orbitPartition, linkCompressionStack);
 
   if (orbit1 == orbit2) return;
 
@@ -125,13 +127,14 @@ void HighsSymmetries::mergeOrbits(HighsInt v1, HighsInt v2) {
     orbitPartition[orbit1] = orbit2;
     orbitSize[orbit2] += orbitSize[orbit1];
   }
-
-  return;
 }
 
-HighsInt HighsSymmetries::getOrbit(HighsInt col) {
+HighsInt HighsSymmetries::getOrbit(
+    HighsInt col, std::vector<HighsInt>& orbitPartition,
+    std::vector<HighsInt>& linkCompressionStack) {
   HighsInt i = columnPosition[col];
   if (i == -1) return -1;
+
   HighsInt orbit = orbitPartition[i];
   if (orbit != orbitPartition[orbit]) {
     do {
@@ -167,13 +170,14 @@ HighsInt HighsSymmetries::propagateOrbitopes(HighsDomain& domain) const {
   }
 
   // if (numFixed)
-  //   Rprintf("orbital fixing for full orbitope found %d fixings\n", numFixed);
+  //   printf("orbital fixing for full orbitope found %d fixings\n", numFixed);
 
   return numFixed;
 }
 
 std::shared_ptr<const StabilizerOrbits>
-HighsSymmetries::computeStabilizerOrbits(const HighsDomain& localdom) {
+HighsSymmetries::computeStabilizerOrbits(const HighsDomain& localdom,
+                                         StabilizerOrbitWorkspace& workspace) {
   const auto& domchgStack = localdom.getDomainChangeStack();
   const auto& branchingPos = localdom.getBranchingPositions();
 
@@ -196,9 +200,11 @@ HighsSymmetries::computeStabilizerOrbits(const HighsDomain& localdom) {
   }
 
   HighsInt permLength = permutationColumns.size();
-  orbitPartition.resize(permLength);
-  std::iota(orbitPartition.begin(), orbitPartition.end(), 0);
-  orbitSize.assign(permLength, 1);
+  workspace.orbitPartition.resize(permLength);
+  std::iota(workspace.orbitPartition.begin(), workspace.orbitPartition.end(),
+            0);
+  workspace.orbitSize.assign(permLength, 1);
+  workspace.linkCompressionStack.clear();
 
   for (HighsInt i = 0; i < numPerms; ++i) {
     const HighsInt* perm = permutations.data() + i * permutationColumns.size();
@@ -214,7 +220,8 @@ HighsSymmetries::computeStabilizerOrbits(const HighsDomain& localdom) {
     if (!permRespectsBranchings) continue;
 
     for (HighsInt j = 0; j < permLength; ++j) {
-      mergeOrbits(permutationColumns[j], perm[j]);
+      mergeOrbits(permutationColumns[j], perm[j], workspace.orbitPartition,
+                  workspace.orbitSize, workspace.linkCompressionStack);
     }
   }
 
@@ -225,8 +232,9 @@ HighsSymmetries::computeStabilizerOrbits(const HighsDomain& localdom) {
     if (localdom.variableType(permutationColumns[i]) ==
         HighsVarType::kContinuous)
       continue;
-    HighsInt orbit = getOrbit(permutationColumns[i]);
-    if (orbitSize[orbit] == 1)
+    HighsInt orbit = getOrbit(permutationColumns[i], workspace.orbitPartition,
+                              workspace.linkCompressionStack);
+    if (workspace.orbitSize[orbit] == 1)
       stabilizerOrbits.stabilizedCols.push_back(permutationColumns[i]);
     else if (localdom.isGlobalBinary(permutationColumns[i]))
       stabilizerOrbits.orbitCols.push_back(permutationColumns[i]);
@@ -238,15 +246,20 @@ HighsSymmetries::computeStabilizerOrbits(const HighsDomain& localdom) {
     pdqsort(stabilizerOrbits.orbitCols.begin(),
             stabilizerOrbits.orbitCols.end(),
             [&](HighsInt col1, HighsInt col2) {
-              return getOrbit(col1) < getOrbit(col2);
+              return getOrbit(col1, workspace.orbitPartition,
+                              workspace.linkCompressionStack) <
+                     getOrbit(col2, workspace.orbitPartition,
+                              workspace.linkCompressionStack);
             });
     HighsInt numOrbitCols = stabilizerOrbits.orbitCols.size();
     stabilizerOrbits.orbitStarts.reserve(numOrbitCols + 1);
     stabilizerOrbits.orbitStarts.push_back(0);
 
     for (HighsInt i = 1; i < numOrbitCols; ++i) {
-      if (getOrbit(stabilizerOrbits.orbitCols[i]) !=
-          getOrbit(stabilizerOrbits.orbitCols[i - 1]))
+      if (getOrbit(stabilizerOrbits.orbitCols[i], workspace.orbitPartition,
+                   workspace.linkCompressionStack) !=
+          getOrbit(stabilizerOrbits.orbitCols[i - 1], workspace.orbitPartition,
+                   workspace.linkCompressionStack))
         stabilizerOrbits.orbitStarts.push_back(i);
     }
     stabilizerOrbits.orbitStarts.push_back(numOrbitCols);
@@ -317,7 +330,7 @@ void HighsOrbitopeMatrix::determineOrbitopeType(HighsCliqueTable& cliquetable) {
     }
   }
 
-  rowIsSetPacking.assign(numRows, -1);
+  rowIsSetPacking.assign(numRows, kRowUndetermined);
   numSetPackingRows = 0;
 
   for (HighsInt j = 1; j < rowLength; ++j) {
@@ -327,7 +340,7 @@ void HighsOrbitopeMatrix::determineOrbitopeType(HighsCliqueTable& cliquetable) {
       HighsInt* colj0 = &entry(0, j0);
 
       for (HighsInt i = 0; i < numRows; ++i) {
-        if (rowIsSetPacking[i] != -1) continue;
+        if (rowIsSetPacking[i] != kRowUndetermined) continue;
 
         HighsInt xj0 = colj0[i];
         HighsInt xj1 = colj1[i];
@@ -335,7 +348,7 @@ void HighsOrbitopeMatrix::determineOrbitopeType(HighsCliqueTable& cliquetable) {
         auto commonClique = cliquetable.findCommonClique({xj0, 1}, {xj1, 1});
 
         if (commonClique.first == nullptr) {
-          rowIsSetPacking[i] = false;
+          rowIsSetPacking[i] = kRowNotPacking;
           continue;
         }
 
@@ -349,7 +362,7 @@ void HighsOrbitopeMatrix::determineOrbitopeType(HighsCliqueTable& cliquetable) {
         }
 
         if (overlap == rowLength) {
-          rowIsSetPacking[i] = true;
+          rowIsSetPacking[i] = kRowPacking;
           ++numSetPackingRows;
           if (numSetPackingRows == numRows) break;
         }
@@ -365,7 +378,8 @@ void HighsOrbitopeMatrix::determineOrbitopeType(HighsCliqueTable& cliquetable) {
   // if we have such structure when all columns in the row are negated
 
   for (HighsInt i = 0; i < numRows; ++i) {
-    if (!rowIsSetPacking[i]) rowIsSetPacking[i] = -1;
+    if (rowIsSetPacking[i] == kRowNotPacking)
+      rowIsSetPacking[i] = kRowUndetermined;
   }
 
   for (HighsInt j = 1; j < rowLength; ++j) {
@@ -375,7 +389,7 @@ void HighsOrbitopeMatrix::determineOrbitopeType(HighsCliqueTable& cliquetable) {
       HighsInt* colj0 = &entry(0, j0);
 
       for (HighsInt i = 0; i < numRows; ++i) {
-        if (rowIsSetPacking[i] != -1) continue;
+        if (rowIsSetPacking[i] != kRowUndetermined) continue;
 
         HighsInt xj0 = colj0[i];
         HighsInt xj1 = colj1[i];
@@ -384,7 +398,7 @@ void HighsOrbitopeMatrix::determineOrbitopeType(HighsCliqueTable& cliquetable) {
         auto commonClique = cliquetable.findCommonClique({xj0, 0}, {xj1, 0});
 
         if (commonClique.first == nullptr) {
-          rowIsSetPacking[i] = false;
+          rowIsSetPacking[i] = kRowNotPacking;
           continue;
         }
 
@@ -401,7 +415,7 @@ void HighsOrbitopeMatrix::determineOrbitopeType(HighsCliqueTable& cliquetable) {
         if (overlap == rowLength) {
           // mark with value 2, for negated set packing row with at most one
           // zero
-          rowIsSetPacking[i] = 2;
+          rowIsSetPacking[i] = kRowPackingNegated;
           ++numSetPackingRows;
           if (numSetPackingRows == numRows) break;
         }
@@ -418,7 +432,7 @@ HighsInt HighsOrbitopeMatrix::getBranchingColumn(
     const std::vector<double>& colLower, const std::vector<double>& colUpper,
     HighsInt col) const {
   const HighsInt* i = columnToRow.find(col);
-  if (i && rowIsSetPacking[*i]) {
+  if (i && rowIsSetPacking[*i] > kRowNotPacking) {
     for (HighsInt j = 0; j < rowLength; ++j) {
       HighsInt branchCol = entry(*i, j);
       if (branchCol == col) break;
@@ -433,7 +447,7 @@ HighsInt HighsOrbitopeMatrix::orbitalFixingForPackingOrbitope(
     const std::vector<HighsInt>& rows, HighsDomain& domain) const {
   HighsInt numDynamicRows = rows.size();
 
-  // Rprintf("propagate packing orbitope\n");
+  // printf("propagate packing orbitope\n");
 
   std::vector<HighsInt> firstOneInRow(numDynamicRows, -1);
 
@@ -442,10 +456,10 @@ HighsInt HighsOrbitopeMatrix::orbitalFixingForPackingOrbitope(
       if (firstOneInRow[i] != -1) continue;
       HighsInt r = rows[i];
       HighsInt colrj = entry(r, j);
-      if (rowIsSetPacking[r] == 1) {
+      if (rowIsSetPacking[r] == kRowPacking) {
         if (domain.col_lower_[colrj] > 0.5) firstOneInRow[i] = j;
       } else {
-        assert(rowIsSetPacking[r] == 2);
+        assert(rowIsSetPacking[r] == kRowPackingNegated);
         if (domain.col_upper_[colrj] < 0.5) firstOneInRow[i] = j;
       }
     }
@@ -463,12 +477,12 @@ HighsInt HighsOrbitopeMatrix::orbitalFixingForPackingOrbitope(
     // the face of the orbitope intersecting the set of initial fixings is empty
     if (firstOneInRow[i] > j) {
       domain.markInfeasible();
-      // Rprintf("packing orbitope propagation found infeasibility\n");
+      // printf("packing orbitope propagation found infeasibility\n");
       return numFixed;
     }
     HighsInt col_ij = entry(rows[i], j);
 
-    bool negate_i = rowIsSetPacking[rows[i]] == 2;
+    bool negate_i = rowIsSetPacking[rows[i]] == kRowPackingNegated;
 
     bool notZeroFixed = negate_i ? domain.col_lower_[col_ij] < 0.5
                                  : domain.col_upper_[col_ij] > 0.5;
@@ -495,13 +509,13 @@ HighsInt HighsOrbitopeMatrix::orbitalFixingForPackingOrbitope(
 
           ++numFixed;
           if (domain.infeasible()) {
-            // Rprintf("packing orbitope propagation found infeasibility\n");
+            // printf("packing orbitope propagation found infeasibility\n");
             return numFixed;
           }
           break;
         }
 
-        bool negate_k = rowIsSetPacking[rows[k]] == 2;
+        bool negate_k = rowIsSetPacking[rows[k]] == kRowPackingNegated;
         bool notZeroFixed = negate_k
                                 ? domain.col_lower_[entry(rows[k], j0)] < 0.5
                                 : domain.col_upper_[entry(rows[k], j0)] > 0.5;
@@ -520,7 +534,7 @@ HighsInt HighsOrbitopeMatrix::orbitalFixingForPackingOrbitope(
         assert(firstOneInRow[k] < j);
 
         HighsInt col_kj = entry(rows[k], j);
-        bool negate_k = rowIsSetPacking[rows[k]] == 2;
+        bool negate_k = rowIsSetPacking[rows[k]] == kRowPackingNegated;
 
         if (negate_k) {
           if (domain.col_lower_[col_kj] > 0.5) continue;
@@ -539,7 +553,7 @@ HighsInt HighsOrbitopeMatrix::orbitalFixingForPackingOrbitope(
           // this can happen due to deductions from earlier fixings
           // otherwise it would have been caught by the infeasibility
           // check within the next loop that goes over i
-          // Rprintf("packing orbitope propagation found infeasibility\n");
+          // printf("packing orbitope propagation found infeasibility\n");
           return numFixed;
         }
       }
@@ -553,7 +567,7 @@ HighsInt HighsOrbitopeMatrix::orbitalFixingForPackingOrbitope(
       assert(firstOneInRow[k] < j);
 
       HighsInt col_kj = entry(rows[k], j);
-      bool negate_k = rowIsSetPacking[rows[k]] == 2;
+      bool negate_k = rowIsSetPacking[rows[k]] == kRowPackingNegated;
 
       if (negate_k) {
         if (domain.col_lower_[col_kj] > 0.5) continue;
@@ -566,13 +580,13 @@ HighsInt HighsOrbitopeMatrix::orbitalFixingForPackingOrbitope(
         domain.changeBound(HighsBoundType::kUpper, col_kj, 0.0,
                            HighsDomain::Reason::unspecified());
       }
-      // Rprintf("new fixed\n");
+      // printf("new fixed\n");
       ++numFixed;
       if (domain.infeasible()) {
         // this can happen due to deductions from earlier fixings
         // otherwise it would have been caught by the infeasibility
         // check within the next loop that goes over i
-        // Rprintf("packing orbitope propagation found infeasibility\n");
+        // printf("packing orbitope propagation found infeasibility\n");
         return numFixed;
       }
     }
@@ -581,7 +595,7 @@ HighsInt HighsOrbitopeMatrix::orbitalFixingForPackingOrbitope(
   if (!domain.infeasible() && numFixed) domain.propagate();
 
   // if (numFixed)
-  //  Rprintf("orbital fixing for packing case fixed %d columns\n", numFixed);
+  //  printf("orbital fixing for packing case fixed %d columns\n", numFixed);
 
   return numFixed;
 }
@@ -727,7 +741,7 @@ HighsInt HighsOrbitopeMatrix::orbitalFixing(HighsDomain& domain) const {
     const HighsInt* i = columnToRow.find(domchgstack[pos].column);
     if (i && !rowUsed[*i]) {
       rowUsed[*i] = true;
-      isPacking = isPacking && rowIsSetPacking[*i] != 0;
+      isPacking = isPacking && rowIsSetPacking[*i] > kRowNotPacking;
       rows.push_back(*i);
     }
   }
@@ -1498,7 +1512,7 @@ HighsSymmetryDetection::computeComponentData(
   componentData.permComponentStarts.push_back(numUsedPerms);
 
   // HighsInt numComponents = componentData.componentStarts.size();
-  // Rprintf("found %d components\n", numComponents);
+  // printf("found %d components\n", numComponents);
   componentData.componentStarts.push_back(numActiveCols);
 
   return componentData;
@@ -1532,9 +1546,9 @@ bool HighsSymmetryDetection::isFullOrbitope(const ComponentData& componentData,
        k < componentData.permComponentStarts[component + 1]; ++k) {
     HighsInt p = componentData.permComponents[k];
     if (componentData.numUnfixed[p] != componentData.numUnfixed[p0]) {
-      // Rprintf("number of unfixed cols in perm %d: %d\n", p,
+      // printf("number of unfixed cols in perm %d: %d\n", p,
       //       componentData.numUnfixed[p]);
-      // Rprintf("wrong number of unfixed columns in permutation\n");
+      // printf("wrong number of unfixed columns in permutation\n");
       return false;
     }
   }
@@ -1550,7 +1564,7 @@ bool HighsSymmetryDetection::isFullOrbitope(const ComponentData& componentData,
   // orbit
   HighsInt orbitopeOrbitSize = componentSize / orbitopeNumRows;
   if (orbitopeOrbitSize * orbitopeNumRows != componentSize) {
-    // Rprintf("wrong number of orbits (%d orbits for component of size %d)\n",
+    // printf("wrong number of orbits (%d orbits for component of size %d)\n",
     //        orbitopeNumRows, componentSize);
     return false;
   }
@@ -1561,7 +1575,7 @@ bool HighsSymmetryDetection::isFullOrbitope(const ComponentData& componentData,
       componentData.permComponentStarts[component + 1] -
       componentData.permComponentStarts[component];
   if (componentNumPerms != (orbitopeOrbitSize - 1)) {
-    // Rprintf("wrong number of perms\n");
+    // printf("wrong number of perms\n");
     return false;
   }
 
@@ -1595,7 +1609,7 @@ bool HighsSymmetryDetection::isFullOrbitope(const ComponentData& componentData,
     ++m;
   }
 
-  // Rprintf("set up first two columns of possible orbitope with permutation
+  // printf("set up first two columns of possible orbitope with permutation
   // %d\n",
   //        p0);
 
@@ -1639,7 +1653,7 @@ bool HighsSymmetryDetection::isFullOrbitope(const ComponentData& componentData,
     }
 
     if (!foundCand) {
-      // Rprintf("did not find next permutation moving col %d\n", prevCol[0]);
+      // printf("did not find next permutation moving col %d\n", prevCol[0]);
       return false;
     }
 
@@ -1652,7 +1666,7 @@ bool HighsSymmetryDetection::isFullOrbitope(const ComponentData& componentData,
       if (perm[vertexPosition[nextVertex]] != prevCol[j]) return false;
 
       if (!colSet.insert(thisCol[j])) {
-        // Rprintf("col already exists\n");
+        // printf("col already exists\n");
         return false;
       }
     }
@@ -1661,7 +1675,7 @@ bool HighsSymmetryDetection::isFullOrbitope(const ComponentData& componentData,
   }
 
   if (colSet.size() != componentSize) {
-    // Rprintf("not all columns of component are mapped\n");
+    // printf("not all columns of component are mapped\n");
     return false;
   }
 
@@ -1670,7 +1684,7 @@ bool HighsSymmetryDetection::isFullOrbitope(const ComponentData& componentData,
 
   symmetries.orbitopes.emplace_back(std::move(orbitopeMatrix));
 
-  // Rprintf("component %d is full orbitope: size %d and %d orbits\n", component,
+  // printf("component %d is full orbitope: size %d and %d orbits\n", component,
   //        componentSize, componentData.componentNumOrbits[component]);
   return true;
 }

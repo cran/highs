@@ -73,6 +73,29 @@ R_HIGHS_LIB_DIR=${R_HIGHS_PKG_HOME}/src/highslib
 
 
 #
+# CRAN compliance shim: force-include src/hi_shim.h into every HiGHS TU so
+# printf/stdout/abort/exit tokens compile into package-local hi_shim_*
+# symbols (implemented in src/hi_shim.cpp over Rvprintf/REvprintf).
+# -DNDEBUG is explicit because R CMD INSTALL's automatic NDEBUG covers only
+# src/, not this cmake build.  -fexceptions on C lets the shim's throwing
+# exit()/abort() replacements unwind through any C frames.
+#
+# The path must be Windows-native on Rtools: MSYS converts POSIX-style paths
+# in command ARGUMENTS when bash execs a native program, but never inside
+# ENVIRONMENT variables -- and these flags reach g++ via env CFLAGS/CXXFLAGS
+# through cmake-generated Makefiles (observed on win-builder: g++ cannot
+# resolve `-include /d/temp/...`).  cygpath -m yields D:/... with forward
+# slashes, which gcc accepts.
+HI_SHIM_PATH="${R_HIGHS_PKG_HOME}/src/hi_shim.h"
+if command -v cygpath >/dev/null 2>&1; then
+    HI_SHIM_PATH=`cygpath -m "${HI_SHIM_PATH}"`
+fi
+HI_SHIM_FLAGS="-include ${HI_SHIM_PATH} -DNDEBUG"
+export CFLAGS="${CFLAGS} ${HI_SHIM_FLAGS} -fexceptions"
+export CXXFLAGS="${CXXFLAGS} ${HI_SHIM_FLAGS}"
+
+
+#
 # Setup Build Directory
 #
 mkdir -p ${R_HIGHS_BUILD_DIR}
@@ -130,4 +153,38 @@ else
     ${CMAKE_EXE} .. ${CMAKE_OPTS} -G "Unix Makefiles"
 fi
 
-${MAKE} install
+${MAKE} install || exit 1
+
+#
+# Symbol gate (OPT-IN, maintainer-side): replicate CRAN's compiled-code scan
+# on the freshly built static library, so a banned symbol
+# (printf/stdout/abort/exit/...) fails the build BEFORE a CRAN submission.
+# Not run on ordinary user/CRAN installs -- CRAN's own scan is the gate
+# there.  Enable with R_HIGHS_SYMBOL_CHECK=strict (or =warn for report-only);
+# the Taskfile check targets set it.
+#
+if test -n "${R_HIGHS_SYMBOL_CHECK}"; then
+    "${R_HOME}/bin/Rscript" "${R_HIGHS_PKG_HOME}/tools/audit_symbols.R" \
+        "${R_HIGHS_LIB_DIR}" || exit 1
+fi
+
+#
+# Newline-terminate installed headers: R CMD check NOTEs sources/headers not
+# ending in a newline, and upstream occasionally ships such files (e.g. the
+# ipm/hipo headers new in HiGHS 1.15).  Fix at the staging area so the check
+# never sees them, whatever upstream does.
+#
+find "${R_HIGHS_LIB_DIR}/include" -type f \( -name '*.h' -o -name '*.hpp' \) 2>/dev/null | \
+while IFS= read -r hdr; do
+    if [ -n "$(tail -c 1 "${hdr}")" ]; then
+        printf '\n' >> "${hdr}"
+    fi
+done
+
+#
+# Remove the cmake scratch tree: nothing needs it after `make install`, and
+# leaving it inside the source dir makes R CMD check flag its generated
+# Makefiles ("GNU extensions in Makefiles").  The old configure-time
+# `rm -rf inst/HiGHS` removed it as a side effect; .Rinstignore does not.
+#
+rm -rf "${R_HIGHS_BUILD_DIR}"

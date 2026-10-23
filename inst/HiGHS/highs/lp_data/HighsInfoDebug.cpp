@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -143,7 +142,7 @@ HighsDebugStatus debugNoInfo(const HighsInfo& info) {
       int v0 = (int)*(((InfoRecordInt64*)info_records[index])[0].value);
       int v1 = (int)*(((InfoRecordInt64*)info_records[index])[0].value);
       if (v0 != v1)
-        Rprintf("debugNoInfo: Index %" HIGHSINT_FORMAT " has %d != %d \n", index,
+        printf("debugNoInfo: Index %" HIGHSINT_FORMAT " has %d != %d \n", index,
                v0, v1);
       error_found = (*(((InfoRecordInt64*)info_records[index])[0].value) !=
                      *(((InfoRecordInt64*)no_info_records[index])[0].value)) ||
@@ -152,7 +151,7 @@ HighsDebugStatus debugNoInfo(const HighsInfo& info) {
       int v0 = (int)*(((InfoRecordInt*)info_records[index])[0].value);
       int v1 = (int)*(((InfoRecordInt*)info_records[index])[0].value);
       if (v0 != v1)
-        Rprintf("debugNoInfo: Index %" HIGHSINT_FORMAT " has %d != %d \n", index,
+        printf("debugNoInfo: Index %" HIGHSINT_FORMAT " has %d != %d \n", index,
                v0, v1);
       error_found = (*(((InfoRecordInt*)info_records[index])[0].value) !=
                      *(((InfoRecordInt*)no_info_records[index])[0].value)) ||
@@ -161,7 +160,7 @@ HighsDebugStatus debugNoInfo(const HighsInfo& info) {
       double v0 = (double)*(((InfoRecordDouble*)info_records[index])[0].value);
       double v1 = (double)*(((InfoRecordDouble*)info_records[index])[0].value);
       if (v0 != v1)
-        Rprintf("debugNoInfo: Index %" HIGHSINT_FORMAT " has %g != %g \n", index,
+        printf("debugNoInfo: Index %" HIGHSINT_FORMAT " has %g != %g \n", index,
                v0, v1);
       error_found = (*(((InfoRecordDouble*)info_records[index])[0].value) !=
                      *(((InfoRecordDouble*)no_info_records[index])[0].value)) ||

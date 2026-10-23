@@ -1,7 +1,7 @@
 **R** HIGHS Interface
 ================
 Florian Schwendinger</br>
-Updated: 2026-06-07
+Updated: 2026-10-22
 
 This repository contains an **R** interface to the
 [**HiGHS**](https://github.com/ERGO-Code/HiGHS) solver. The

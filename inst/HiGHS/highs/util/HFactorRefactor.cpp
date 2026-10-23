@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -48,7 +47,7 @@ HighsInt HFactor::rebuild(HighsTimerClock* factor_timer_clock_pointer) {
   const bool report_markowitz = false;
   const bool report_anything =
       report_unit || report_singletons || report_markowitz;
-  if (report_anything) Rprintf("\nRefactor\n");
+  if (report_anything) printf("\nRefactor\n");
   // Take build_synthetic_tick from the refactor info so that this
   // refactorization doesn't look unrealistically cheap.
   this->build_synthetic_tick = this->refactor_info_.build_synthetic_tick;
@@ -66,13 +65,13 @@ HighsInt HFactor::rebuild(HighsTimerClock* factor_timer_clock_pointer) {
       if (pivot_type == kPivotLogical) {
         //
         // 1.1 Logical column
-        if (report_unit) Rprintf("Stage %d: Logical\n", (int)iK);
+        if (report_unit) printf("Stage %d: Logical\n", (int)iK);
         assert(iVar >= num_col);
         basis_matrix_num_el++;
       } else if (pivot_type == kPivotUnit) {
         //
         // 1.2 (Structural) unit column
-        if (report_unit) Rprintf("Stage %d: Unit\n", (int)iK);
+        if (report_unit) printf("Stage %d: Unit\n", (int)iK);
         assert(iVar < num_col);
         HighsInt start = a_start[iVar];
         HighsInt count = a_start[iVar + 1] - start;
@@ -114,7 +113,7 @@ HighsInt HFactor::rebuild(HighsTimerClock* factor_timer_clock_pointer) {
         // 2.2 Deal with row singleton
         const double pivot_multiplier = 1 / a_value[pivot_k];
         if (report_singletons)
-          Rprintf("Stage %d: Row singleton (%4d, %g)\n", (int)iK, (int)pivot_k,
+          printf("Stage %d: Row singleton (%4d, %g)\n", (int)iK, (int)pivot_k,
                  pivot_multiplier);
         for (HighsInt section = 0; section < 2; section++) {
           HighsInt p0 = section == 0 ? start : pivot_k + 1;
@@ -123,13 +122,13 @@ HighsInt HFactor::rebuild(HighsTimerClock* factor_timer_clock_pointer) {
             HighsInt local_iRow = a_index[k];
             if (!has_pivot[local_iRow]) {
               if (report_singletons)
-                Rprintf("Row singleton: L En (%4d, %11.4g)\n", (int)local_iRow,
+                printf("Row singleton: L En (%4d, %11.4g)\n", (int)local_iRow,
                        a_value[k] * pivot_multiplier);
               l_index.push_back(local_iRow);
               l_value.push_back(a_value[k] * pivot_multiplier);
             } else {
               if (report_singletons)
-                Rprintf("Row singleton: U En (%4d, %11.4g)\n", (int)local_iRow,
+                printf("Row singleton: U En (%4d, %11.4g)\n", (int)local_iRow,
                        a_value[k]);
               u_index.push_back(local_iRow);
               u_value.push_back(a_value[k]);
@@ -138,7 +137,7 @@ HighsInt HFactor::rebuild(HighsTimerClock* factor_timer_clock_pointer) {
         }
         l_start.push_back(l_index.size());
         if (report_singletons)
-          Rprintf("Row singleton: U Pv (%4d, %11.4g)\n", (int)iRow,
+          printf("Row singleton: U Pv (%4d, %11.4g)\n", (int)iRow,
                  a_value[pivot_k]);
         u_pivot_index.push_back(iRow);
         u_pivot_value.push_back(a_value[pivot_k]);
@@ -146,24 +145,24 @@ HighsInt HFactor::rebuild(HighsTimerClock* factor_timer_clock_pointer) {
       } else {
         //
         // 2.3 Deal with column singleton
-        if (report_singletons) Rprintf("Stage %d: Col singleton\n", (int)iK);
+        if (report_singletons) printf("Stage %d: Col singleton\n", (int)iK);
         for (HighsInt k = start; k < pivot_k; k++) {
           if (report_singletons)
-            Rprintf("Col singleton: U En (%4d, %11.4g)\n", (int)a_index[k],
+            printf("Col singleton: U En (%4d, %11.4g)\n", (int)a_index[k],
                    a_value[k]);
           u_index.push_back(a_index[k]);
           u_value.push_back(a_value[k]);
         }
         for (HighsInt k = pivot_k + 1; k < end; k++) {
           if (report_singletons)
-            Rprintf("Col singleton: U En (%4d, %11.4g)\n", (int)a_index[k],
+            printf("Col singleton: U En (%4d, %11.4g)\n", (int)a_index[k],
                    a_value[k]);
           u_index.push_back(a_index[k]);
           u_value.push_back(a_value[k]);
         }
         l_start.push_back(l_index.size());
         if (report_singletons)
-          Rprintf("Col singleton: U Pv (%4d, %11.4g)\n", (int)iRow,
+          printf("Col singleton: U Pv (%4d, %11.4g)\n", (int)iRow,
                  a_value[pivot_k]);
         u_pivot_index.push_back(iRow);
         u_pivot_value.push_back(a_value[pivot_k]);
@@ -178,7 +177,7 @@ HighsInt HFactor::rebuild(HighsTimerClock* factor_timer_clock_pointer) {
     has_pivot[iRow] = true;
   }
   if (report_lu) {
-    Rprintf("\nAfter units and singletons\n");
+    printf("\nAfter units and singletons\n");
     reportLu(kReportLuBoth, false);
   }
   if (stage < num_row) {
@@ -201,7 +200,7 @@ HighsInt HFactor::rebuild(HighsTimerClock* factor_timer_clock_pointer) {
     for (HighsInt iRow = 0; iRow < num_row; iRow++) {
       if (iRow < stage) {
         if (l_pivot_lookup[l_pivot_index[iRow]] != iRow) {
-          // Rprintf("Strange: Thought that l_pivot_lookup[l_pivot_index[iRow]]
+          // printf("Strange: Thought that l_pivot_lookup[l_pivot_index[iRow]]
           // == iRow\n");
         }
       }
@@ -291,13 +290,13 @@ HighsInt HFactor::rebuild(HighsTimerClock* factor_timer_clock_pointer) {
       basic_index[iRow] = iVar;
       has_pivot[iRow] = true;
       if (report_lu) {
-        Rprintf("\nAfter Markowitz %d\n", (int)(iK - stage));
+        printf("\nAfter Markowitz %d\n", (int)(iK - stage));
         reportLu(kReportLuBoth, false);
       }
     }
   }
   if (report_lu) {
-    Rprintf("\nRefactored INVERT\n");
+    printf("\nRefactored INVERT\n");
     reportLu(kReportLuBoth, false);
   }
   buildFinish();

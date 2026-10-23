@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -60,7 +59,7 @@ class CholeskyFactor {
     L.resize(current_k_max * current_k_max);
   }
 
-  void recompute() {
+  QpSolverStatus recompute() {
     std::vector<std::vector<double>> orig;
     HighsInt dim_ns = basis.getinactive().size();
     numberofreduces = 0;
@@ -91,7 +90,9 @@ class CholeskyFactor {
         if (row == col) {
           for (size_t k = 0; k < row; k++)
             sum += L[k * current_k_max + row] * L[k * current_k_max + row];
-          L[row * current_k_max + row] = sqrt(orig[row][row] - sum);
+          double d_value = orig[row][row] - sum;
+          if (d_value <= 0) return QpSolverStatus::NOTPOSITIVDEFINITE;
+          L[row * current_k_max + row] = sqrt(d_value);
         } else {
           for (size_t k = 0; k < row; k++)
             sum += (L[k * current_k_max + col] * L[k * current_k_max + row]);
@@ -102,6 +103,8 @@ class CholeskyFactor {
     }
     current_k = dim_ns;
     uptodate = true;
+
+    return QpSolverStatus::OK;
   }
 
   QpSolverStatus expand(const QpVector& yp, QpVector& gyp, QpVector& l,
@@ -139,7 +142,7 @@ class CholeskyFactor {
       //      double k = 1 / (beta + sqrt(beta * beta - mu));
       //      double alpha = k * mu - beta;
       //
-      //      Rprintf("k = %d, alpha = %lf, beta = %lf, k = %lf\n",
+      //      printf("k = %d, alpha = %lf, beta = %lf, k = %lf\n",
       //      (int)current_k, alpha,
       //             beta, k);
       //
@@ -181,14 +184,16 @@ class CholeskyFactor {
     return QpSolverStatus::OK;
   }
 
-  void solveL(QpVector& rhs) {
+  QpSolverStatus solveL(QpVector& rhs) {
     if (!uptodate) {
-      recompute();
+      // Recompute Cholesky
+      QpSolverStatus status = recompute();
+      if (status != QpSolverStatus::OK) return status;
     }
 
     if (current_k != rhs.dim) {
-      Rprintf("dimension mismatch\n");
-      return;
+      assert(current_k == rhs.dim);
+      return QpSolverStatus::kError;
     }
 
     for (HighsInt r = 0; r < rhs.dim; r++) {
@@ -198,6 +203,7 @@ class CholeskyFactor {
 
       rhs.value[r] /= L[r * current_k_max + r];
     }
+    return QpSolverStatus::OK;
   }
 
   // solve L' u = v
@@ -211,15 +217,20 @@ class CholeskyFactor {
     }
   }
 
-  void solve(QpVector& rhs) {
+  QpSolverStatus solve(QpVector& rhs) {
+    QpSolverStatus status = QpSolverStatus::OK;
     if (!uptodate || (numberofreduces >= runtime.instance.num_var / 2 &&
                       !has_negative_eigenvalue)) {
-      recompute();
+      // Recompute Cholesky
+      status = recompute();
+      if (status != QpSolverStatus::OK) return status;
     }
-    solveL(rhs);
+    status = solveL(rhs);
+    if (status != QpSolverStatus::OK) return status;
     solveLT(rhs);
 
     rhs.resparsify();
+    return QpSolverStatus::OK;
   }
 
   void eliminate(std::vector<double>& m, HighsInt i, HighsInt j, HighsInt kmax,
@@ -380,12 +391,12 @@ class CholeskyFactor {
   }
 
   void report(std::string name = "") {
-    Rprintf("%s\n", name.c_str());
+    printf("%s\n", name.c_str());
     for (HighsInt i = 0; i < current_k; i++) {
       for (HighsInt j = 0; j < current_k; j++) {
-        Rprintf("%lf ", L[i * current_k_max + j]);
+        printf("%lf ", L[i * current_k_max + j]);
       }
-      Rprintf("\n");
+      printf("\n");
     }
   }
 

@@ -7,9 +7,8 @@ if test -z "${R_HIGHS_LIB_DIR}"; then
     R_HIGHS_PKG_HOME=`pwd`
     bash inst/build_highs.sh
     cd ${R_HIGHS_PKG_HOME}
-    if test -d inst/doc; then
-        rm -rf inst/HiGHS
-    fi
+    # (sources under inst/HiGHS are excluded from the *installed* package via
+    #  the top-level .Rinstignore -- no install-time deletion needed here)
     R_HIGHS_LIB_DIR=${R_HIGHS_PKG_HOME}/src/highslib
     
     # development

@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 #include "io/filereaderlp/reader.hpp"
 
 #include <algorithm>
@@ -1072,7 +1071,7 @@ void Reader::processtokens() {
       // opening bracket, or string (variable name)
       if (rawtokens[0].istype(RawTokenType::GREATER)) {
         // ">" suggests that the file contains indicator constraints
-        Rprintf(
+        printf(
             "File appears to contain indicator constraints: cannot currently "
             "be handled by HiGHS\n");
       }
@@ -1366,11 +1365,11 @@ bool Reader::readnexttoken(RawToken& t) {
 void Reader::printRawTokens() {
   for(int iToken=0; iToken < NRAWTOKEN; iToken++) {
     const RawToken& rawtoken = rawtokens[iToken];
-    Rprintf("rawtokens[%d]: ", int(iToken));
-    Rprintf("type = %-12s", tokenTypeToString(rawtoken.type).c_str());
-    Rprintf("; svalue = %8s: ", rawtoken.svalue.c_str());
-    if (iToken < NRAWTOKEN-1) Rprintf("; ");
+    printf("rawtokens[%d]: ", int(iToken));
+    printf("type = %-12s", tokenTypeToString(rawtoken.type).c_str());
+    printf("; svalue = %8s: ", rawtoken.svalue.c_str());
+    if (iToken < NRAWTOKEN-1) printf("; ");
   }
-  Rprintf("\n");
+  printf("\n");
 }
 */

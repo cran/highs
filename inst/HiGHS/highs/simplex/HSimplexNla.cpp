@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -175,7 +174,7 @@ double HSimplexNla::rowEp2NormInScaledSpace(const HighsInt iRow,
     const double error = std::fabs(row_ep_2norm - alt_row_ep_2norm) /
                          std::max(1.0, row_ep_2norm);
     if (error > 1e-4)
-      Rprintf(
+      printf(
           "rowEp2NormInScaledSpace: iRow = %2d has deduced norm = %10.4g and "
           "alt "
           "norm = %10.4g, giving error %10.4g\n",
@@ -332,13 +331,13 @@ void HSimplexNla::reportArray(const std::string message, const HighsInt offset,
   if (num_row > kReportItemLimit) {
     reportArraySparse(message, offset, vector, force);
   } else {
-    Rprintf("%s", message.c_str());
+    printf("%s", message.c_str());
     for (HighsInt iRow = 0; iRow < num_row; iRow++) {
       if (iRow > 0 && iRow % 10 == 0)
-        Rprintf("\n                                 ");
-      Rprintf("%11.4g ", vector->array[iRow]);
+        printf("\n                                 ");
+      printf("%11.4g ", vector->array[iRow]);
     }
-    Rprintf("\n");
+    printf("\n");
   }
 }
 
@@ -354,12 +353,12 @@ void HSimplexNla::reportVector(const std::string message,
   if (num_index > kReportItemLimit) {
     analyseVectorValues(nullptr, message, num_row, vector_value, true);
   } else {
-    Rprintf("%s", message.c_str());
+    printf("%s", message.c_str());
     for (HighsInt iX = 0; iX < num_index; iX++) {
-      if (iX % 5 == 0) Rprintf("\n");
-      Rprintf("[%4d %11.4g] ", (int)vector_index[iX], vector_value[iX]);
+      if (iX % 5 == 0) printf("\n");
+      printf("[%4d %11.4g] ", (int)vector_index[iX], vector_value[iX]);
     }
-    Rprintf("\n");
+    printf("\n");
   }
 }
 
@@ -380,26 +379,26 @@ void HSimplexNla::reportArraySparse(const std::string message,
   } else if (vector->count < num_row) {
     std::vector<HighsInt> sorted_index = vector->index;
     pdqsort(sorted_index.begin(), sorted_index.begin() + vector->count);
-    Rprintf("%s", message.c_str());
+    printf("%s", message.c_str());
     for (HighsInt en = 0; en < vector->count; en++) {
       HighsInt iRow = sorted_index[en];
-      if (en % 5 == 0) Rprintf("\n");
-      Rprintf("[%4d ", (int)(iRow));
-      if (offset) Rprintf("(%4d)", (int)(offset + iRow));
-      Rprintf("%11.4g] ", vector->array[iRow]);
+      if (en % 5 == 0) printf("\n");
+      printf("[%4d ", (int)(iRow));
+      if (offset) printf("(%4d)", (int)(offset + iRow));
+      printf("%11.4g] ", vector->array[iRow]);
     }
   } else {
     if (num_row > kReportItemLimit) {
       analyseVectorValues(nullptr, message, num_row, vector->array, true);
       return;
     }
-    Rprintf("%s", message.c_str());
+    printf("%s", message.c_str());
     for (HighsInt iRow = 0; iRow < num_row; iRow++) {
-      if (iRow % 5 == 0) Rprintf("\n");
-      Rprintf("%11.4g ", vector->array[iRow]);
+      if (iRow % 5 == 0) printf("\n");
+      printf("%11.4g ", vector->array[iRow]);
     }
   }
-  Rprintf("\n");
+  printf("\n");
 }
 
 void HSimplexNla::reportPackValue(const std::string message,
@@ -411,15 +410,15 @@ void HSimplexNla::reportPackValue(const std::string message,
                         true);
     return;
   }
-  Rprintf("%s", message.c_str());
+  printf("%s", message.c_str());
   std::vector<HighsInt> sorted_index = vector->packIndex;
   pdqsort(sorted_index.begin(), sorted_index.begin() + vector->packCount);
   for (HighsInt en = 0; en < vector->packCount; en++) {
     HighsInt iRow = sorted_index[en];
-    if (en % 5 == 0) Rprintf("\n");
-    Rprintf("[%4d %11.4g] ", (int)iRow, vector->packValue[en]);
+    if (en % 5 == 0) printf("\n");
+    printf("[%4d %11.4g] ", (int)iRow, vector->packValue[en]);
   }
-  Rprintf("\n");
+  printf("\n");
 }
 
 HighsDebugStatus HSimplexNla::debugCheckData(const std::string message) const {
@@ -451,10 +450,10 @@ HighsDebugStatus HSimplexNla::debugCheckData(const std::string message) const {
                    "pointer errors\n",
                    message.c_str(), scale_status.c_str());
       if (error0_found)
-        Rprintf("a_matrix_.start_ pointer error: %p vs %p\n",
+        printf("a_matrix_.start_ pointer error: %p vs %p\n",
                (void*)factor_Astart, (void*)lp_->a_matrix_.start_.data());
-      if (error1_found) Rprintf("a_matrix_.index pointer error\n");
-      if (error2_found) Rprintf("a_matrix_.value pointer error\n");
+      if (error1_found) printf("a_matrix_.index pointer error\n");
+      if (error2_found) printf("a_matrix_.value pointer error\n");
       assert(!error_found);
       return HighsDebugStatus::kLogicalError;
     }

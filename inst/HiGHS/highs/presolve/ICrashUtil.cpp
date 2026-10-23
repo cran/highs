@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -75,7 +74,7 @@ void printMinorIterationDetails(const double iteration, const double col,
   ss << ", quadratic_objective " << quadratic_objective;
   ss << std::endl;
 
-  // Rcpp::Rcout << ss.str();
+  // hi_shim_cout() << ss.str();
   highsLogUser(options, HighsLogType::kInfo, ss.str().c_str());
 }
 
@@ -93,7 +92,7 @@ bool initialize(const HighsLp& lp, HighsSolution& solution,
     else if (lp.col_upper_[col] < 0)
       solution.col_value[col] = lp.col_upper_[col];
     else {
-      Rprintf("ICrash error: setting initial value for column %d\n", col);
+      printf("ICrash error: setting initial value for column %d\n", col);
       return false;
     }
   }
@@ -150,7 +149,7 @@ double minimizeComponentQP(const int col, const double mu, const HighsLp& lp,
 
   sol.col_value[col] += delta_x;
 
-  // Rcpp::Rcout << "col " << col << ": " << delta_x << std::endl;
+  // hi_shim_cout() << "col " << col << ": " << delta_x << std::endl;
 
   // Update objective, row_value, residual after each component update.
   objective += lp.col_cost_[col] * delta_x;
@@ -213,7 +212,7 @@ double minimizeComponentIca(const int col, const double mu,
 
   sol.col_value[col] += delta_x;
 
-  // Rcpp::Rcout << "col " << col << ": " << delta_x << std::endl;
+  // hi_shim_cout() << "col " << col << ": " << delta_x << std::endl;
 
   // Update objective, row_value, residual after each component update.
   objective += lp.col_cost_[col] * delta_x;

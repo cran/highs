@@ -13,6 +13,10 @@
 hi_new_solver <- function(model) {
   checkmate::assert_class(model, classes = "highs_model")
   msg <- capture.output(result <- new_solver(model))
+  # drop the banner lines the Highs constructor emits before options can
+  # gate them, so warnings/errors below carry only their real text
+  # (v1.15+ adds a second banner line pointing at THIRD_PARTY_NOTICES.md)
+  msg <- msg[!grepl("Running HiGHS|THIRD_PARTY_NOTICES", msg)]
   if (result$status == -1L) {
     stop(msg)
   } else if (result$status == 1L) {

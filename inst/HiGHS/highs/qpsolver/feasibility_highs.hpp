@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -11,7 +10,6 @@
 
 #include "Highs.h"
 #include "qpsolver/a_asm.hpp"
-#include "qpsolver/crashsolution.hpp"
 
 static void computeStartingPointHighs(
     Instance& instance, Settings& settings, Statistics& stats,
@@ -20,7 +18,7 @@ static void computeStartingPointHighs(
     HighsSolution& highs_solution, HighsTimer& timer) {
   bool have_starting_point = false;
   const bool debug_report = false;
-  if (highs_solution.value_valid) {
+  if (settings.allow_hot_start && highs_solution.value_valid) {
     // #1350 add primal_feasibility_tolerance to settings
     const double primal_feasibility_tolerance = settings.lambda_zero_threshold;
 
@@ -41,7 +39,7 @@ static void computeStartingPointHighs(
         sum_con_residuals);
 
     if (debug_report)
-      Rprintf(
+      printf(
           "computeStartingPointHighs highs_solution has (num / max / sum) "
           "var (%d / %g / %g) and "
           "con (%d / %g / %g) infeasibilities "
@@ -56,6 +54,10 @@ static void computeStartingPointHighs(
   // compute initial feasible point
   HighsBasis use_basis;
   HighsSolution use_solution;
+  auto isfreevar = [&](const HighsInt iVar) {
+    return instance.var_lo[iVar] == -kHighsInf &&
+           instance.var_up[iVar] == kHighsInf;
+  };
   if (have_starting_point) {
     use_basis = highs_basis;
     use_solution = highs_solution;
@@ -90,7 +92,7 @@ static void computeStartingPointHighs(
     assert(!settings.phase1boundfreevars);
     if (settings.phase1boundfreevars) {
       for (HighsInt i = 0; i < instance.num_var; i++) {
-        if (isfreevar(instance, i)) {
+        if (isfreevar(i)) {
           lp.col_lower_[i] = -1E5;
           lp.col_upper_[i] = 1E5;
         }
@@ -182,7 +184,7 @@ static void computeStartingPointHighs(
     }
   }
   if (debug_report && num_small_x0 + num_small_ra)
-    Rprintf(
+    printf(
         "feasibility_highs has %d small col values and %d small row values\n",
         int(num_small_x0), int(num_small_ra));
   std::vector<HighsInt> initial_active;
@@ -234,7 +236,7 @@ static void computeStartingPointHighs(
     HighsBasisStatus status = use_basis.col_status[i];
     debug_col_status_count[HighsInt(status)]++;
     if (status == HighsBasisStatus::kLower) {
-      if (isfreevar(instance, i)) {
+      if (isfreevar(i)) {
         initial_inactive.push_back(instance.num_con + i);
       } else {
         initial_active.push_back(instance.num_con + i);
@@ -242,7 +244,7 @@ static void computeStartingPointHighs(
       }
 
     } else if (status == HighsBasisStatus::kUpper) {
-      if (isfreevar(instance, i)) {
+      if (isfreevar(i)) {
         initial_inactive.push_back(instance.num_con + i);
       } else {
         initial_active.push_back(instance.num_con + i);
@@ -260,13 +262,13 @@ static void computeStartingPointHighs(
   }
 
   if (debug_report) {
-    Rprintf("QP solver initial basis: (Lo / Bs / Up / Ze / Nb) for cols (");
+    printf("QP solver initial basis: (Lo / Bs / Up / Ze / Nb) for cols (");
     for (HighsInt k = 0; k < num_highs_basis_status; k++)
-      Rprintf("%s%d", k == 0 ? "" : " / ", int(debug_col_status_count[k]));
-    Rprintf(") and rows (");
+      printf("%s%d", k == 0 ? "" : " / ", int(debug_col_status_count[k]));
+    printf(") and rows (");
     for (HighsInt k = 0; k < num_highs_basis_status; k++)
-      Rprintf("%s%d", k == 0 ? "" : " / ", int(debug_row_status_count[k]));
-    Rprintf(")\n");
+      printf("%s%d", k == 0 ? "" : " / ", int(debug_row_status_count[k]));
+    printf(")\n");
   }
 
   // This used to be an assert
@@ -281,11 +283,11 @@ static void computeStartingPointHighs(
     // inactive variables in the basis that aren't free
     for (HighsInt ia : initial_inactive) {
       if (ia < instance.num_con) {
-        // Rprintf("free row %d\n", (int)ia);
+        // printf("free row %d\n", (int)ia);
         assert(instance.con_lo[ia] == -kHighsInf);
         assert(instance.con_up[ia] == kHighsInf);
       } else {
-        // Rprintf("free col %d\n", (int)ia);
+        // printf("free col %d\n", (int)ia);
         assert(instance.var_lo[ia - instance.num_con] == -kHighsInf);
         assert(instance.var_up[ia - instance.num_con] == kHighsInf);
       }

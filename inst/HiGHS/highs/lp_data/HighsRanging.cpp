@@ -593,7 +593,10 @@ HighsStatus getRangingData(HighsRanging& ranging,
 
   ranging.valid = true;
   if (solver_object.options_.log_dev_level)
-    NULL;
+    writeRangingFile(stdout, use_lp,
+                     solver_object.highs_info_.objective_function_value,
+                     solver_object.basis_, solver_object.solution_, ranging,
+                     kSolutionStylePretty);
   return HighsStatus::kOk;
 }
 

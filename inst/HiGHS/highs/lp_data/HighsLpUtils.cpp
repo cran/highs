@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -2994,7 +2993,8 @@ HighsStatus calculateColDualsQuad(const HighsLp& lp, HighsSolution& solution) {
       const HighsInt row = lp.a_matrix_.index_[i];
       assert(row >= 0);
       assert(row < lp.num_row_);
-      col_dual_quad[col] += solution.row_dual[row] * lp.a_matrix_.value_[i];
+      col_dual_quad[col] += static_cast<HighsCDouble>(solution.row_dual[row]) *
+                            lp.a_matrix_.value_[i];
     }
     col_dual_quad[col] += lp.col_cost_[col];
   }
@@ -3027,9 +3027,10 @@ HighsStatus calculateRowValuesQuad(const HighsLp& lp,
       const HighsInt row = lp.a_matrix_.index_[i];
       assert(row >= 0);
       assert(row < lp.num_row_);
-      row_value_quad[row] += col_value[col] * lp.a_matrix_.value_[i];
+      row_value_quad[row] +=
+          static_cast<HighsCDouble>(col_value[col]) * lp.a_matrix_.value_[i];
       if (row == report_row) {
-        Rprintf(
+        printf(
             "calculateRowValuesQuad: Row %d becomes %g due to contribution of "
             ".col_value[%d] = %g\n",
             int(row), double(row_value_quad[row]), int(col), col_value[col]);
@@ -3191,7 +3192,7 @@ bool isLessInfeasibleDSECandidate(const HighsLogOptions& log_options,
               " (limit %" HIGHSINT_FORMAT
               "); average "
               "column count = %0.2g (limit %" HIGHSINT_FORMAT
-              "): LP is %s a candidate for LiDSE\n",
+              "): LP %s a candidate for LiDSE\n",
               lp.model_name_.c_str(), max_col_num_en, max_allowed_col_num_en,
               average_col_num_en, max_average_col_num_en,
               LiDSE_candidate ? "is" : "is not");
@@ -3199,7 +3200,7 @@ bool isLessInfeasibleDSECandidate(const HighsLogOptions& log_options,
 }
 
 HighsLp withoutSemiVariables(const HighsLp& lp_, HighsSolution& solution,
-                             const double primal_feasibility_tolerance) {
+                             const double mip_feasibility_tolerance) {
   HighsLp lp = lp_;
   HighsInt num_col = lp.num_col_;
   HighsInt num_row = lp.num_row_;
@@ -3270,6 +3271,8 @@ HighsLp withoutSemiVariables(const HighsLp& lp_, HighsSolution& solution,
   for (HighsInt iCol = 0; iCol < num_col; iCol++) {
     if (lp.integrality_[iCol] == HighsVarType::kSemiContinuous ||
         lp.integrality_[iCol] == HighsVarType::kSemiInteger) {
+      const double semi_lower_bound = lp.col_lower_[iCol];
+      const double semi_upper_bound = lp.col_upper_[iCol];
       // Add a binary variable with zero cost
       lp.col_cost_.push_back(0);
       lp.col_lower_.push_back(0);
@@ -3290,13 +3293,13 @@ HighsLp withoutSemiVariables(const HighsLp& lp_, HighsSolution& solution,
         lp.row_names_.push_back(ss.str());
       }
       index.push_back(row_num++);
-      value.push_back(-lp.col_lower_[iCol]);
+      value.push_back(-semi_lower_bound);
       // Accommodate any primal solution
       if (have_solution) {
         // Record the previous solution value so any change can be
         // determined
         const double prev_primal = solution.col_value[iCol];
-        if (solution.col_value[iCol] <= primal_feasibility_tolerance) {
+        if (solution.col_value[iCol] <= mip_feasibility_tolerance) {
           // Currently at or below zero, so binary is 0
           solution.col_value[iCol] = 0;
           solution.col_value.push_back(0);
@@ -3304,7 +3307,7 @@ HighsLp withoutSemiVariables(const HighsLp& lp_, HighsSolution& solution,
           // Otherwise, solution is at least lower bound, and binary
           // is 1
           solution.col_value[iCol] =
-              std::max(lp.col_lower_[iCol], solution.col_value[iCol]);
+              std::max(semi_lower_bound, solution.col_value[iCol]);
           solution.col_value.push_back(1);
         }
         const double dl_primal = solution.col_value[iCol] - prev_primal;
@@ -3319,9 +3322,9 @@ HighsLp withoutSemiVariables(const HighsLp& lp_, HighsSolution& solution,
         const HighsInt new_col = lp.col_cost_.size() - 1;
         const double binary_value = solution.col_value[new_col];
         solution.row_value[row_num - 1] =
-            solution.col_value[iCol] - lp.col_lower_[iCol] * binary_value;
+            solution.col_value[iCol] - semi_lower_bound * binary_value;
         solution.row_value[row_num] =
-            solution.col_value[iCol] - lp.col_upper_[iCol] * binary_value;
+            solution.col_value[iCol] - semi_upper_bound * binary_value;
       }
       // Complete x - u*y <= 0
       lp.row_lower_.push_back(-kHighsInf);
@@ -3333,7 +3336,7 @@ HighsLp withoutSemiVariables(const HighsLp& lp_, HighsSolution& solution,
         lp.row_names_.push_back(ss.str());
       }
       index.push_back(row_num++);
-      value.push_back(-lp.col_upper_[iCol]);
+      value.push_back(-semi_upper_bound);
       // Add the next start
       start.push_back(index.size());
       lp.integrality_.push_back(HighsVarType::kInteger);
@@ -3362,7 +3365,6 @@ HighsLp withoutSemiVariables(const HighsLp& lp_, HighsSolution& solution,
 }
 
 void removeRowsOfCountOne(const HighsLogOptions& log_options, HighsLp& lp) {
-  HighsLp row_wise_lp = lp;
   vector<HighsInt>& a_start = lp.a_matrix_.start_;
   vector<HighsInt>& a_index = lp.a_matrix_.index_;
   vector<double>& a_value = lp.a_matrix_.value_;

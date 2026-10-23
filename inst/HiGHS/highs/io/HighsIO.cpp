@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -15,6 +14,7 @@
 #include <cstdarg>
 #include <cstdio>
 
+#include "HighsExternalApi.h"
 #include "lp_data/HighsLp.h"
 #include "lp_data/HighsOptions.h"
 
@@ -23,20 +23,18 @@ void highsLogHeader(const HighsLogOptions& log_options,
   const std::string githash_string(HIGHS_GITHASH);
   const std::string githash_text =
       log_githash ? " (git hash: " + githash_string + ")" : "";
-  
+  highsLogUser(log_options, HighsLogType::kInfo,
+               "Running HiGHS %d.%d.%d%s: %s\n", (int)HIGHS_VERSION_MAJOR,
+               (int)HIGHS_VERSION_MINOR, (int)HIGHS_VERSION_PATCH,
+               githash_text.c_str(), kHighsCopyrightStatement.c_str());
 
-#ifdef HIPO
-#ifdef BLAS_LIBRARIES
-  highsLogUser(log_options, HighsLogType::kInfo, "Using BLAS: %s \n",
-               BLAS_LIBRARIES);
-#else
-#ifdef HIPO_USES_OPENBLAS
-  highsLogUser(log_options, HighsLogType::kInfo, "Using BLAS: OpenBLAS \n");
-#else
-  highsLogUser(log_options, HighsLogType::kInfo, "Using BLAS: unknown \n");
-#endif
-#endif
-#endif
+  highsLogUser(log_options, HighsLogType::kInfo, "%s\n",
+               HighsExternalApi::thirdPartyNoticeHeader().c_str());
+
+  if (HighsExternalApi::isAvailable<HighsExtras::blas>()) {
+    highsLogUser(log_options, HighsLogType::kInfo, "Using BLAS: %s \n",
+                 HighsExtras::blas::getInfo()->provider);
+  }
 }
 
 std::array<char, 32> highsDoubleToString(const double val,
@@ -111,7 +109,7 @@ void highsLogUser(const HighsLogOptions& log_options_, const HighsLogType type,
   // Log to a file if log_stream is not NULL or stdout, and to console
   // if log_to_console is true
   const bool log_to_file =
-      log_options_.log_stream && 1;
+      log_options_.log_stream && log_options_.log_stream != stdout;
   const bool log_to_console = *log_options_.log_to_console;
   const bool log_to_callback =
       log_options_.user_log_callback ||
@@ -139,9 +137,9 @@ void highsLogUser(const HighsLogOptions& log_options_, const HighsLogType type,
   }
   // Possibly write to console
   if (log_to_console) {
-    if (prefix) NULL;
-    NULL;
-    if (flush_streams) NULL;
+    if (prefix) fprintf(stdout, "%-9s", HighsLogTypeTag[int(type)]);
+    vfprintf(stdout, format, argptr);
+    if (flush_streams) fflush(stdout);
     va_end(argptr);
     va_start(argptr, format);
   }
@@ -185,7 +183,7 @@ void highsLogDev(const HighsLogOptions& log_options_, const HighsLogType type,
   // Log to a file if log_stream is not NULL or stdout, and to console
   // if log_to_console is true
   const bool log_to_file =
-      log_options_.log_stream && 1;
+      log_options_.log_stream && log_options_.log_stream != stdout;
   const bool log_to_console = *log_options_.log_to_console;
   const bool log_to_callback =
       log_options_.user_log_callback ||
@@ -219,8 +217,8 @@ void highsLogDev(const HighsLogOptions& log_options_, const HighsLogType type,
   }
   // Possibly write to console
   if (log_to_console) {
-    NULL;
-    if (flush_streams) NULL;
+    vfprintf(stdout, format, argptr);
+    if (flush_streams) fflush(stdout);
     va_end(argptr);
     va_start(argptr, format);
   }
@@ -247,7 +245,7 @@ void highsLogDev(const HighsLogOptions& log_options_, const HighsLogType type,
 void highsFprintfString(FILE* file, const HighsLogOptions& log_options_,
                         const std::string& s) {
   if (file == nullptr) return;
-  if (0) {
+  if (file == stdout) {
     highsLogUser(log_options_, HighsLogType::kInfo, "%s", s.c_str());
   } else {
     fprintf(file, "%s", s.c_str());
@@ -270,7 +268,7 @@ void highsReportDevInfo(const HighsLogOptions* log_options,
   if (log_options) {
     highsLogDev(*log_options, HighsLogType::kInfo, "%s", line.c_str());
   } else {
-    Rprintf("%s", line.c_str());
+    printf("%s", line.c_str());
   }
 }
 
@@ -279,17 +277,17 @@ void highsOpenLogFile(HighsOptions& options, const std::string& log_file) {
 }
 
 void highsReportLogOptions(const HighsLogOptions& log_options_) {
-  Rprintf("\nHighs log options\n");
+  printf("\nHighs log options\n");
   if (log_options_.log_stream == NULL) {
-    Rprintf("   log_stream = NULL\n");
+    printf("   log_stream = NULL\n");
   } else {
-    Rprintf("   log_stream = Not NULL\n");
+    printf("   log_stream = Not NULL\n");
   }
-  Rprintf("   output_flag = %s\n",
+  printf("   output_flag = %s\n",
          highsBoolToString(*log_options_.output_flag).c_str());
-  Rprintf("   log_to_console = %s\n",
+  printf("   log_to_console = %s\n",
          highsBoolToString(*log_options_.log_to_console).c_str());
-  Rprintf("   log_dev_level = %" HIGHSINT_FORMAT "\n\n",
+  printf("   log_dev_level = %" HIGHSINT_FORMAT "\n\n",
          *log_options_.log_dev_level);
 }
 
@@ -329,7 +327,7 @@ const std::string highsInsertMdEscapes(const std::string& from_string) {
   std::string to_string = "";
   const char* underscore = "_";
   const char* backslash = "\\";
-  HighsInt from_string_length = static_cast<HighsInt>(from_string.length());
+  HighsInt from_string_length = from_string.length();
   for (HighsInt p = 0; p < from_string_length; p++) {
     const char string_ch = from_string[p];
     if (string_ch == *underscore) {
@@ -344,7 +342,7 @@ const std::string highsInsertMdId(const std::string& from_string) {
   std::string to_string = "";
   const char* underscore = "_";
   const char* hyphen = "-";
-  HighsInt from_string_length = static_cast<HighsInt>(from_string.length());
+  HighsInt from_string_length = from_string.length();
   for (HighsInt p = 0; p < from_string_length; p++) {
     const char string_ch = from_string[p];
     if (string_ch == *underscore) {

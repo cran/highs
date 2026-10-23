@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -74,8 +73,8 @@ void HighsDebugSol::activate() {
 
       debugSolObjective = double(debugsolobj + mipsolver->orig_model_->offset_);
       debugSolActive = true;
-      Rprintf("debug sol active\n");
-      registerDomain(mipsolver->mipdata_->domain);
+      printf("debug sol active\n");
+      registerDomain(mipsolver->mipdata_->getDomain());
     } else {
       highsLogUser(mipsolver->options_mip_->log_options, HighsLogType::kWarning,
                    "debug solution: could not open file '%s'\n",
@@ -84,8 +83,8 @@ void HighsDebugSol::activate() {
       model.lp_ = *mipsolver->model_;
       model.lp_.col_names_.clear();
       model.lp_.row_names_.clear();
-      model.lp_.col_lower_ = mipsolver->mipdata_->domain.col_lower_;
-      model.lp_.col_upper_ = mipsolver->mipdata_->domain.col_upper_;
+      model.lp_.col_lower_ = mipsolver->mipdata_->getDomain().col_lower_;
+      model.lp_.col_upper_ = mipsolver->mipdata_->getDomain().col_upper_;
       FilereaderMps().writeModelToFile(*mipsolver->options_mip_,
                                        "debug_mip.mps", model);
     }
@@ -124,7 +123,7 @@ void HighsDebugSol::registerDomain(const HighsDomain& domain) {
 
 void HighsDebugSol::newIncumbentFound() {
   if (debugSolActive && debugSolObjective > mipsolver->mipdata_->upper_limit) {
-    Rprintf("debug sol inactive\n");
+    printf("debug sol inactive\n");
     debugSolActive = false;
   }
 }
@@ -298,7 +297,7 @@ void HighsDebugSol::checkConflictReconvergenceFrontier(
     }
   }
 
-  auto reconvChg = mipsolver->mipdata_->domain.flip(reconvDomchg.domchg);
+  auto reconvChg = mipsolver->mipdata_->getDomain().flip(reconvDomchg.domchg);
 
   if (reconvChg.boundtype == HighsBoundType::kLower) {
     if (debugSolution[reconvChg.column] >= reconvChg.boundval)

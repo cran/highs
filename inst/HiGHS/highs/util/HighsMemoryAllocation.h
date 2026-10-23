@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -22,7 +21,7 @@ bool okResize(std::vector<T>& use_vector, HighsInt dimension, T value = T{}) {
   try {
     use_vector.resize(dimension, value);
   } catch (const std::bad_alloc& e) {
-    Rprintf("HighsMemoryAllocation::okResize fails with %s\n", e.what());
+    printf("HighsMemoryAllocation::okResize fails with %s\n", e.what());
     return false;
   }
   return true;
@@ -33,7 +32,7 @@ bool okReserve(std::vector<T>& use_vector, HighsInt dimension) {
   try {
     use_vector.reserve(dimension);
   } catch (const std::bad_alloc& e) {
-    Rprintf("HighsMemoryAllocation::okReserve fails with %s\n", e.what());
+    printf("HighsMemoryAllocation::okReserve fails with %s\n", e.what());
     return false;
   }
   return true;
@@ -44,7 +43,7 @@ bool okReserve(std::unordered_map<T, T2>& use_map, HighsInt dimension) {
   try {
     use_map.reserve(dimension);
   } catch (const std::bad_alloc& e) {
-    Rprintf("HighsMemoryAllocation::okReserve fails with %s\n", e.what());
+    printf("HighsMemoryAllocation::okReserve fails with %s\n", e.what());
     return false;
   }
   return true;
@@ -55,7 +54,7 @@ bool okAssign(std::vector<T>& use_vector, HighsInt dimension, T value = T{}) {
   try {
     use_vector.assign(dimension, value);
   } catch (const std::bad_alloc& e) {
-    Rprintf("HighsMemoryAllocation::okAssign fails with %s\n", e.what());
+    printf("HighsMemoryAllocation::okAssign fails with %s\n", e.what());
     return false;
   }
   return true;

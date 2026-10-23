@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -48,7 +47,7 @@ namespace presolve {
 #ifndef NDEBUG
 void HPresolve::debugPrintRow(HighsPostsolveStack& postsolve_stack,
                               HighsInt row) {
-  Rprintf("(row %" HIGHSINT_FORMAT ") %.15g (impl: %.15g) <= ",
+  printf("(row %" HIGHSINT_FORMAT ") %.15g (impl: %.15g) <= ",
          postsolve_stack.getOrigRowIndex(row), model->row_lower_[row],
          impliedRowBounds.getSumLower(row));
 
@@ -59,11 +58,11 @@ void HPresolve::debugPrintRow(HighsPostsolveStack& postsolve_stack,
         model->integrality_[nonzero.index()] == HighsVarType::kInteger ? 'y'
                                                                        : 'x';
     char signchar = nonzero.value() < 0 ? '-' : '+';
-    Rprintf("%c%g %c%" HIGHSINT_FORMAT " ", signchar, std::abs(nonzero.value()),
+    printf("%c%g %c%" HIGHSINT_FORMAT " ", signchar, std::abs(nonzero.value()),
            colchar, postsolve_stack.getOrigColIndex(nonzero.index()));
   }
 
-  Rprintf("<= %.15g (impl: %.15g)\n", model->row_upper_[row],
+  printf("<= %.15g (impl: %.15g)\n", model->row_upper_[row],
          impliedRowBounds.getSumUpper(row));
 }
 #endif
@@ -124,6 +123,7 @@ bool HPresolve::okSetInput(HighsLp& model_, const HighsOptions& options_,
   if (!okResize(colDeleted, model->num_col_)) return false;
   if (!okReserve(changedColIndices, model->num_col_)) return false;
   if (!okReserve(liftingOpportunities, model->num_row_)) return false;
+  if (!okResize(singleEquationChecked, model->num_row_)) return false;
   numDeletedCols = 0;
   numDeletedRows = 0;
   // initialize substitution opportunities
@@ -162,9 +162,9 @@ bool HPresolve::okSetInput(HighsMipSolver& mipsolver,
     mipsolver.model_ = &mipsolver.mipdata_->presolvedModel;
   } else {
     mipsolver.mipdata_->presolvedModel.col_lower_ =
-        mipsolver.mipdata_->domain.col_lower_;
+        mipsolver.mipdata_->getDomain().col_lower_;
     mipsolver.mipdata_->presolvedModel.col_upper_ =
-        mipsolver.mipdata_->domain.col_upper_;
+        mipsolver.mipdata_->getDomain().col_upper_;
   }
 
   return okSetInput(mipsolver.mipdata_->presolvedModel, *mipsolver.options_mip_,
@@ -535,6 +535,7 @@ void HPresolve::markChangedRow(HighsInt row) {
     changedRowIndices.push_back(row);
     changedRowFlag[row] = true;
   }
+  singleEquationChecked[row] = false;
 }
 
 void HPresolve::markChangedCol(HighsInt col) {
@@ -787,7 +788,8 @@ void HPresolve::resetColImpliedBoundsDerivedFromRow(HighsInt row) {
   // reset implied column bounds affected by a modification in a row
   // (removed / added non-zeros, etc.)
   if (colImplSourceByRow[row].empty()) return;
-  std::set<HighsInt> affectedCols(colImplSourceByRow[row]);
+  std::set<HighsInt> affectedCols;
+  affectedCols.swap(colImplSourceByRow[row]);
   for (const HighsInt& col : affectedCols) {
     // set implied bounds to infinite values if they were deduced from the
     // given row
@@ -799,7 +801,8 @@ void HPresolve::resetRowDualImpliedBoundsDerivedFromCol(HighsInt col) {
   // reset implied row dual bounds affected by a modification in a column
   // (removed / added non-zeros, etc.)
   if (implRowDualSourceByCol[col].empty()) return;
-  std::set<HighsInt> affectedRows(implRowDualSourceByCol[col]);
+  std::set<HighsInt> affectedRows;
+  affectedRows.swap(implRowDualSourceByCol[col]);
   for (const HighsInt& row : affectedRows) {
     // set implied bounds to infinite values if they were deduced from the
     // given column
@@ -898,6 +901,7 @@ void HPresolve::shrinkProblem(HighsPostsolveStack& postsolve_stack) {
         if (have_row_names)
           model->row_names_[newRowIndex[i]] = std::move(model->row_names_[i]);
         changedRowFlag[newRowIndex[i]] = changedRowFlag[i];
+        singleEquationChecked[newRowIndex[i]] = singleEquationChecked[i];
       }
     }
   }
@@ -950,6 +954,7 @@ void HPresolve::shrinkProblem(HighsPostsolveStack& postsolve_stack) {
   rowsizeImplInt.resize(model->num_row_);
   if (have_row_names) model->row_names_.resize(model->num_row_);
   changedRowFlag.resize(model->num_row_);
+  singleEquationChecked.resize(model->num_row_);
 
   numDeletedRows = 0;
   postsolve_stack.compressIndexMaps(newRowIndex, newColIndex);
@@ -1009,17 +1014,17 @@ void HPresolve::shrinkProblem(HighsPostsolveStack& postsolve_stack) {
   if (mipsolver != nullptr) {
     mipsolver->mipdata_->rowMatrixSet = false;
     mipsolver->mipdata_->objectiveFunction = HighsObjectiveFunction(*mipsolver);
-    mipsolver->mipdata_->domain = HighsDomain(*mipsolver);
+    mipsolver->mipdata_->getDomain() = HighsDomain(*mipsolver);
     mipsolver->mipdata_->cliquetable.rebuild(model->num_col_, postsolve_stack,
-                                             mipsolver->mipdata_->domain,
+                                             mipsolver->mipdata_->getDomain(),
                                              newColIndex, newRowIndex);
     mipsolver->mipdata_->implications.rebuild(model->num_col_, newColIndex,
                                               newRowIndex);
-    mipsolver->mipdata_->cutpool =
+    mipsolver->mipdata_->getCutPool() =
         HighsCutPool(mipsolver->model_->num_col_,
                      mipsolver->options_mip_->mip_pool_age_limit,
-                     mipsolver->options_mip_->mip_pool_soft_limit);
-    mipsolver->mipdata_->conflictPool =
+                     mipsolver->options_mip_->mip_pool_soft_limit, 0);
+    mipsolver->mipdata_->getConflictPool() =
         HighsConflictPool(5 * mipsolver->options_mip_->mip_pool_age_limit,
                           mipsolver->options_mip_->mip_pool_soft_limit);
 
@@ -1324,8 +1329,12 @@ HPresolve::Result HPresolve::dominatedColumns(
         if (!tryToFix) numDomChecksPredBndAnalysis++;
         // check for domination
         if (checkDomination(direction, col, direction_k, k)) {
+          // Re-check the implied bound condition since earlier fixings in
+          // this dominatedColumns call may have changed the model state
+          bool currentBoundImplied =
+              direction > 0 ? isUpperImplied(col) : isLowerImplied(col);
           if (tryToFix &&
-              (boundImplied ||
+              (currentBoundImplied ||
                mipsolver->mipdata_->cliquetable.haveCommonClique(
                    HighsCliqueTable::CliqueVar(col, direction > 0 ? 1 : 0),
                    HighsCliqueTable::CliqueVar(k, direction_k > 0 ? 1 : 0)))) {
@@ -1446,7 +1455,7 @@ HPresolve::Result HPresolve::dominatedColumns(
 
 HPresolve::Result HPresolve::prepareProbing(
     HighsPostsolveStack& postsolve_stack, bool& firstCall) {
-  HighsDomain& domain = mipsolver->mipdata_->domain;
+  HighsDomain& domain = mipsolver->mipdata_->getDomain();
   HighsCliqueTable& cliquetable = mipsolver->mipdata_->cliquetable;
 
   shrinkProblem(postsolve_stack);
@@ -1515,7 +1524,7 @@ HPresolve::Result HPresolve::finaliseProbing(
     HighsPostsolveStack& postsolve_stack, bool firstCall,
     HighsInt& numVarsFixed, HighsInt& numBndsTightened,
     HighsInt& numVarsSubstituted, HighsInt& liftedNonZeros) {
-  HighsDomain& domain = mipsolver->mipdata_->domain;
+  HighsDomain& domain = mipsolver->mipdata_->getDomain();
   HighsCliqueTable& cliquetable = mipsolver->mipdata_->cliquetable;
 
   cliquetable.cleanupFixed(domain);
@@ -1590,7 +1599,7 @@ std::pair<int64_t, HighsInt> HPresolve::computeProbingScore(
 }
 
 HPresolve::Result HPresolve::runProbing(HighsPostsolveStack& postsolve_stack) {
-  mipsolver->analysis_.mipTimerStart(kMipClockProbingPresolve);
+  mipsolver->profiling_->start(kMipClockProbingPresolve);
   probingEarlyAbort = false;
 
   HighsInt oldNumProbed = numProbed;
@@ -1599,11 +1608,11 @@ HPresolve::Result HPresolve::runProbing(HighsPostsolveStack& postsolve_stack) {
   bool firstCall = false;
   Result prepareResult = prepareProbing(postsolve_stack, firstCall);
   if (prepareResult != Result::kOk) {
-    mipsolver->analysis_.mipTimerStop(kMipClockProbingPresolve);
+    mipsolver->profiling_->stop(kMipClockProbingPresolve);
     return prepareResult;
   }
 
-  HighsDomain& domain = mipsolver->mipdata_->domain;
+  HighsDomain& domain = mipsolver->mipdata_->getDomain();
   HighsCliqueTable& cliquetable = mipsolver->mipdata_->cliquetable;
   HighsImplications& implications = mipsolver->mipdata_->implications;
 
@@ -1778,7 +1787,7 @@ HPresolve::Result HPresolve::runProbing(HighsPostsolveStack& postsolve_stack) {
         break;
 
       // if (numProbed % 10 == 0)
-      //   Rprintf(
+      //   printf(
       //       "numprobed=%d  numDel=%d  newcliques=%d "
       //       "numNeighbourhoodQueries=%ld  "
       //       "splayContingent=%ld\n",
@@ -1825,7 +1834,7 @@ HPresolve::Result HPresolve::runProbing(HighsPostsolveStack& postsolve_stack) {
         implications.storeLiftingOpportunity = nullptr;
 
       if (domain.infeasible()) {
-        mipsolver->analysis_.mipTimerStop(kMipClockProbingPresolve);
+        mipsolver->profiling_->stop(kMipClockProbingPresolve);
         return Result::kPrimalInfeasible;
       }
     }
@@ -1859,7 +1868,7 @@ HPresolve::Result HPresolve::runProbing(HighsPostsolveStack& postsolve_stack) {
     }
   }
 
-  mipsolver->analysis_.mipTimerStop(kMipClockProbingPresolve);
+  mipsolver->profiling_->stop(kMipClockProbingPresolve);
   return checkLimits(postsolve_stack);
 }
 
@@ -1869,7 +1878,7 @@ HPresolve::Result HPresolve::liftingForProbing(
   // al. (2019) Presolve Reductions in Mixed Integer Programming. INFORMS
   // Journal on Computing 32(2):473-506.
   HighsCliqueTable& cliquetable = mipsolver->mipdata_->cliquetable;
-  const HighsDomain& domain = mipsolver->mipdata_->domain;
+  const HighsDomain& domain = mipsolver->mipdata_->getDomain();
 
   // collect best lifting opportunity for each row in a vector
   typedef std::pair<HighsCliqueTable::CliqueVar, double> liftingvar;
@@ -2235,7 +2244,7 @@ void HPresolve::changeRowDualUpper(HighsInt row, double newUpper) {
   double oldUpper = rowDualUpper[row];
   rowDualUpper[row] = newUpper;
 
-  // Rprintf("tightening upper bound of column %" HIGHSINT_FORMAT " from %.15g to
+  // printf("tightening upper bound of column %" HIGHSINT_FORMAT " from %.15g to
   // %.15g\n", col,
   //        oldUpper, newUpper);
   for (const HighsSliceNonzero& nonzero : getRowVector(row)) {
@@ -2248,7 +2257,7 @@ void HPresolve::changeRowDualUpper(HighsInt row, double newUpper) {
 void HPresolve::changeRowDualLower(HighsInt row, double newLower) {
   double oldLower = rowDualLower[row];
   rowDualLower[row] = newLower;
-  // Rprintf("tightening lower bound of column %" HIGHSINT_FORMAT " from %.15g to
+  // printf("tightening lower bound of column %" HIGHSINT_FORMAT " from %.15g to
   // %.15g\n", col,
   //        oldLower, newLower);
 
@@ -2599,7 +2608,7 @@ bool HPresolve::okFromCSC(const std::vector<double>& Aval,
     try {
       eqiters.assign(model->num_row_, equations.end());
     } catch (const std::bad_alloc& e) {
-      Rprintf("HPresolve::okFromCSC eqiters.assign fails with %s\n", e.what());
+      printf("HPresolve::okFromCSC eqiters.assign fails with %s\n", e.what());
       return false;
     }
     for (HighsInt i = 0; i != model->num_row_; ++i) {
@@ -2662,7 +2671,7 @@ bool HPresolve::okFromCSR(const std::vector<double>& ARval,
     try {
       eqiters.assign(nrow, equations.end());
     } catch (const std::bad_alloc& e) {
-      Rprintf("HPresolve::okFromCSR eqiters.assign fails with %s\n", e.what());
+      printf("HPresolve::okFromCSR eqiters.assign fails with %s\n", e.what());
       return false;
     }
     for (HighsInt i = 0; i != nrow; ++i) {
@@ -2913,7 +2922,7 @@ void HPresolve::substitute(HighsInt row, HighsInt col, double rhs) {
     // updated
     unlink(colpos);
 
-    // Rprintf("\nbefore substitution: ");
+    // printf("\nbefore substitution: ");
     // debugPrintRow(colrow);
 
     // determine the scale for the substitution row for addition to this row
@@ -2935,7 +2944,7 @@ void HPresolve::substitute(HighsInt row, HighsInt col, double rhs) {
 
     // check if this is an equation row and it now has a different size
     reinsertEquation(colrow);
-    // Rprintf("after substitution: ");
+    // printf("after substitution: ");
     // debugPrintRow(colrow);
   }
 
@@ -2947,7 +2956,7 @@ void HPresolve::substitute(HighsInt row, HighsInt col, double rhs) {
     model->offset_ = static_cast<double>(model->offset_ - objscale * rhs);
     assert(std::isfinite(model->offset_));
     for (HighsInt rowiter : rowpositions) {
-      // Rprintf("changing col cost to %g = %g + %g * %g\n",
+      // printf("changing col cost to %g = %g + %g * %g\n",
       // double(model->col_cost_[Acol[rowiter]] + objscale * Avalue[rowiter]),
       // model->col_cost_[Acol[rowiter]], double(objscale), Avalue[rowiter]);
       model->col_cost_[Acol[rowiter]] = static_cast<double>(
@@ -3035,7 +3044,7 @@ HPresolve::Result HPresolve::doubletonEq(HighsPostsolveStack& postsolve_stack,
   assert(rowsize[row] == 2);
   assert(isEquation(row));
 
-  // Rprintf("doubleton equation: ");
+  // printf("doubleton equation: ");
   // debugPrintRow(row);
   HighsInt nzPos1 = rowroot[row];
   HighsInt nzPos2 = ARright[nzPos1] != -1 ? ARright[nzPos1] : ARleft[nzPos1];
@@ -3212,7 +3221,7 @@ HPresolve::Result HPresolve::singletonRow(HighsPostsolveStack& postsolve_stack,
   HighsInt col = Acol[nzPos];
   double val = Avalue[nzPos];
 
-  // Rprintf("singleton row\n");
+  // printf("singleton row\n");
   // debugPrintRow(row);
   // delete row singleton nonzero directly, we have all information that we need
   // in local variables
@@ -3280,7 +3289,7 @@ HPresolve::Result HPresolve::singletonRow(HighsPostsolveStack& postsolve_stack,
   } else
     ub = model->col_upper_[col];
 
-  // Rprintf("old bounds [%.15g,%.15g], new bounds [%.15g,%.15g] ... ",
+  // printf("old bounds [%.15g,%.15g], new bounds [%.15g,%.15g] ... ",
   //        model->col_lower_[col], model->col_upper_[col], lb, ub);
   // check whether the bounds are equal in tolerances
   if (ub <= lb + primal_feastol) {
@@ -3311,7 +3320,7 @@ HPresolve::Result HPresolve::singletonRow(HighsPostsolveStack& postsolve_stack,
     }
   }
 
-  // Rprintf("final bounds: [%.15g,%.15g]\n", lb, ub);
+  // printf("final bounds: [%.15g,%.15g]\n", lb, ub);
 
   postsolve_stack.singletonRow(row, col, val, lowerTightened, upperTightened);
 
@@ -3458,7 +3467,7 @@ HPresolve::Result HPresolve::rowPresolve(HighsPostsolveStack& postsolve_stack,
     return Result::kOk;
   };
 
-  // Rprintf("row presolve: ");
+  // printf("row presolve: ");
   // debugPrintRow(row);
 
   // check for infeasibility
@@ -3636,7 +3645,7 @@ HPresolve::Result HPresolve::rowPresolve(HighsPostsolveStack& postsolve_stack,
 
         if (binCol != -1) {
           // found binary column for substituting all other columns
-          // Rprintf("simple probing case on row of size %" HIGHSINT_FORMAT
+          // printf("simple probing case on row of size %" HIGHSINT_FORMAT
           // "\n", rowsize[row]);
 
           // iterate over non-zero positions instead of iterating over the
@@ -3740,7 +3749,7 @@ HPresolve::Result HPresolve::rowPresolve(HighsPostsolveStack& postsolve_stack,
           if (intScale != 0 && intScale <= 1e3) {
             double scale = 1.0 / std::abs(continuousCoef * intScale);
             if (scale != 1.0) {
-              // Rprintf(
+              // printf(
               //     "transform continuous column x to implicit integer z with x
               //     "
               //     "= %g * z\n",
@@ -3801,7 +3810,7 @@ HPresolve::Result HPresolve::rowPresolve(HighsPostsolveStack& postsolve_stack,
                 // the right hand side is integral, so we can substitute
                 // x1 = d * z
 
-                // Rprintf(
+                // printf(
                 //    "substitute integral column x with integral column z with
                 //    " "x = %ld * z\n", d);
                 HPRESOLVE_CHECKED_CALL(
@@ -3819,7 +3828,7 @@ HPresolve::Result HPresolve::rowPresolve(HighsPostsolveStack& postsolve_stack,
                 double b =
                     HighsIntegers::mod(a1Inverse * rhs, static_cast<double>(d));
 
-                // Rprintf(
+                // printf(
                 //     "substitute integral column x with integral column z with
                 //     " "x = %ld * z + %g\n", d, b);
 
@@ -4271,7 +4280,7 @@ HPresolve::Result HPresolve::rowPresolve(HighsPostsolveStack& postsolve_stack,
     }
   }  // if (rowsizeInteger[row] != 0 || rowsizeImplInt[row] != 0) {
 
-  // Rprintf("implied bounds without tightenings: [%g,%g]\n", baseiRLower,
+  // printf("implied bounds without tightenings: [%g,%g]\n", baseiRLower,
   //        baseiRUpper);
 
   auto checkForcingRow = [&](HighsInt row, HighsInt direction, double rowSide,
@@ -4923,11 +4932,12 @@ HPresolve::Result HPresolve::dualFixing(HighsPostsolveStack& postsolve_stack,
           hasSingleDownLock && isEquation(downLockRow)
               ? downLockRow
               : (hasSingleUpLock && isEquation(upLockRow) ? upLockRow : -1);
-      if (equationRow != -1) {
+      if (equationRow != -1 && !singleEquationChecked[equationRow]) {
         // see section 6.1 "Extension of dual fixing for single equations",
         // Achterberg et al., Presolve Reductions in Mixed Integer
         // Programming, INFORMS Journal on Computing 32(2):473-506.
         HPRESOLVE_CHECKED_CALL(handleSingleEquation(equationRow));
+        singleEquationChecked[equationRow] = true;
         if (colDeleted[col]) return Result::kOk;
       } else if (mipsolver != nullptr && model->col_lower_[col] != -kHighsInf &&
                  model->col_upper_[col] != kHighsInf) {
@@ -4983,7 +4993,11 @@ HPresolve::Result HPresolve::singletonColStuffing(
   // count number of fixed columns
   HighsInt numFixedCols = 0;
 
-  typedef std::tuple<HighsInt, double, HighsInt> candidate;
+  struct candidate {
+    HighsInt col;
+    double val;
+    HighsInt multiplier;
+  };
 
   auto isSingleton = [&](HighsInt col) {
     return (!colDeleted[col] && colsize[col] == 1 &&
@@ -4992,9 +5006,9 @@ HPresolve::Result HPresolve::singletonColStuffing(
 
   auto sortCols = [&](std::vector<candidate>& vec) {
     pdqsort(vec.begin(), vec.end(),
-            [&](const candidate& col1, const candidate& col2) {
-              return model->col_cost_[std::get<0>(col1)] / std::get<1>(col1) <
-                     model->col_cost_[std::get<0>(col2)] / std::get<1>(col2);
+            [&](const candidate& c1, const candidate& c2) {
+              return model->col_cost_[c1.col] / c1.val <
+                     model->col_cost_[c2.col] / c2.val;
             });
   };
 
@@ -5014,12 +5028,13 @@ HPresolve::Result HPresolve::singletonColStuffing(
   // lambda for storing a candidate
   auto addCandidate = [&](std::vector<candidate>& candidates, HighsInt col,
                           double val, HighsInt direction, double& minWeight,
-                          double& maxWeight, bool& allInteger) {
-    allInteger =
-        allInteger && model->integrality_[col] == HighsVarType::kInteger;
+                          double& maxWeight, size_t& numIntegerCandidates) {
+    if (model->integrality_[col] == HighsVarType::kInteger)
+      numIntegerCandidates++;
+
     minWeight = std::min(minWeight, direction * val);
     maxWeight = std::max(maxWeight, direction * val);
-    candidates.push_back(std::make_tuple(col, val, direction));
+    candidates.push_back(candidate{col, val, direction});
   };
 
   // lambda for fixing a variable
@@ -5031,21 +5046,23 @@ HPresolve::Result HPresolve::singletonColStuffing(
     return Result::kOk;
   };
 
-  // lambda for actual stuffing
-  auto checkRow = [&](HighsInt row, double rhs, HighsInt direction) {
-    // skip row if rhs is not finite
-    if (direction * rhs == kHighsInf) return Result::kOk;
-
+  // lambda for computing candidates for stuffing
+  auto computeCandidates = [&](HighsInt row, HighsInt direction,
+                               std::vector<candidate>& candidates,
+                               HighsCDouble& sumLower, HighsCDouble& sumUpper,
+                               bool& sumLowerFinite, bool& sumUpperFinite,
+                               size_t& numIntegerCandidates, double& minWeight,
+                               double& maxWeight, bool allowIntegerCandidates) {
     // vectors for candidates and activity bounds
-    std::vector<candidate> candidates;
+    candidates.clear();
     candidates.reserve(rowsize[row]);
-    HighsCDouble sumLower = 0.0;
-    HighsCDouble sumUpper = 0.0;
-    bool sumLowerFinite = true;
-    bool sumUpperFinite = true;
-    bool allInteger = true;
-    double minWeight = kHighsInf;
-    double maxWeight = -kHighsInf;
+    sumLower = 0.0;
+    sumUpper = 0.0;
+    sumLowerFinite = true;
+    sumUpperFinite = true;
+    numIntegerCandidates = 0;
+    minWeight = kHighsInf;
+    maxWeight = -kHighsInf;
 
     for (auto& nz : getRowVector(row)) {
       // get column index, coefficient, cost and bounds
@@ -5054,70 +5071,125 @@ HPresolve::Result HPresolve::singletonColStuffing(
       double cj = model->col_cost_[j];
       double sumLowerBound = model->col_lower_[j];
       double sumUpperBound = model->col_upper_[j];
+      bool isCandidate = allowIntegerCandidates ||
+                         model->integrality_[j] != HighsVarType::kInteger;
       if (isSingleton(j)) {
         // check singleton
         if (aj > 0) {
-          // use lower bound
-          sumUpperBound = sumLowerBound;
-          // candidate for stuffing?
-          if (cj < 0)
+          if (cj >= 0)
+            // dual fixing: fix to lower bound
+            sumUpperBound = sumLowerBound;
+          else if (isCandidate) {
+            // candidate for stuffing
+            sumUpperBound = sumLowerBound;
             addCandidate(candidates, j, aj, HighsInt{1}, minWeight, maxWeight,
-                         allInteger);
+                         numIntegerCandidates);
+          }
         } else {
-          // use upper bound
-          sumLowerBound = sumUpperBound;
-          // candidate for stuffing? multiply column with -1
-          if (cj > 0)
+          // aj < 0
+          assert(aj < 0);
+          if (cj <= 0)
+            // dual fixing: fix to upper bound
+            sumLowerBound = sumUpperBound;
+          else if (isCandidate) {
+            // candidate for stuffing; multiply column with -1
+            sumLowerBound = sumUpperBound;
             addCandidate(candidates, j, aj, HighsInt{-1}, minWeight, maxWeight,
-                         allInteger);
+                         numIntegerCandidates);
+          }
         }
-      } else if (aj < 0)
-        std::swap(sumLowerBound, sumUpperBound);
+      }
       // update activities
+      if (aj < 0) std::swap(sumLowerBound, sumUpperBound);
       updateActivityBounds(sumLower, sumUpper, sumLowerFinite, sumUpperFinite,
                            aj, sumLowerBound, sumUpperBound);
-      if (!sumLowerFinite && !sumUpperFinite) return Result::kOk;
+      if (!sumLowerFinite && !sumUpperFinite) return false;
+    }
+    return true;
+  };
+
+  // lambda for computing and checking candidates for stuffing
+  auto checkCandidates = [&](HighsInt row, HighsInt direction,
+                             std::vector<candidate>& candidates,
+                             HighsCDouble& sumLower, HighsCDouble& sumUpper,
+                             bool& sumLowerFinite, bool& sumUpperFinite) {
+    // number of integer candidates and weights
+    size_t numIntegerCandidates;
+    double minWeight;
+    double maxWeight;
+
+    // compute candidates
+    if (computeCandidates(row, direction, candidates, sumLower, sumUpper,
+                          sumLowerFinite, sumUpperFinite, numIntegerCandidates,
+                          minWeight, maxWeight, true)) {
+      // return if there are no integer columns
+      if (numIntegerCandidates == 0) return true;
+      // all columns need to have same weights if we only have integer
+      // columns
+      if (numIntegerCandidates == candidates.size()) {
+        if (minWeight != maxWeight) return false;
+        return true;
+      }
     }
 
-    // all columns need to have same weights if we only have integer columns
-    if (allInteger && minWeight != maxWeight) return Result::kOk;
+    // recompute candidates without integer columns
+    if (numIntegerCandidates > 0 &&
+        computeCandidates(row, direction, candidates, sumLower, sumUpper,
+                          sumLowerFinite, sumUpperFinite, numIntegerCandidates,
+                          minWeight, maxWeight, false))
+      return true;
 
-    // remove integer columns if there are also continuous ones
-    if (!allInteger)
-      candidates.erase(
-          std::remove_if(candidates.begin(), candidates.end(),
-                         [&](const candidate& p) {
-                           return model->integrality_[std::get<0>(p)] ==
-                                  HighsVarType::kInteger;
-                         }),
-          candidates.end());
+    return false;
+  };
+
+  // lambda for actual stuffing
+  auto checkRow = [&](HighsInt row, double rhs, HighsInt direction) {
+    // skip row if rhs is not finite
+    if (direction * rhs == kHighsInf) return Result::kOk;
+
+    // vectors for candidates and activity bounds
+    std::vector<candidate> candidates;
+    HighsCDouble sumLower;
+    HighsCDouble sumUpper;
+    bool sumLowerFinite;
+    bool sumUpperFinite;
+
+    // compute candidates
+    if (!checkCandidates(row, direction, candidates, sumLower, sumUpper,
+                         sumLowerFinite, sumUpperFinite))
+      return Result::kOk;
 
     // sort candidates
     sortCols(candidates);
 
     // check candidates
     for (const auto& t : candidates) {
-      // get variable index, coefficient and multiplier (-1 if sign was flipped)
-      HighsInt j = std::get<0>(t);
-      double aj = std::get<1>(t);
-      HighsInt multiplier = std::get<2>(t);
       // both bounds have to be finite
-      if (model->col_lower_[j] == -kHighsInf ||
-          model->col_upper_[j] == kHighsInf)
+      if (model->col_lower_[t.col] == -kHighsInf ||
+          model->col_upper_[t.col] == kHighsInf)
         break;
       // compute delta (bound difference)
-      HighsCDouble delta = multiplier * aj *
-                           (static_cast<HighsCDouble>(model->col_upper_[j]) -
-                            static_cast<HighsCDouble>(model->col_lower_[j]));
+      HighsCDouble delta =
+          t.multiplier * t.val *
+          (static_cast<HighsCDouble>(model->col_upper_[t.col]) -
+           static_cast<HighsCDouble>(model->col_lower_[t.col]));
       // check if variable can be fixed
       if (sumUpperFinite &&
           delta <= direction * rhs - sumUpper + primal_feastol) {
         numFixedCols++;
-        HPRESOLVE_CHECKED_CALL(fixCol(j, multiplier));
+        HPRESOLVE_CHECKED_CALL(fixCol(t.col, t.multiplier));
       } else if (sumLowerFinite &&
-                 direction * rhs <= sumLower + primal_feastol) {
+                 delta <= sumLower - direction * rhs + primal_feastol) {
+        // Previously
+        //
+        // direction * rhs <= sumLower + primal_feastol
+        //
+        // But this led to fixing at -t.multiplier until row activity
+        // was at its bound, which is primal optmal but degenerate,
+        // and does not yield an optimal basis if column costs are
+        // positive
         numFixedCols++;
-        HPRESOLVE_CHECKED_CALL(fixCol(j, -multiplier));
+        HPRESOLVE_CHECKED_CALL(fixCol(t.col, -t.multiplier));
       }
       // update row activities
       if (sumLowerFinite) sumLower += delta;
@@ -5152,17 +5224,17 @@ HPresolve::Result HPresolve::enumerateSolutions(
     HighsPostsolveStack& postsolve_stack) {
   // enumerate all solutions for pure binary constraints with a small number of
   // variables
-  mipsolver->analysis_.mipTimerStart(kMipClockEnumerationPresolve);
+  mipsolver->profiling_->start(kMipClockEnumerationPresolve);
 
   // prepare probing
   bool firstCall = false;
   Result prepareResult = prepareProbing(postsolve_stack, firstCall);
   if (prepareResult != Result::kOk) {
-    mipsolver->analysis_.mipTimerStop(kMipClockEnumerationPresolve);
+    mipsolver->profiling_->stop(kMipClockEnumerationPresolve);
     return prepareResult;
   }
 
-  HighsDomain& domain = mipsolver->mipdata_->domain;
+  HighsDomain& domain = mipsolver->mipdata_->getDomain();
   HighsCliqueTable& cliquetable = mipsolver->mipdata_->cliquetable;
 
   typedef std::tuple<double, double, HighsInt, HighsInt, uint32_t> candidateRow;
@@ -5407,7 +5479,7 @@ HPresolve::Result HPresolve::enumerateSolutions(
 
   auto handleInfeasibility = [&](bool infeasible) {
     if (infeasible) {
-      mipsolver->analysis_.mipTimerStop(kMipClockEnumerationPresolve);
+      mipsolver->profiling_->stop(kMipClockEnumerationPresolve);
       return Result::kPrimalInfeasible;
     }
     return Result::kOk;
@@ -5618,7 +5690,7 @@ HPresolve::Result HPresolve::enumerateSolutions(
                 static_cast<int>(numBndsTightened),
                 static_cast<int>(numVarsSubstituted));
 
-  mipsolver->analysis_.mipTimerStop(kMipClockEnumerationPresolve);
+  mipsolver->profiling_->stop(kMipClockEnumerationPresolve);
 
   return checkLimits(postsolve_stack);
 }
@@ -5731,6 +5803,16 @@ HPresolve::Result HPresolve::presolve(HighsPostsolveStack& postsolve_stack) {
   //    - stop
   //
 
+  auto presolveReturn = [&]() {
+    if (mipsolver != nullptr) HPRESOLVE_CHECKED_CALL(scaleMIP(postsolve_stack));
+
+    // analysePresolveRuleLog() should return true - no errors
+    assert(analysis_.analysePresolveRuleLog());
+    // Possibly report presolve log
+    analysis_.analysePresolveRuleLog(true);
+    return Result::kOk;
+  };
+
   // convert model to minimization problem
   if (model->sense_ == ObjSense::kMaximize) {
     for (HighsInt i = 0; i != model->num_col_; ++i)
@@ -5778,6 +5860,10 @@ HPresolve::Result HPresolve::presolve(HighsPostsolveStack& postsolve_stack) {
     assert(this->timer);
     assert(this->timer->running());
 
+    if (options->presolve_rule_test) {
+      HPRESOLVE_CHECKED_CALL(presolveRuleTest(postsolve_stack));
+      return presolveReturn();
+    }
     HPRESOLVE_CHECKED_CALL(initialRowAndColPresolve(postsolve_stack));
 
     HighsInt numParallelRowColCalls = 0;
@@ -5955,13 +6041,7 @@ HPresolve::Result HPresolve::presolve(HighsPostsolveStack& postsolve_stack) {
                  "\nPresolve is switched off\n");
   }
 
-  if (mipsolver != nullptr) HPRESOLVE_CHECKED_CALL(scaleMIP(postsolve_stack));
-
-  // analysePresolveRuleLog() should return true - no errors
-  assert(analysis_.analysePresolveRuleLog());
-  // Possibly report presolve log
-  analysis_.analysePresolveRuleLog(true);
-  return Result::kOk;
+  return presolveReturn();
 }
 
 HPresolve::Result HPresolve::removeSlacks(
@@ -6051,14 +6131,14 @@ HPresolve::Result HPresolve::checkLimits(HighsPostsolveStack& postsolve_stack) {
     debug_report = numreductions > postsolve_stack.debug_prev_numreductions;
   }
   if (check_col >= 0 && col_bound_change && debug_report) {
-    Rprintf("After reduction %4d: col = %4d[%s] has bounds [%11.4g, %11.4g]\n",
+    printf("After reduction %4d: col = %4d[%s] has bounds [%11.4g, %11.4g]\n",
            static_cast<int>(numreductions - 1), static_cast<int>(check_col),
            model->col_names_[check_col].c_str(), model->col_lower_[check_col],
            model->col_upper_[check_col]);
     postsolve_stack.debug_prev_numreductions = numreductions;
   }
   if (check_row >= 0 && row_bound_change && debug_report) {
-    Rprintf("After reduction %4d: row = %4d[%s] has bounds [%11.4g, %11.4g]\n",
+    printf("After reduction %4d: row = %4d[%s] has bounds [%11.4g, %11.4g]\n",
            static_cast<int>(numreductions - 1), static_cast<int>(check_row),
            model->row_names_[check_row].c_str(), model->row_lower_[check_row],
            model->row_upper_[check_row]);
@@ -6287,9 +6367,10 @@ HighsModelStatus HPresolve::run(HighsPostsolveStack& postsolve_stack) {
   if (mipsolver != nullptr) {
     mipsolver->mipdata_->cliquetable.setPresolveFlag(false);
     mipsolver->mipdata_->cliquetable.setMaxEntries(numNonzeros());
-    mipsolver->mipdata_->domain.addCutpool(mipsolver->mipdata_->cutpool);
-    mipsolver->mipdata_->domain.addConflictPool(
-        mipsolver->mipdata_->conflictPool);
+    mipsolver->mipdata_->getDomain().addCutpool(
+        mipsolver->mipdata_->getCutPool());
+    mipsolver->mipdata_->getDomain().addConflictPool(
+        mipsolver->mipdata_->getConflictPool());
 
     if (mipsolver->mipdata_->numRestarts != 0) {
       std::vector<HighsInt> cutinds;
@@ -6313,7 +6394,7 @@ HighsModelStatus HPresolve::run(HighsPostsolveStack& postsolve_stack) {
           cutvals.push_back(Avalue[j]);
         }
 
-        mipsolver->mipdata_->cutpool.addCut(
+        mipsolver->mipdata_->getCutPool().addCut(
             *mipsolver, cutinds.data(), cutvals.data(), cutinds.size(),
             model->row_upper_[i],
             rowsizeInteger[i] + rowsizeImplInt[i] == rowsize[i] &&
@@ -6746,7 +6827,7 @@ void HPresolve::substitute(HighsInt substcol, HighsInt staycol, double offset,
       model->row_upper_[colrow] -= colval * offset;
 
     addToMatrix(colrow, staycol, scale * colval);
-    // Rprintf("after substitution: ");
+    // printf("after substitution: ");
     // debugPrintRow(colrow);
 
     // check if this is an equation row and it now has a different size
@@ -6771,7 +6852,7 @@ HPresolve::Result HPresolve::fixColToLower(HighsPostsolveStack& postsolve_stack,
   double fixval = model->col_lower_[col];
   if (fixval == -kHighsInf) return Result::kDualInfeasible;
 
-  // Rprintf("fixing column %" HIGHSINT_FORMAT " to %.15g\n", col, fixval);
+  // printf("fixing column %" HIGHSINT_FORMAT " to %.15g\n", col, fixval);
 
   const bool logging_on = analysis_.logging_on_;
   if (logging_on) analysis_.startPresolveRuleLog(kPresolveRuleFixedCol);
@@ -6788,7 +6869,7 @@ HPresolve::Result HPresolve::fixColToUpper(HighsPostsolveStack& postsolve_stack,
   double fixval = model->col_upper_[col];
   if (fixval == kHighsInf) return Result::kDualInfeasible;
 
-  // Rprintf("fixing column %" HIGHSINT_FORMAT " to %.15g\n", col, fixval);
+  // printf("fixing column %" HIGHSINT_FORMAT " to %.15g\n", col, fixval);
 
   const bool logging_on = analysis_.logging_on_;
   if (logging_on) analysis_.startPresolveRuleLog(kPresolveRuleFixedCol);
@@ -6963,7 +7044,7 @@ HPresolve::Result HPresolve::strengthenInequalities(
         std::max(HighsInt{1000}, (model->num_col_ - numDeletedCols) / 20);
     if (rowsize[row] > rowsize_limit) continue;
 
-    // Rprintf("strengthening knapsack of %" HIGHSINT_FORMAT " vars\n",
+    // printf("strengthening knapsack of %" HIGHSINT_FORMAT " vars\n",
     // rowsize[row]);
 
     HighsCDouble maxviolation;
@@ -7479,7 +7560,7 @@ HPresolve::Result HPresolve::detectParallelRowsAndCols(
                                      model->col_lower_[duplicateCol])) <
                 1.0 - primal_feastol;
             if (!illegal_scale && debug_report)
-              Rprintf(
+              printf(
                   "kMergeParallelCols: T-F is %s legal with scale %.4g and "
                   "duplicateCol = [%.4g, %.4g]\n",
                   illegal_scale ? "not" : "   ", colScale,
@@ -7559,7 +7640,7 @@ HPresolve::Result HPresolve::detectParallelRowsAndCols(
               model->integrality_[duplicateCol] == HighsVarType::kInteger,
               options->mip_feasibility_tolerance);
           if (!ok_merge && debug_report) {
-            Rprintf(
+            printf(
                 "HPresolve::detectParallelRowsAndCols Illegal merge "
                 "prevented\n");
             break;
@@ -7816,7 +7897,7 @@ HPresolve::Result HPresolve::detectParallelRowsAndCols(
       } else if (isEquation(i)) {
         // row i is equation and parallel (except for singletons)
         // add to the row parallelRowCand
-        // Rprintf(
+        // printf(
         //    "nearly parallel case with %" HIGHSINT_FORMAT " singletons in eq
         //    row and %" HIGHSINT_FORMAT " " "singletons in other row(eq=%"
         //    HIGHSINT_FORMAT ")\n", numSingleton, numSingletonCandidate,
@@ -7826,7 +7907,7 @@ HPresolve::Result HPresolve::detectParallelRowsAndCols(
             postsolve_stack, i, parallelRowCand, -rowScale, getStoredRow()));
         delRow = parallelRowCand;
       } else if (isEquation(parallelRowCand)) {
-        // Rprintf(
+        // printf(
         //    "nearly parallel case with %" HIGHSINT_FORMAT " singletons in eq
         //    row and %" HIGHSINT_FORMAT " " "singletons in other inequality
         //    row\n", numSingletonCandidate, numSingleton);
@@ -7856,7 +7937,7 @@ HPresolve::Result HPresolve::detectParallelRowsAndCols(
         // hand sides match. Then the case reduces to adding one equation to the
         // other and substituting one of the singletons due to the resulting
         // doubleton equation.
-        //        Rprintf("todo, two inequalities with one additional
+        //        printf("todo, two inequalities with one additional
         //        singleton\n");
         (void)rowLower;
         (void)rowUpper;
@@ -8117,7 +8198,7 @@ void HPresolve::debug(const HighsLp& lp, const HighsOptions& options) {
       sol.row_value, sol.row_dual, basis.col_status, basis.row_status);
   bool checkResult = dev_kkt_check::checkKkt(state, kktinfo);
   if (checkResult && kktinfo.pass_bfs) {
-    Rprintf("kkt check of postsolved solution and basis passed\n");
+    printf("kkt check of postsolved solution and basis passed\n");
     return;
   }
   size_t good = postsolve_stack.numReductions();
@@ -8181,7 +8262,7 @@ void HPresolve::debug(const HighsLp& lp, const HighsOptions& options) {
     // highs.writeModel("model.mps");
     // highs.writeBasis("bad.bas");
     highs.run();
-    Rprintf("simplex iterations with postsolved basis: %" HIGHSINT_FORMAT "\n",
+    printf("simplex iterations with postsolved basis: %" HIGHSINT_FORMAT "\n",
            highs.getInfo().simplex_iteration_count);
     checkResult = highs.getInfo().simplex_iteration_count == 0;
 #else
@@ -8210,10 +8291,10 @@ void HPresolve::debug(const HighsLp& lp, const HighsOptions& options) {
       bad = reductionLim;
     }
     reductionLim = (bad + good) / 2;
-    Rprintf("binary search ongoing: good=%zu, bad=%zu\n", good, bad);
+    printf("binary search ongoing: good=%zu, bad=%zu\n", good, bad);
   } while (true);
 
-  Rprintf("binary search finished: good=%zu, bad=%zu\n", good, bad);
+  printf("binary search finished: good=%zu, bad=%zu\n", good, bad);
   assert(false);
 }
 

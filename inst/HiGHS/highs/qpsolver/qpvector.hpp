@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -75,12 +74,12 @@ struct QpVector {
 
   void report(std::string name = "") const {
     if (name != "") {
-      Rprintf("%s: ", name.c_str());
+      printf("%s: ", name.c_str());
     }
     for (HighsInt i = 0; i < num_nz; i++) {
-      Rprintf("[%" HIGHSINT_FORMAT "] %lf ", index[i], value[index[i]]);
+      printf("[%" HIGHSINT_FORMAT "] %lf ", index[i], value[index[i]]);
     }
-    Rprintf("\n");
+    printf("\n");
   }
 
   double norm2() {

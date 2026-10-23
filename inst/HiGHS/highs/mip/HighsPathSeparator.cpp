@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -531,9 +530,10 @@ void HighsPathSeparator::separateLpSolution(HighsLpRelaxation& lpRelaxation,
                 inds.resize(numInds);
 
                 if (transLp.untransform(cutVals, inds, rhs))
-                  success |= cutGen.finalizeAndAddCut(inds, cutVals, rhs);
+                  success |= cutGen.finalizeAndAddCut(transLp.getGlobaldom(),
+                                                      inds, cutVals, rhs);
 
-                // Rprintf("cut is violated for k = %d\n", k);
+                // printf("cut is violated for k = %d\n", k);
                 break;
               }
             }

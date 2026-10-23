@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -68,7 +67,7 @@ void HEkkDualRHS::chooseNormal(HighsInt* chIndex) {
         if (work_infeasibility[iRow] > kHighsZero) {
           const double myInfeas = work_infeasibility[iRow];
           const double myWeight = edge_weight[iRow];
-          //	  Rprintf("Dense: Row %4" HIGHSINT_FORMAT " weight = %g\n", iRow,
+          //	  printf("Dense: Row %4" HIGHSINT_FORMAT " weight = %g\n", iRow,
           // myWeight);
           if (bestMerit * myWeight < myInfeas) {
             bestMerit = myInfeas / myWeight;
@@ -94,7 +93,7 @@ void HEkkDualRHS::chooseNormal(HighsInt* chIndex) {
           const double myWeight = edge_weight[iRow];
           /*
           const double myMerit = myInfeas / myWeight;
-          Rprintf("CHUZR: iRow = %6" HIGHSINT_FORMAT "; Infeas = %11.4g; Weight =
+          printf("CHUZR: iRow = %6" HIGHSINT_FORMAT "; Infeas = %11.4g; Weight =
           %11.4g; Merit = %11.4g\n", iRow, myInfeas, myWeight, myMerit);
           */
           if (bestMerit * myWeight < myInfeas) {
@@ -186,7 +185,7 @@ void HEkkDualRHS::chooseMultiGlobal(HighsInt* chIndex, HighsInt* chCount,
           const double myWeight = edge_weight[iRow];
           /*
           const double myMerit = myInfeas / myWeight;
-          Rprintf("CHUZR: iRow = %6" HIGHSINT_FORMAT "; Infeas = %11.4g; Weight =
+          printf("CHUZR: iRow = %6" HIGHSINT_FORMAT "; Infeas = %11.4g; Weight =
           %11.4g; Merit = %11.4g\n", iRow, myInfeas, myWeight, myMerit);
           */
           if (cutoffMerit * myWeight < myInfeas) {
@@ -517,7 +516,7 @@ void HEkkDualRHS::assessOptimality() {
   const bool regular_report = false;
   if (regular_report ||
       (num_work_infeasibilities && !num_primal_infeasibilities)) {
-    Rprintf(
+    printf(
         "assessOptimality: %6d rows; workCount = %4d (%6.4f) "
         "num / max infeasibilities: work = %4d / %11.4g; simplex = %4d / "
         "%11.4g: %s\n",
@@ -527,7 +526,7 @@ void HEkkDualRHS::assessOptimality() {
         (int)num_primal_infeasibilities, max_primal_infeasibility,
         num_primal_infeasibilities == 0 ? "Optimal" : "");
     if (num_work_infeasibilities && !num_primal_infeasibilities) {
-      Rprintf("assessOptimality: call %d; tick %d; iter %d\n",
+      printf("assessOptimality: call %d; tick %d; iter %d\n",
              (int)ekk_instance_.debug_solve_call_num_,
              (int)ekk_instance_.debug_initial_build_synthetic_tick_,
              (int)ekk_instance_.iteration_count_);

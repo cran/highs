@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -77,6 +76,7 @@ void getKktFailures(const HighsOptions& options, const bool is_qp,
                     const bool get_residuals) {
   double primal_feasibility_tolerance = options.primal_feasibility_tolerance;
   double dual_feasibility_tolerance = options.dual_feasibility_tolerance;
+  double mip_feasibility_tolerance = options.mip_feasibility_tolerance;
   double primal_residual_tolerance = options.primal_residual_tolerance;
   double dual_residual_tolerance = options.dual_residual_tolerance;
   double optimality_tolerance = options.optimality_tolerance;
@@ -96,6 +96,10 @@ void getKktFailures(const HighsOptions& options, const bool is_qp,
   HighsInt& num_dual_infeasibility = highs_info.num_dual_infeasibilities;
   double& max_dual_infeasibility = highs_info.max_dual_infeasibility;
   double& sum_dual_infeasibility = highs_info.sum_dual_infeasibilities;
+
+  HighsInt& num_semi_infeasibility = highs_info.num_semi_infeasibilities;
+  double& max_semi_infeasibility = highs_info.max_semi_infeasibility;
+  double& sum_semi_infeasibility = highs_info.sum_semi_infeasibilities;
 
   HighsInt& num_relative_primal_infeasibility =
       highs_info.num_relative_primal_infeasibilities;
@@ -154,6 +158,9 @@ void getKktFailures(const HighsOptions& options, const bool is_qp,
     num_primal_infeasibility = 0;
     max_primal_infeasibility = 0;
     sum_primal_infeasibility = 0;
+    num_semi_infeasibility = 0;
+    max_semi_infeasibility = 0;
+    sum_semi_infeasibility = 0;
     num_relative_primal_infeasibility = 0;
     max_relative_primal_infeasibility = 0;
     if (get_residuals) {
@@ -200,6 +207,7 @@ void getKktFailures(const HighsOptions& options, const bool is_qp,
   double primal_infeasibility;
   double relative_primal_infeasibility;
   double dual_infeasibility;
+  double semi_infeasibility;
   double cost = 0.0;
   double lower;
   double upper;
@@ -285,10 +293,11 @@ void getKktFailures(const HighsOptions& options, const bool is_qp,
       // one-sided variables. For free variables, fixed variables, or
       // variables with small positive bound interval lengths,
       // mid_status is returned as kHighsSolutionNo.
-      getVariableKktFailures(primal_feasibility_tolerance,
-                             dual_feasibility_tolerance, lower, upper, value,
-                             dual, integrality, primal_infeasibility,
-                             dual_infeasibility, at_status, mid_status);
+      getVariableKktFailures(
+          primal_feasibility_tolerance, dual_feasibility_tolerance,
+          mip_feasibility_tolerance, lower, upper, value, dual, integrality,
+          primal_infeasibility, dual_infeasibility, semi_infeasibility,
+          at_status, mid_status);
       if (pass == 0) {
         // If the primal value is close to a bound then include the bound
         // in the active bound norm
@@ -335,6 +344,13 @@ void getKktFailures(const HighsOptions& options, const bool is_qp,
             num_relative_primal_infeasibility++;
           if (max_relative_primal_infeasibility < relative_primal_infeasibility)
             max_relative_primal_infeasibility = relative_primal_infeasibility;
+        }
+        if (semi_infeasibility > 0) {
+          // Accumulate semi infeasibilities
+          num_semi_infeasibility++;
+          if (max_semi_infeasibility < semi_infeasibility)
+            max_semi_infeasibility = semi_infeasibility;
+          sum_semi_infeasibility += semi_infeasibility;
         }
         if (have_dual_solution) {
           if (dual_infeasibility > 0) {
@@ -529,7 +545,7 @@ void getKktFailures(const HighsOptions& options, const bool is_qp,
   // Highs::callLpKktCheck, when the existence of a basis determines
   // whether absolute or relative measures are used.
 
-  if (num_primal_infeasibility) {
+  if (num_primal_infeasibility + num_semi_infeasibility) {
     highs_info.primal_solution_status = kSolutionStatusInfeasible;
   } else {
     highs_info.primal_solution_status = kSolutionStatusFeasible;
@@ -550,11 +566,13 @@ void getKktFailures(const HighsOptions& options, const bool is_qp,
 // are not valid.
 void getVariableKktFailures(const double primal_feasibility_tolerance,
                             const double dual_feasibility_tolerance,
+                            const double mip_feasibility_tolerance,
                             const double lower, const double upper,
                             const double value, const double dual,
                             const HighsVarType integrality,
                             double& primal_infeasibility,
-                            double& dual_infeasibility, uint8_t& at_status,
+                            double& dual_infeasibility,
+                            double& semi_infeasibility, uint8_t& at_status,
                             uint8_t& mid_status, const HighsInt index) {
   // Return the primal residual (ie infeasibility with zero tolerance)
   // as the primal infeasibility, ensuring (cf #2653) that it doesn't
@@ -563,6 +581,7 @@ void getVariableKktFailures(const double primal_feasibility_tolerance,
   auto infeasibility_residual =
       infeasibility(lower, value, upper, primal_feasibility_tolerance);
   primal_infeasibility = infeasibility_residual.second;
+  semi_infeasibility = 0;
   // Determine whether this value is close to a bound
   at_status = kHighsSolutionNo;
   double bound_residual = std::fabs(lower - value);
@@ -617,8 +636,28 @@ void getVariableKktFailures(const double primal_feasibility_tolerance,
   // Account for semi-variables
   const bool semi_variable = integrality == HighsVarType::kSemiContinuous ||
                              integrality == HighsVarType::kSemiInteger;
-  if (semi_variable && std::fabs(value) < primal_feasibility_tolerance)
+  double mid = std::max(primal_feasibility_tolerance, lower * 0.5);
+
+  if (semi_variable) {
     primal_infeasibility = 0;
+    semi_infeasibility = 0;
+    if (value < mid) {
+      // Value is less than half way between 0 and lower, so treat its
+      // feasibility relative to 0
+      semi_infeasibility = std::fabs(value);
+      if (semi_infeasibility < mip_feasibility_tolerance)
+        semi_infeasibility = 0;
+    } else {
+      if (value < lower) {
+        semi_infeasibility = lower - value;
+      } else if (value > upper) {
+        semi_infeasibility = value - upper;
+      }
+      assert(semi_infeasibility >= 0);
+      if (semi_infeasibility < primal_feasibility_tolerance)
+        semi_infeasibility = 0;
+    }
+  }
 }
 
 void getPrimalDualGlpsolErrors(const HighsOptions& options, const HighsLp& lp,
@@ -627,6 +666,7 @@ void getPrimalDualGlpsolErrors(const HighsOptions& options, const HighsLp& lp,
                                HighsPrimalDualErrors& primal_dual_errors) {
   double primal_feasibility_tolerance = options.primal_feasibility_tolerance;
   double dual_feasibility_tolerance = options.dual_feasibility_tolerance;
+  double mip_feasibility_tolerance = options.mip_feasibility_tolerance;
   double primal_residual_tolerance = options.primal_residual_tolerance;
   double dual_residual_tolerance = options.dual_residual_tolerance;
   double optimality_tolerance = options.optimality_tolerance;
@@ -729,6 +769,7 @@ void getPrimalDualGlpsolErrors(const HighsOptions& options, const HighsLp& lp,
   double primal_infeasibility;
   double relative_primal_infeasibility;
   double dual_infeasibility;
+  double semi_infeasibility;
   double lower;
   double upper;
   double value;
@@ -755,11 +796,12 @@ void getPrimalDualGlpsolErrors(const HighsOptions& options, const HighsLp& lp,
     // Flip dual according to lp.sense_
     dual *= (HighsInt)lp.sense_;
 
-    getVariableKktFailures(primal_feasibility_tolerance,
-                           dual_feasibility_tolerance, lower, upper, value,
-                           dual, integrality, primal_infeasibility,
-                           dual_infeasibility, at_status, mid_status);
-
+    getVariableKktFailures(
+        primal_feasibility_tolerance, dual_feasibility_tolerance,
+        mip_feasibility_tolerance, lower, upper, value, dual, integrality,
+        primal_infeasibility, dual_infeasibility, semi_infeasibility, at_status,
+        mid_status);
+    primal_infeasibility = std::max(primal_infeasibility, semi_infeasibility);
     relative_primal_infeasibility = 0;
     if (mid_status == kHighsSolutionLo) {
       relative_primal_infeasibility =
@@ -1347,7 +1389,7 @@ bool computeDualObjectiveValue(const double* gradient, const HighsLp& lp,
 }
 
 void HighsError::print(std::string message) {
-  Rprintf(
+  printf(
       "\n%s\nAbsolute value = %11.4g; index = %9d\nRelative value = %11.4g; "
       "index = %9d\n",
       message.c_str(), this->absolute_value, (int)this->absolute_index,
@@ -2087,7 +2129,7 @@ bool reportKktFailures(const HighsLp& lp, const HighsOptions& options,
         info.primal_dual_objective_error, optimality_tolerance);
   }
   if (printf_kkt) {
-    Rprintf("grepKktFailures,%s,%s,%s,%g,%d,%d,%d,%d,%d,%d,%d,%d,%g\n",
+    printf("grepKktFailures,%s,%s,%s,%g,%d,%d,%d,%d,%d,%d,%d,%d,%g\n",
            options.solver.c_str(), lp.model_name_.c_str(),
            lp.origin_name_.c_str(), info.max_integrality_violation,
            int(info.num_primal_infeasibilities),
@@ -2126,24 +2168,24 @@ void HighsSolution::print(const std::string& prefix,
                           const std::string& message) const {
   HighsInt num_col = this->col_value.size();
   HighsInt num_row = this->row_value.size();
-  Rprintf("%s HighsSolution(num_col = %d, num_row = %d): %s\n", prefix.c_str(),
+  printf("%s HighsSolution(num_col = %d, num_row = %d): %s\n", prefix.c_str(),
          int(num_col), int(num_row), message.c_str());
   for (HighsInt iCol = 0; iCol < num_col; iCol++)
-    Rprintf("%s col_value[%3d] = %11.4g\n", prefix.c_str(), int(iCol),
+    printf("%s col_value[%3d] = %11.4g\n", prefix.c_str(), int(iCol),
            this->col_value[iCol]);
   for (HighsInt iRow = 0; iRow < num_row; iRow++)
-    Rprintf("%s row_value[%3d] = %11.4g\n", prefix.c_str(), int(iRow),
+    printf("%s row_value[%3d] = %11.4g\n", prefix.c_str(), int(iRow),
            this->row_value[iRow]);
 
   num_col = this->col_dual.size();
   num_row = this->row_dual.size();
-  Rprintf("%s HighsSolution(num_col = %d, num_row = %d): %s\n", prefix.c_str(),
+  printf("%s HighsSolution(num_col = %d, num_row = %d): %s\n", prefix.c_str(),
          int(num_col), int(num_row), message.c_str());
   for (HighsInt iCol = 0; iCol < num_col; iCol++)
-    Rprintf("%s col_dual[%3d] = %11.4g\n", prefix.c_str(), int(iCol),
+    printf("%s col_dual[%3d] = %11.4g\n", prefix.c_str(), int(iCol),
            this->col_dual[iCol]);
   for (HighsInt iRow = 0; iRow < num_row; iRow++)
-    Rprintf("%s row_dual[%3d] = %11.4g\n", prefix.c_str(), int(iRow),
+    printf("%s row_dual[%3d] = %11.4g\n", prefix.c_str(), int(iRow),
            this->row_dual[iRow]);
 }
 
@@ -2154,10 +2196,10 @@ void HighsBasis::print(const std::string& prefix,
   this->printScalars(prefix, message);
   if (!this->useful) return;
   for (HighsInt iCol = 0; iCol < HighsInt(this->col_status.size()); iCol++)
-    Rprintf("%s HighsBasis: col_status[%2d] = %d\n", prefix.c_str(), int(iCol),
+    printf("%s HighsBasis: col_status[%2d] = %d\n", prefix.c_str(), int(iCol),
            int(this->col_status[iCol]));
   for (HighsInt iRow = 0; iRow < HighsInt(this->row_status.size()); iRow++)
-    Rprintf("%s HighsBasis: row_status[%2d] = %d\n", prefix.c_str(), int(iRow),
+    printf("%s HighsBasis: row_status[%2d] = %d\n", prefix.c_str(), int(iRow),
            int(this->row_status[iRow]));
 }
 
@@ -2165,16 +2207,16 @@ void HighsBasis::printScalars(const std::string& prefix,
                               const std::string& message) const {
   HighsInt num_col = this->col_status.size();
   HighsInt num_row = this->row_status.size();
-  Rprintf("\n%s HighsBasis(num_col = %d, num_row = %d): %s\n", prefix.c_str(),
+  printf("\n%s HighsBasis(num_col = %d, num_row = %d): %s\n", prefix.c_str(),
          int(num_col), int(num_row), message.c_str());
-  Rprintf("%s valid = %d\n", prefix.c_str(), this->valid);
-  Rprintf("%s alien = %d\n", prefix.c_str(), this->alien);
-  Rprintf("%s useful = %d\n", prefix.c_str(), this->useful);
-  Rprintf("%s was_alien = %d\n", prefix.c_str(), this->was_alien);
-  Rprintf("%s debug_id = %d\n", prefix.c_str(), int(this->debug_id));
-  Rprintf("%s debug_update_count = %d\n", prefix.c_str(),
+  printf("%s valid = %d\n", prefix.c_str(), this->valid);
+  printf("%s alien = %d\n", prefix.c_str(), this->alien);
+  printf("%s useful = %d\n", prefix.c_str(), this->useful);
+  printf("%s was_alien = %d\n", prefix.c_str(), this->was_alien);
+  printf("%s debug_id = %d\n", prefix.c_str(), int(this->debug_id));
+  printf("%s debug_update_count = %d\n", prefix.c_str(),
          int(this->debug_update_count));
-  Rprintf("%s debug_origin_name = %s\n", prefix.c_str(),
+  printf("%s debug_origin_name = %s\n", prefix.c_str(),
          this->debug_origin_name.c_str());
 }
 

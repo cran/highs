@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -21,7 +20,7 @@
 #include "simplex/HEkkDual.h"
 #include "simplex/SimplexTimer.h"
 
-using Rcpp::Rcout;
+
 using std::endl;
 
 void HEkkDual::iterateMulti() {
@@ -197,11 +196,11 @@ void HEkkDual::majorChooseRowBtran() {
   std::vector<double>& edge_weight = ekk_instance_.dual_edge_weight_;
   // 4.2 Perform BTRAN
   // #pragma omp parallel for schedule(static, 1)
-  // Rprintf("start %d tasks for btran\n", multi_ntasks);
+  // printf("start %d tasks for btran\n", multi_ntasks);
   // std::vector<HighsInt> tmp(multi_ntasks);
   highs::parallel::for_each(0, multi_ntasks, [&](HighsInt start, HighsInt end) {
     for (HighsInt i = start; i < end; i++) {
-      // Rprintf("worker %d runs task %i\n", highs::parallel::thread_num(),
+      // printf("worker %d runs task %i\n", highs::parallel::thread_num(),
       // i);
       // tmp[i] = highs::parallel::thread_num();
       const HighsInt iRow = multi_iRow[i];
@@ -227,11 +226,11 @@ void HEkkDual::majorChooseRowBtran() {
     }
   });
 
-  // Rprintf("multi_ntask task schedule:");
+  // printf("multi_ntask task schedule:");
   // for (HighsInt i = 0; i < multi_ntasks; ++i) {
-  //  Rprintf(" %d->w%d", i, tmp[i]);
+  //  printf(" %d->w%d", i, tmp[i]);
   //}
-  // Rprintf("\n");
+  // printf("\n");
 
   if (analysis->analyse_simplex_summary_data) {
     for (HighsInt i = 0; i < multi_ntasks; i++)
@@ -313,7 +312,7 @@ void HEkkDual::minorUpdate() {
   minorUpdateRows();
   if (minor_new_devex_framework) {
     /*
-    Rprintf("Iter %7" HIGHSINT_FORMAT " (Major %7" HIGHSINT_FORMAT "): Minor new
+    printf("Iter %7" HIGHSINT_FORMAT " (Major %7" HIGHSINT_FORMAT "): Minor new
     Devex framework\n", ekk_instance_.iteration_count_,
            multi_iteration);
     */
@@ -392,7 +391,7 @@ void HEkkDual::minorUpdatePrimal() {
     std::vector<double>& edge_weight = ekk_instance_.dual_edge_weight_;
     assert(row_out >= 0);
     if (row_out < 0)
-      Rprintf("ERROR: row_out = %" HIGHSINT_FORMAT " in minorUpdatePrimal\n",
+      printf("ERROR: row_out = %" HIGHSINT_FORMAT " in minorUpdatePrimal\n",
              row_out);
     const double updated_edge_weight = edge_weight[row_out];
     new_devex_framework = newDevexFramework(updated_edge_weight);
@@ -488,7 +487,7 @@ void HEkkDual::minorUpdateRows() {
 
     // Perform tasks
     // #pragma omp parallel for schedule(dynamic)
-    // Rprintf("minorUpdatesRows: starting %d tasks\n", multi_nTasks);
+    // printf("minorUpdatesRows: starting %d tasks\n", multi_nTasks);
     highs::parallel::for_each(
         0, multi_nTasks, [&](HighsInt start, HighsInt end) {
           for (HighsInt i = start; i < end; i++) {
@@ -647,7 +646,7 @@ void HEkkDual::majorUpdateFtranParallel() {
 
   // Perform FTRAN
   // #pragma omp parallel for schedule(dynamic, 1)
-  // Rprintf("majorUpdateFtranParallel: starting %d tasks\n", multi_ntasks);
+  // printf("majorUpdateFtranParallel: starting %d tasks\n", multi_ntasks);
   highs::parallel::for_each(0, multi_ntasks, [&](HighsInt start, HighsInt end) {
     for (HighsInt i = start; i < end; i++) {
       HVector_ptr rhs = multi_vector[i];
@@ -844,9 +843,9 @@ void HEkkDual::majorUpdatePrimal() {
         // Update steepest edge weights
         HVector* Row = finish->row_ep;
         double Kai = -2 / finish->alpha_row;
-        ekk_instance_.updateDualSteepestEdgeWeights(row_out, variable_in, Col,
-                                                    new_pivotal_edge_weight,
-                                                    Kai, Row->array.data());
+        ekk_instance_.updateDualSteepestEdgeWeights(
+            finish->row_out, finish->variable_in, Col, new_pivotal_edge_weight,
+            Kai, Row->array.data());
       } else if (edge_weight_mode == EdgeWeightMode::kDevex &&
                  !new_devex_framework) {
         // Update Devex weights
@@ -892,9 +891,9 @@ void HEkkDual::majorUpdatePrimal() {
         // Devex
         for (HighsInt jFn = 0; jFn < iFn; jFn++) {
           HighsInt jRow = multi_finish[jFn].row_out;
-          const double aa_iRow = colArray[iRow];
-          edge_weight[jRow] = max(edge_weight[jRow],
-                                  new_pivotal_edge_weight * aa_iRow * aa_iRow);
+          const double value = colArray[jRow];
+          edge_weight[jRow] =
+              max(edge_weight[jRow], new_pivotal_edge_weight * value * value);
         }
         edge_weight[iRow] = new_pivotal_edge_weight;
         num_devex_iterations++;
@@ -971,7 +970,7 @@ bool HEkkDual::checkNonUnitWeightError(std::string message) const {
     }
     error_found = unit_wt_error > 1e-4;
     if (error_found)
-      Rprintf("Non-unit Edge weight error of %g: %s\n", unit_wt_error,
+      printf("Non-unit Edge weight error of %g: %s\n", unit_wt_error,
              message.c_str());
   }
   return error_found;

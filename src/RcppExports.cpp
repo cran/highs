@@ -1092,6 +1092,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// solver_option_registry
+Rcpp::DataFrame solver_option_registry();
+RcppExport SEXP _highs_solver_option_registry() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(solver_option_registry());
+    return rcpp_result_gen;
+END_RCPP
+}
 
 RcppExport SEXP _rcpp_module_boot_RcppHighs();
 
@@ -1185,6 +1195,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_highs_solver_presolve", (DL_FUNC) &_highs_solver_presolve, 1},
     {"_highs_solver_postsolve_solution", (DL_FUNC) &_highs_solver_postsolve_solution, 5},
     {"_highs_solver_read_model", (DL_FUNC) &_highs_solver_read_model, 2},
+    {"_highs_solver_option_registry", (DL_FUNC) &_highs_solver_option_registry, 0},
     {"_rcpp_module_boot_RcppHighs", (DL_FUNC) &_rcpp_module_boot_RcppHighs, 0},
     {NULL, NULL, 0}
 };

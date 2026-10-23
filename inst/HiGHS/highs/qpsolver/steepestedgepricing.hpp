@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -29,26 +28,24 @@ class SteepestEdgePricing : public Pricing {
     HighsInt minidx = -1;
     double maxval = 0.0;
     for (size_t i = 0; i < active_constraint_index.size(); i++) {
-      HighsInt indexinbasis =
-          constraintindexinbasisfactor[active_constraint_index[i]];
+      HighsInt iVar = active_constraint_index[i];
+      HighsInt indexinbasis = constraintindexinbasisfactor[iVar];
       if (indexinbasis == -1) {
-        Rprintf("error\n");
+        printf("error\n");
       }
       assert(indexinbasis != -1);
-
+      if (runtime.instance.isEquality(iVar)) continue;
       double val = lambda.value[indexinbasis] * lambda.value[indexinbasis] /
                    weights[indexinbasis];
       if (val > maxval && fabs(lambda.value[indexinbasis]) >
                               runtime.settings.lambda_zero_threshold) {
-        if (basis.getstatus(active_constraint_index[i]) ==
-                BasisStatus::kActiveAtLower &&
+        if (basis.getstatus(iVar) == BasisStatus::kActiveAtLower &&
             -lambda.value[indexinbasis] > 0) {
-          minidx = active_constraint_index[i];
+          minidx = iVar;
           maxval = val;
-        } else if (basis.getstatus(active_constraint_index[i]) ==
-                       BasisStatus::kActiveAtUpper &&
+        } else if (basis.getstatus(iVar) == BasisStatus::kActiveAtUpper &&
                    lambda.value[indexinbasis] > 0) {
-          minidx = active_constraint_index[i];
+          minidx = iVar;
           maxval = val;
         } else {
           // TODO
@@ -88,7 +85,7 @@ class SteepestEdgePricing : public Pricing {
     double weight_is = weights[i];
     double weight_comp = compute_exact_weight(i);
     if (fabs(weight_comp - weight_is) > 1e-2) {
-      // Rprintf("weights[%d] = %lf, should be %lf\n", i, weight_is,
+      // printf("weights[%d] = %lf, should be %lf\n", i, weight_is,
       // weight_comp);
       return false;
     }
@@ -107,17 +104,17 @@ class SteepestEdgePricing : public Pricing {
       }
     }
 
-    Rprintf("correct weights: ");
+    printf("correct weights: ");
     for (int& i : correct_weights) {
-      Rprintf("%d ", i);
+      printf("%d ", i);
     }
-    Rprintf("\n");
+    printf("\n");
 
-    Rprintf("incorrect weights: ");
+    printf("incorrect weights: ");
     for (int& i : incorrect_weights) {
-      Rprintf("%d ", i);
+      printf("%d ", i);
     }
-    Rprintf("\n");
+    printf("\n");
 
     return incorrect_weights.size() == 0;
   }
@@ -127,12 +124,12 @@ class SteepestEdgePricing : public Pricing {
   void update_weights(const QpVector& aq, const QpVector& ep, HighsInt p,
                       HighsInt q) {
     HighsInt rowindex_p = basis.getindexinfactor()[p];
-    // Rprintf("Update weights, p = %d, rowindex = %d, q = %d\n", p, rowindex_p,
+    // printf("Update weights, p = %d, rowindex = %d, q = %d\n", p, rowindex_p,
     // q);
 
     // if (!check_weights()) {
-    //   Rprintf("weight check failed\n");
-    //   Rcpp::stop("Something went wrong!");
+    //   printf("weight check failed\n");
+    //   exit(1);
     // }
 
     QpVector delta = basis.ftran(aq);
@@ -142,7 +139,7 @@ class SteepestEdgePricing : public Pricing {
     double old_weight_p_computed = ep.dot(ep);
 
     // if (fabs(old_weight_p_computed - old_weight_p_updated) >= 1e-2) {
-    //   Rprintf("old weight[p] discrepancy: updated = %lf, computed=%lf\n",
+    //   printf("old weight[p] discrepancy: updated = %lf, computed=%lf\n",
     //   old_weight_p_updated, old_weight_p_computed);
     // }
 
@@ -154,7 +151,7 @@ class SteepestEdgePricing : public Pricing {
         double t_i = aq.value[i];
         weights[i] = weights[i] - 2 * (t_i / t_p) * delta.value[i] +
                      ((t_i * t_i) / (t_p * t_p)) * weight_p;
-        // Rprintf("weights[%d] = %lf\n", i, weights[i]);
+        // printf("weights[%d] = %lf\n", i, weights[i]);
       }
     }
     // QpVector new_ep = basis.btran(QpVector::unit(runtime.instance.num_var,
@@ -162,8 +159,8 @@ class SteepestEdgePricing : public Pricing {
     double new_weight_p_updated = weight_p / (t_p * t_p);
 
     // if (fabs(updated_weight - computed_weight) > 1e-4) {
-    //   Rprintf("updated weight %lf vs computed weight %lf. aq[p] = %lf\n",
-    //   updated_weight, computed_weight, t_p); Rprintf("old weight = %lf, aq[p]
+    //   printf("updated weight %lf vs computed weight %lf. aq[p] = %lf\n",
+    //   updated_weight, computed_weight, t_p); printf("old weight = %lf, aq[p]
     //   = %lf, ^2 = %lf, new weight = %lf\n", weight_p, t_p, t_p*t_p,
     //   updated_weight);
     // }

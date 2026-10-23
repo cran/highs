@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -26,7 +25,7 @@ using std::fabs;
 using std::max;
 using std::min;
 
-// using Rcpp::Rcout;
+// 
 // using std::endl;
 
 void HEkk::clear() {
@@ -964,7 +963,7 @@ HighsStatus HEkk::undualize() {
   HighsInt num_basic_variables = primal_basic_index.size();
   bool num_basic_variables_ok = num_basic_variables == original_num_row_;
   if (!num_basic_variables_ok)
-    Rprintf("HEkk::undualize: Have %d basic variables, not %d\n",
+    printf("HEkk::undualize: Have %d basic variables, not %d\n",
            (int)num_basic_variables, (int)original_num_row_);
   assert(num_basic_variables_ok);
 
@@ -1724,13 +1723,18 @@ void HEkk::chooseSimplexStrategyThreads(const HighsOptions& options,
   const HighsInt simplex_max_concurrency = options.simplex_max_concurrency;
   HighsInt max_threads = highs::parallel::num_threads();
 
-  if (options.parallel == kHighsOnString &&
-      simplex_strategy == kSimplexStrategyDual) {
-    // The parallel strategy is on and the simplex strategy is dual so use
-    // PAMI if there are enough threads
-    if (max_threads >= kDualMultiMinConcurrency)
-      simplex_strategy = kSimplexStrategyDualMulti;
-  }
+  // Don't allow the parallel option to switch from
+  // kSimplexStrategyDual to kSimplexStrategyDualMulti so the MIP
+  // solver only ever uses serial simplex
+  //
+  //  if (options.parallel == kHighsOnString &&
+  //      simplex_strategy == kSimplexStrategyDual) {
+  //    // The parallel strategy is on and the simplex strategy is dual so use
+  //    // PAMI if there are enough threads
+  //    if (max_threads >= kDualMultiMinConcurrency)
+  //      simplex_strategy = kSimplexStrategyDualMulti;
+  //  }
+
   //
   // If parallel strategies are used, the minimum concurrency will be
   // set to be at least the minimum required for the strategy
@@ -1812,7 +1816,7 @@ bool HEkk::getNonsingularInverse(const HighsInt solve_phase) {
   if (artificial_rank_deficiency) {
     if (!info_.phase1_backtracking_test_done && solve_phase == kSolvePhase1) {
       // Claim rank deficiency to test backtracking
-      // Rprintf("Phase1 (Iter %" HIGHSINT_FORMAT
+      // printf("Phase1 (Iter %" HIGHSINT_FORMAT
       //        ") Claiming rank deficiency to test backtracking\n",
       //        iteration_count_);
       rank_deficiency = 1;
@@ -1820,7 +1824,7 @@ bool HEkk::getNonsingularInverse(const HighsInt solve_phase) {
     } else if (!info_.phase2_backtracking_test_done &&
                solve_phase == kSolvePhase2) {
       // Claim rank deficiency to test backtracking
-      // Rprintf("Phase2 (Iter %" HIGHSINT_FORMAT
+      // printf("Phase2 (Iter %" HIGHSINT_FORMAT
       //        ") Claiming rank deficiency to test backtracking\n",
       //        iteration_count_);
       rank_deficiency = 1;
@@ -1996,7 +2000,7 @@ bool HEkk::rebuildRefactor(HighsInt rebuild_reason) {
     const std::string logic = refactor ? "   " : "no   ";
     if (info_.update_count &&
         rebuild_reason != kRebuildReasonSyntheticClockSaysInvert)
-      Rprintf(
+      printf(
           "%srefactorization after %4d updates and solution error = %11.4g for "
           "rebuild reason = %s\n",
           logic.c_str(), (int)info_.update_count, solution_error,
@@ -2159,13 +2163,13 @@ void HEkk::updateDualSteepestEdgeWeights(
       }
     }
     if (max_dse_column_error > dse_column_error_tolerance) {
-      Rprintf(
+      printf(
           "HEkk::updateDualSteepestEdgeWeights: Iter %2d has num / max / sum = "
           "%d / %g / %g DSE column errors exceeding = %g\n",
           (int)iteration_count_, (int)num_dse_column_error,
           max_dse_column_error, sum_dse_column_error,
           dse_column_error_tolerance);
-      Rprintf("DSE column count alt = %d; og = %d)\n",
+      printf("DSE column count alt = %d; og = %d)\n",
              (int)alt_dual_steepest_edge_column.count, (int)DSE_array_count);
       for (HighsInt iRow = 0; iRow < num_row; iRow++) {
         const double dual_steepest_edge_array_value =
@@ -2177,25 +2181,25 @@ void HEkk::updateDualSteepestEdgeWeights(
                        dual_steepest_edge_array_value) /
               std::max(1.0, std::abs(dual_steepest_edge_array_value));
           if (dse_column_error > 1e-10)
-            Rprintf(
+            printf(
                 "Row %4d: DSE column (alt = %11.4g; og = %11.4g) difference "
                 "%10.4g\n",
                 (int)iRow, alt_dual_steepest_edge_column.array[iRow],
                 dual_steepest_edge_array_value, dse_column_error);
         }
       }
-      NULL;
+      fflush(stdout);
       assert(max_dse_column_error < dse_column_error_tolerance);
     }
   }
 
   if ((HighsInt)dual_edge_weight_.size() < num_row) {
-    Rprintf(
+    printf(
         "HEkk::updateDualSteepestEdgeWeights solve %d: "
         "dual_edge_weight_.size() = %d < %d\n",
         (int)debug_solve_call_num_, (int)dual_edge_weight_.size(),
         (int)num_row);
-    NULL;
+    fflush(stdout);
   }
   assert((HighsInt)dual_edge_weight_.size() >= num_row);
   HighsInt to_entry;
@@ -2217,11 +2221,11 @@ void HEkk::updateDualSteepestEdgeWeights(
       const double pivotal_column_error =
           std::abs(aa_iRow - alt_pivotal_column.array[iRow]);
       if (pivotal_column_error > 1e-4) {
-        Rprintf(
+        printf(
             "HEkk::updateDualSteepestEdgeWeights Row %2d of pivotal column has "
             "error %10.4g\n",
             (int)iRow, pivotal_column_error);
-        NULL;
+        fflush(stdout);
       }
       assert(pivotal_column_error < 1e-4);
     }
@@ -2244,12 +2248,12 @@ void HEkk::updateDualDevexWeights(const HVector* column,
   const double* column_array = column->array.data();
 
   if ((HighsInt)dual_edge_weight_.size() < num_row) {
-    Rprintf(
+    printf(
         "HEkk::updateDualDevexWeights solve %d: "
         "dual_edge_weight_.size() = %d < %d\n",
         (int)debug_solve_call_num_, (int)dual_edge_weight_.size(),
         (int)num_row);
-    NULL;
+    fflush(stdout);
   }
   assert((HighsInt)dual_edge_weight_.size() >= num_row);
   HighsInt to_entry;
@@ -2595,7 +2599,7 @@ void HEkk::initialiseBound(const SimplexAlgorithm algorithm,
         max_abs_upper = max(abs_upper, max_abs_upper);
       }
     }
-    // Rprintf(
+    // printf(
     //     "Nonzero finite lower bounds in [%9.4g, %9.4g]; upper bounds in "
     //     "[%9.4g, %9.4g]\n",
     //     min_abs_lower, max_abs_lower, min_abs_upper, max_abs_upper);
@@ -3163,7 +3167,7 @@ bool HEkk::isBadBasisChange(const SimplexAlgorithm algorithm,
       // Cycling detected on successive iterations suggests infinite cycling
       //      highsLogDev(options_->log_options, HighsLogType::kWarning,
       //		  "Cycling detected in %s simplex:");
-      // Rprintf("Cycling detected in %s simplex solve %d (Iteration %d)",
+      // printf("Cycling detected in %s simplex solve %d (Iteration %d)",
       //        algorithm == SimplexAlgorithm::kPrimal ? "primal" : "dual",
       //        (int)debug_solve_call_num_, (int)iteration_count_);
       cycling_detected = true;
@@ -4110,7 +4114,7 @@ bool HEkk::proofOfPrimalInfeasibility(HVector& row_ep, const HighsInt move_out,
         const double abs_row_ep_value = std::abs(row_ep_value);
         if (num_zeroed_for_small_report < max_num_zeroed_report &&
             max_zeroed_for_small_value < abs_row_ep_value) {
-          Rprintf(
+          printf(
               "Zeroed row_ep.array[%6d] = %11.4g due to being small in "
               "contribution\n",
               (int)iRow, row_ep_value);
@@ -4134,7 +4138,7 @@ bool HEkk::proofOfPrimalInfeasibility(HVector& row_ep, const HighsInt move_out,
           const double abs_row_ep_value = std::abs(row_ep_value);
           if (num_zeroed_for_lb_report < max_num_zeroed_report &&
               max_zeroed_for_lb_value < abs_row_ep_value) {
-            Rprintf(
+            printf(
                 "Zeroed row_ep.array[%6d] = %11.4g due to infinite lower "
                 "bound\n",
                 (int)iRow, row_ep_value);
@@ -4154,7 +4158,7 @@ bool HEkk::proofOfPrimalInfeasibility(HVector& row_ep, const HighsInt move_out,
           const double abs_row_ep_value = std::abs(row_ep_value);
           if (num_zeroed_for_ub_report < max_num_zeroed_report &&
               max_zeroed_for_ub_value < abs_row_ep_value) {
-            Rprintf(
+            printf(
                 "Zeroed row_ep.array[%6d] = %11.4g due to infinite upper "
                 "bound\n",
                 (int)iRow, row_ep_value);
@@ -4189,7 +4193,7 @@ bool HEkk::proofOfPrimalInfeasibility(HVector& row_ep, const HighsInt move_out,
                               true);
   }
   if (debug_proof_report) {
-    Rprintf(
+    printf(
         "HEkk::proofOfPrimalInfeasibility row_ep.count = %d; proof_num_nz = "
         "%d; row_ep_scale = %g\n",
         (int)row_ep.count, (int)proof_num_nz, row_ep_scale);
@@ -4201,7 +4205,7 @@ bool HEkk::proofOfPrimalInfeasibility(HVector& row_ep, const HighsInt move_out,
       const double abs_value = std::abs(value);
       if (!basis_.nonbasicFlag_[iCol] && max_basic_proof_value < abs_value &&
           num_basic_proof_report < max_num_basic_proof_report) {
-        Rprintf("Proof entry %6d (Column %6d) is basic with value %11.4g\n",
+        printf("Proof entry %6d (Column %6d) is basic with value %11.4g\n",
                (int)i, (int)iCol, value);
         max_basic_proof_value = abs_value;
         num_basic_proof_report++;
@@ -4238,7 +4242,7 @@ bool HEkk::proofOfPrimalInfeasibility(HVector& row_ep, const HighsInt move_out,
 
   const double local_report = false;
   if (!proof_of_primal_infeasibility && local_report) {
-    Rprintf(
+    printf(
         "HEkk::proofOfPrimalInfeasibility: row %6d; gap = %11.4g (%s); "
         "sumInf = %11.4g (%s) so proof is %s\n",
         (int)row_out, gap, highsBoolToString(gap_ok).c_str(), (double)sumInf,
@@ -4246,10 +4250,10 @@ bool HEkk::proofOfPrimalInfeasibility(HVector& row_ep, const HighsInt move_out,
         highsBoolToString(proof_of_primal_infeasibility).c_str());
   }
   if (debug_proof_report) {
-    Rprintf("HEkk::proofOfPrimalInfeasibility has %sfinite implied upper bound",
+    printf("HEkk::proofOfPrimalInfeasibility has %sfinite implied upper bound",
            infinite_implied_upper ? "in" : "");
-    if (!infinite_implied_upper) Rprintf(" and gap = %g", gap);
-    Rprintf(" so proof is %s\n",
+    if (!infinite_implied_upper) printf(" and gap = %g", gap);
+    printf(" so proof is %s\n",
            proof_of_primal_infeasibility ? "true" : "false");
   }
   return proof_of_primal_infeasibility;
@@ -4290,7 +4294,7 @@ void HEkk::unitBtranIterativeRefinement(const HighsInt row_out,
     debug_iterative_refinement_report = debug_iterative_refinement_report_on;
   }
   if (debug_iterative_refinement_report)
-    Rprintf(
+    printf(
         "HEkk::unitBtranIterativeRefinement: Residual   has %6d / %6d nonzeros "
         "and norm of %g\n",
         (int)residual.count, (int)lp.num_row_, residual_norm);
@@ -4317,7 +4321,7 @@ void HEkk::unitBtranIterativeRefinement(const HighsInt row_out,
     }
   }
   if (debug_iterative_refinement_report)
-    Rprintf(
+    printf(
         "HEkk::unitBtranIterativeRefinement: Correction has %6d / %6d nonzeros "
         "and norm of %g\n",
         (int)residual.count, (int)lp.num_row_, correction_norm);

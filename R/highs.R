@@ -465,7 +465,8 @@ highs_solve <- function(
   if (!inherits(control, "highs_control")) {
     control <- do.call(highs_control, control)
   }
-  verbose <- control$log_to_console %||% FALSE
+  # not %||%: base R gained it only in 4.4.0, but DESCRIPTION allows R >= 4.0.0
+  verbose <- isTRUE(control$log_to_console)
   model <- highs_model(
     Q = Q,
     L = L,

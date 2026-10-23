@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -110,7 +109,7 @@ HighsStatus HEkkPrimal::solve(const bool pass_force_phase2) {
     if (!pass_force_phase2) {
       const bool local_report = false;  // true;
       if (!primal_feasible_with_unperturbed_bounds && local_report) {
-        Rprintf(
+        printf(
             "Solve %d: Forcing phase 2 since near primal feasible with "
             "unperturbed "
             "costs\n"
@@ -315,7 +314,7 @@ HighsStatus HEkkPrimal::solve(const bool pass_force_phase2) {
       highsLogDev(options.log_options, HighsLogType::kWarning,
                   "HEkkPrimal:: Dual simplex clean up yields  optimality, but "
                   "with %" HIGHSINT_FORMAT
-                  " (max %g) primal infeasibilities and " HIGHSINT_FORMAT
+                  " (max %g) primal infeasibilities and %" HIGHSINT_FORMAT
                   " (max %g) dual infeasibilities\n",
                   info.num_primal_infeasibilities,
                   info.max_primal_infeasibility, info.num_dual_infeasibilities,
@@ -606,16 +605,16 @@ void HEkkPrimal::solvePhase2() {
     // was unattractive when computed from scratch and no rebuild was
     // required. This is very rare and should be handled otherwise
     //
-    Rprintf("HEkkPrimal::solvePhase2 row_out = %d solve %d\n", (int)row_out,
+    printf("HEkkPrimal::solvePhase2 row_out = %d solve %d\n", (int)row_out,
            (int)ekk_instance_.debug_solve_call_num_);
-    NULL;
+    fflush(stdout);
     assert(row_out != kNoRowSought);
   } else {
     // No candidate in CHUZR
     if (row_out >= 0) {
-      Rprintf("HEkkPrimal::solvePhase2 row_out = %d solve %d\n", (int)row_out,
+      printf("HEkkPrimal::solvePhase2 row_out = %d solve %d\n", (int)row_out,
              (int)ekk_instance_.debug_solve_call_num_);
-      NULL;
+      fflush(stdout);
     }
     // Ensure that CHUZR was performed and found no row
     assert(row_out == kNoRowChosen);
@@ -814,7 +813,7 @@ void HEkkPrimal::iterate() {
         ekk_instance_.iteration_count_ >= from_check_iter &&
         ekk_instance_.iteration_count_ <= to_check_iter;
     if (ekk_instance_.debug_iteration_report_) {
-      Rprintf("HEkkDual::iterate Debug iteration %d\n",
+      printf("HEkkPrimal::iterate Debug iteration %d\n",
              (int)ekk_instance_.iteration_count_);
     }
   }
@@ -922,10 +921,10 @@ void HEkkPrimal::iterate() {
       rebuild_reason == kRebuildReasonSyntheticClockSaysInvert ||
       rebuild_reason == kRebuildReasonUpdateLimitReached;
   if (!ok_rebuild_reason) {
-    Rprintf("HEkkPrimal::rebuild Solve %d; Iter %d: rebuild_reason = %d\n",
+    printf("HEkkPrimal::rebuild Solve %d; Iter %d: rebuild_reason = %d\n",
            (int)ekk_instance_.debug_solve_call_num_,
            (int)ekk_instance_.iteration_count_, (int)rebuild_reason);
-    NULL;
+    fflush(stdout);
   }
   assert(ok_rebuild_reason);
   assert(solve_phase == kSolvePhase1 || solve_phase == kSolvePhase2);
@@ -958,7 +957,7 @@ void HEkkPrimal::chuzc() {
       double abs_measure_error = fabs(hyper_sparse_measure - measure);
       bool measure_error = abs_measure_error > 1e-12;
       // if (measure_error)
-      //   Rprintf("Iteration %" HIGHSINT_FORMAT
+      //   printf("Iteration %" HIGHSINT_FORMAT
       //          ": Hyper-sparse CHUZC measure %g != %g = Full "
       //          "CHUZC measure (%" HIGHSINT_FORMAT ", %" HIGHSINT_FORMAT
       //          "): error %g\n",
@@ -1028,7 +1027,7 @@ void HEkkPrimal::chooseColumn(const bool hyper_sparse) {
         max_hyper_chuzc_non_candidate_measure =
             hyper_chuzc_measure[num_hyper_chuzc_candidates];
         if (report_hyper_chuzc)
-          Rprintf(
+          printf(
               "Full CHUZC: Max         measure is %9.4g for column "
               "%4" HIGHSINT_FORMAT
               ", and "
@@ -1067,7 +1066,7 @@ void HEkkPrimal::chooseColumn(const bool hyper_sparse) {
     }
     analysis->simplexTimerStop(ChuzcPrimalClock);
   }
-  //  Rprintf("ChooseColumn: Iteration %" HIGHSINT_FORMAT ", choose column %"
+  //  printf("ChooseColumn: Iteration %" HIGHSINT_FORMAT ", choose column %"
   //  HIGHSINT_FORMAT " with measure %g\n",
   //	 ekk_instance_.iteration_count_, variable_in, best_measure);
 }
@@ -1558,7 +1557,7 @@ void HEkkPrimal::hyperChooseColumn() {
   const vector<int8_t>& nonbasicFlag = ekk_instance_.basis_.nonbasicFlag_;
   const vector<double>& workDual = ekk_instance_.info_.workDual_;
   if (report_hyper_chuzc)
-    Rprintf(
+    printf(
         "H-S  CHUZC: Max changed measure is %9.4g for column %4" HIGHSINT_FORMAT
         "",
         max_changed_measure_value, max_changed_measure_column);
@@ -1597,7 +1596,7 @@ void HEkkPrimal::hyperChooseColumn() {
   }
   if (variable_in != max_changed_measure_column) {
     if (report_hyper_chuzc)
-      Rprintf(
+      printf(
           ", and after HS CHUZC set it is now %9.4g for column "
           "%4" HIGHSINT_FORMAT "",
           best_measure, variable_in);
@@ -1608,7 +1607,7 @@ void HEkkPrimal::hyperChooseColumn() {
     // Candidate is at least as good as any unknown column, so accept it
     done_next_chuzc = true;
     if (report_hyper_chuzc)
-      Rprintf(", and no       has  measure >  %9.4g\n",
+      printf(", and no       has  measure >  %9.4g\n",
              max_hyper_chuzc_non_candidate_measure);
   } else {
     // Candidate isn't as good as best unknown column, so do a full CHUZC
@@ -1617,7 +1616,7 @@ void HEkkPrimal::hyperChooseColumn() {
     done_next_chuzc = false;
     initialise_hyper_chuzc = true;
     if (report_hyper_chuzc)
-      Rprintf(", but some may have measure >= %9.4g\n",
+      printf(", but some may have measure >= %9.4g\n",
              max_hyper_chuzc_non_candidate_measure);
   }
   analysis->simplexTimerStop(ChuzcHyperClock);
@@ -1709,7 +1708,7 @@ void HEkkPrimal::hyperChooseColumnDualChange() {
       double measure =
           dual_infeasibility * dual_infeasibility / edge_weight_[iCol];
       if (report_hyper_chuzc) {
-        Rprintf("Changing column %" HIGHSINT_FORMAT ": measure = %g \n",
+        printf("Changing column %" HIGHSINT_FORMAT ": measure = %g \n",
                check_column, measure);
       }
     }
@@ -1727,7 +1726,7 @@ void HEkkPrimal::hyperChooseColumnDualChange() {
       double measure =
           dual_infeasibility * dual_infeasibility / edge_weight_[iCol];
       if (report_hyper_chuzc) {
-        Rprintf("Changing column %" HIGHSINT_FORMAT ": measure = %g \n",
+        printf("Changing column %" HIGHSINT_FORMAT ": measure = %g \n",
                check_column, measure);
       }
     }
@@ -1752,7 +1751,7 @@ void HEkkPrimal::hyperChooseColumnDualChange() {
   HighsInt iCol = variable_out;
   double dual_infeasibility = -nonbasicMove[iCol] * workDual[iCol];
   if (dual_infeasibility > dual_feasibility_tolerance) {
-    Rprintf("Dual infeasibility %g for leaving column!\n", dual_infeasibility);
+    printf("Dual infeasibility %g for leaving column!\n", dual_infeasibility);
     assert(dual_infeasibility <= dual_feasibility_tolerance);
     hyperChooseColumnChangedInfeasibility(dual_infeasibility, iCol);
   }
@@ -2044,14 +2043,14 @@ void HEkkPrimal::phase2UpdatePrimal(const bool initialise) {
     if (max_local_primal_infeasibility >
         max_max_local_primal_infeasibility_ * 2) {
       max_max_local_primal_infeasibility_ = max_local_primal_infeasibility;
-      Rprintf("phase2UpdatePrimal: max_local_primal_infeasibility = %g\n",
+      printf("phase2UpdatePrimal: max_local_primal_infeasibility = %g\n",
              max_local_primal_infeasibility);
     }
     ekk_instance_.invalidatePrimalMaxSumInfeasibilityRecord();
   }
   if (max_ignored_violation > max_max_ignored_violation_ * 2) {
     max_max_ignored_violation_ = max_ignored_violation;
-    Rprintf("phase2UpdatePrimal: max_ignored_violation = %g\n",
+    printf("phase2UpdatePrimal: max_ignored_violation = %g\n",
            max_ignored_violation);
   }
   info.updated_primal_objective_value +=
@@ -2285,7 +2284,7 @@ void HEkkPrimal::initialiseDevexFramework() {
   }
   num_devex_iterations_ = 0;
   num_bad_devex_weight_ = 0;
-  if (report_hyper_chuzc) Rprintf("initialiseDevexFramework\n");
+  if (report_hyper_chuzc) printf("initialiseDevexFramework\n");
   hyperChooseColumnClear();
 }
 
@@ -2357,10 +2356,10 @@ void HEkkPrimal::computePrimalSteepestEdgeWeights() {
         edge_weight_[iVar] =
             computePrimalSteepestEdgeWeight(iVar, local_col_aq);
         if (iVar == report_var) {
-          Rprintf("Tableau column %d\nRow       Value\n", (int)report_var);
+          printf("Tableau column %d\nRow       Value\n", (int)report_var);
           for (HighsInt iRow = 0; iRow < num_row; iRow++) {
             if (local_col_aq.array[iRow])
-              Rprintf("%3d  %10.7g\n", (int)iRow, local_col_aq.array[iRow]);
+              printf("%3d  %10.7g\n", (int)iRow, local_col_aq.array[iRow]);
           }
         }
       }
@@ -2407,14 +2406,14 @@ void HEkkPrimal::updatePrimalSteepestEdgeWeights() {
   const double col_aq_squared_2norm = col_aq.norm2();
   const bool report_col_aq = false;
   if (report_col_aq) {
-    Rprintf(
+    printf(
         "updatePrimalSteepestEdgeWeights: in = %d; out = %d; ||col_aq||^2 = "
         "%g\n",
         (int)variable_in, (int)variable_out, col_aq_squared_2norm);
-    Rprintf("Pivotal column %d\nRow       Value\n", (int)variable_in);
+    printf("Pivotal column %d\nRow       Value\n", (int)variable_in);
     for (HighsInt iRow = 0; iRow < num_row; iRow++) {
       if (col_aq.array[iRow])
-        Rprintf("%3d  %10.7g\n", (int)iRow, col_aq.array[iRow]);
+        printf("%3d  %10.7g\n", (int)iRow, col_aq.array[iRow]);
     }
   }
   assert(ekk_instance_.basis_.nonbasicFlag_[variable_in]);
@@ -2446,7 +2445,7 @@ void HEkkPrimal::updatePrimalSteepestEdgeWeights() {
         (lambda * lambda * col_aq_squared_2norm - 2 * lambda * mu_aj);
     edge_weight_[iVar] += lambda * lambda;
     if (edge_weight_[iVar] < min_weight) {
-      //      Rprintf("Augmenting weight(%2d)=%10.4g to %10.4g\n", (int)iVar,
+      //      printf("Augmenting weight(%2d)=%10.4g to %10.4g\n", (int)iVar,
       //      edge_weight_[iVar], min_weight);
       edge_weight_[iVar] = min_weight;
     }
@@ -2628,7 +2627,7 @@ void HEkkPrimal::iterationAnalysis() {
 }
 
 void HEkkPrimal::localReportIterHeader() {
-  Rprintf(" Iter ColIn Row_Out ColOut\n");
+  printf(" Iter ColIn Row_Out ColOut\n");
 }
 
 void HEkkPrimal::localReportIter(const bool header) {
@@ -2644,11 +2643,11 @@ void HEkkPrimal::localReportIter(const bool header) {
       last_header_iteration_count_ = iteration_count;
     }
     if (row_out >= 0) {
-      Rprintf("%5" HIGHSINT_FORMAT " %5" HIGHSINT_FORMAT "  %5" HIGHSINT_FORMAT
+      printf("%5" HIGHSINT_FORMAT " %5" HIGHSINT_FORMAT "  %5" HIGHSINT_FORMAT
              "  %5" HIGHSINT_FORMAT "",
              iteration_count, variable_in, row_out, variable_out);
     } else {
-      Rprintf("%5" HIGHSINT_FORMAT " %5" HIGHSINT_FORMAT " Bound flip   ",
+      printf("%5" HIGHSINT_FORMAT " %5" HIGHSINT_FORMAT " Bound flip   ",
              iteration_count, variable_in);
     }
     if (check_column >= 0 && iteration_count >= check_iter) {
@@ -2667,7 +2666,7 @@ void HEkkPrimal::localReportIter(const bool header) {
         assert(iRow < num_row);
         value = info.baseValue_[iRow];
       }
-      Rprintf(": Var %2" HIGHSINT_FORMAT " (%1" HIGHSINT_FORMAT
+      printf(": Var %2" HIGHSINT_FORMAT " (%1" HIGHSINT_FORMAT
              ", %2" HIGHSINT_FORMAT ") [%9.4g, %9.4g, %9.4g]",
              check_column, flag, move, lower, value, upper);
       if (flag == kNonbasicFlagTrue) {
@@ -2678,10 +2677,10 @@ void HEkkPrimal::localReportIter(const bool header) {
           infeasibility = fabs(dual);
         if (infeasibility < dual_feasibility_tolerance) infeasibility = 0;
         double measure = infeasibility * infeasibility / weight;
-        Rprintf(" Du = %9.4g; Wt = %9.4g; Ms = %9.4g", dual, weight, measure);
+        printf(" Du = %9.4g; Wt = %9.4g; Ms = %9.4g", dual, weight, measure);
       }
     }
-    Rprintf("\n");
+    printf("\n");
   }
 }
 
@@ -2746,7 +2745,7 @@ void HEkkPrimal::adjustPerturbedEquationOut() {
   // Modify theta_primal so that variable leaves at true fixed value
   theta_primal = (info.baseValue_[row_out] - true_fixed_value) / alpha_col;
   /*
-    Rprintf("For equation %4" HIGHSINT_FORMAT " to be nonbasic at RHS %10.4g
+    printf("For equation %4" HIGHSINT_FORMAT " to be nonbasic at RHS %10.4g
     requires theta_primal to change by %10.4g from %10.4g to %10.4g\n",
     variable_out, true_fixed_value, theta_primal-save_theta_primal,
     save_theta_primal, theta_primal);
@@ -2795,7 +2794,7 @@ void HEkkPrimal::getBasicPrimalInfeasibility() {
     bool num_primal_infeasibility_ok =
         num_primal_infeasibility == updated_num_primal_infeasibility;
     // if (!num_primal_infeasibility_ok)
-    //   Rprintf("In iteration %" HIGHSINT_FORMAT
+    //   printf("In iteration %" HIGHSINT_FORMAT
     //          ": num_primal_infeasibility = %" HIGHSINT_FORMAT
     //          " != %" HIGHSINT_FORMAT
     //          " = "
@@ -2860,7 +2859,7 @@ void HEkkPrimal::shiftBound(const bool lower, const HighsInt iVar,
                 int(iVar), value, type.c_str(), old_bound, random_value, value,
                 feasibility, infeasibility, shift, bound, new_infeasibility,
                 error);
-    NULL;
+    fflush(stdout);
   }
   assert(new_infeasibility <= 0);
 }
@@ -2894,7 +2893,7 @@ HighsDebugStatus HEkkPrimal::debugPrimalSteepestEdgeWeights(
     const HighsInt alt_debug_level = check_all_primal_edge_weights
                                          ? (HighsInt)kHighsDebugLevelExpensive
                                          : (HighsInt)kHighsDebugLevelCostly;
-    //    Rprintf("\nPerforming level %1d check %s for primal steepest edge
+    //    printf("\nPerforming level %1d check %s for primal steepest edge
     //    weights\n", (int)alt_debug_level, message.c_str());
     return debugPrimalSteepestEdgeWeights(alt_debug_level);
   } else {
@@ -2947,7 +2946,7 @@ HighsDebugStatus HEkkPrimal::debugPrimalSteepestEdgeWeights(
       const double error =
           std::fabs(updated_primal_edge_weight[iVar] - edge_weight_[iVar]);
       if (error > 1e-4)
-        Rprintf(
+        printf(
             "debugPrimalSteepestEdgeWeights: var = %2d; weight (true = %10.4g; "
             "updated = %10.4g) error = %10.4g\n",
             (int)iVar, edge_weight_[iVar], updated_primal_edge_weight[iVar],
@@ -2963,7 +2962,7 @@ HighsDebugStatus HEkkPrimal::debugPrimalSteepestEdgeWeights(
   const double large_relative_primal_steepest_edge_weight_error = 1e-3;
   if (relative_primal_steepest_edge_weight_error >
       10 * debug_max_relative_primal_steepest_edge_weight_error) {
-    Rprintf(
+    printf(
         "HEkk::debugPrimalSteepestEdgeWeights Iteration %5d: Checked %2d "
         "weights: "
         "error = %10.4g; norm = %10.4g; relative error = %10.4g\n",

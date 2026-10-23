@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -376,7 +375,7 @@ HighsStatus HEkkDual::solve(const bool pass_force_phase2) {
         highsLogDev(options.log_options, HighsLogType::kWarning,
                     "HEkkDual:: Primal simplex clean up yields optimality, "
                     "but with %" HIGHSINT_FORMAT
-                    " (max %g) primal infeasibilities and " HIGHSINT_FORMAT
+                    " (max %g) primal infeasibilities and %" HIGHSINT_FORMAT
                     " (max %g) dual infeasibilities\n",
                     info.num_primal_infeasibilities,
                     info.max_primal_infeasibility,
@@ -1200,7 +1199,7 @@ void HEkkDual::iterate() {
         ekk_instance_.iteration_count_ >= from_check_iter &&
         ekk_instance_.iteration_count_ <= to_check_iter;
     if (ekk_instance_.debug_iteration_report_) {
-      Rprintf("HEkkDual::iterate Debug iteration %d\n",
+      printf("HEkkDual::iterate Debug iteration %d\n",
              (int)ekk_instance_.iteration_count_);
     }
   }
@@ -1564,7 +1563,7 @@ void HEkkDual::chooseColumn(HVector* row_ep) {
     debug_small_pivot_issue_report = debug_small_pivot_issue_report_on;
     if (debug_price_report != kDebugReportOff || debug_rows_report ||
         debug_small_pivot_issue_report)
-      Rprintf("HEkkDual::chooseColumn Check iter = %d\n",
+      printf("HEkkDual::chooseColumn Check iter = %d\n",
              (int)ekk_instance_.iteration_count_);
   }
   //
@@ -1615,7 +1614,7 @@ void HEkkDual::chooseColumn(HVector* row_ep) {
     variable_in = -1;
     if (dualRow.workTheta <= 0 || dualRow.workCount == 0) {
       if (chuzc_pass > 0 && debug_small_pivot_issue_report) {
-        Rprintf(
+        printf(
             "                                                       "
             "Negative step or no candidates after %2d CHUZC passes\n",
             (int)chuzc_pass);
@@ -1645,7 +1644,7 @@ void HEkkDual::chooseColumn(HVector* row_ep) {
       const double scaled_value = row_ep_scale * alpha_row;
       if (std::abs(scaled_value) <= growth_tolerance) {
         if (chuzc_pass == 0 && debug_small_pivot_issue_report)
-          Rprintf(
+          printf(
               "CHUZC: Solve %6d; Iter %4d; ||e_p|| = %11.4g: Variable %6d "
               "Pivot %11.4g (dual "
               "%11.4g; ratio = %11.4g) is small",
@@ -1656,7 +1655,7 @@ void HEkkDual::chooseColumn(HVector* row_ep) {
               workDual[dualRow.workPivot] / dualRow.workAlpha);
         // On the first pass, try to make the pivotal row more accurate
         if (chuzc_pass == 0) {
-          if (debug_small_pivot_issue_report) Rprintf(": improve row\n");
+          if (debug_small_pivot_issue_report) printf(": improve row\n");
           ekk_instance_.analysis_.num_improve_choose_column_row_call++;
           improveChooseColumnRow(row_ep);
         } else {
@@ -1668,19 +1667,19 @@ void HEkkDual::chooseColumn(HVector* row_ep) {
               dualRow.packValue[i] = dualRow.packValue[dualRow.packCount - 1];
               dualRow.packCount--;
               if (chuzc_pass == 0 && debug_small_pivot_issue_report)
-                Rprintf(": removing pivot gives pack count = %6d",
+                printf(": removing pivot gives pack count = %6d",
                        (int)dualRow.packCount);
               break;
             }
           }
           if (chuzc_pass == 0 && debug_small_pivot_issue_report)
-            Rprintf(" so %s\n", dualRow.packCount > 0 ? "repeat CHUZC"
+            printf(" so %s\n", dualRow.packCount > 0 ? "repeat CHUZC"
                                                      : "consider unbounded");
         }
         // Indicate that no pivot has been chosen
         dualRow.workPivot = -1;
       } else if (chuzc_pass > 0 && debug_small_pivot_issue_report) {
-        Rprintf(
+        printf(
             "                                                       Variable "
             "%6d "
             "Pivot %11.4g (dual "
@@ -1693,7 +1692,7 @@ void HEkkDual::chooseColumn(HVector* row_ep) {
       // No pivot has been chosen
       assert(dualRow.workPivot == -1);
       if (chuzc_pass > 0 && debug_small_pivot_issue_report) {
-        Rprintf(
+        printf(
             "                                                       No pivot "
             "after %2d CHUZC passes\n",
             (int)chuzc_pass);
@@ -1744,7 +1743,7 @@ void HEkkDual::improveChooseColumnRow(HVector* row_ep) {
     if (debug_price_report_on) debug_price_report = kDebugReportAll;
     debug_rows_report = debug_price_report_on;
     if (debug_price_report != kDebugReportOff)
-      Rprintf("HEkkDual::chooseColumn Check iter = %d\n",
+      printf("HEkkDual::chooseColumn Check iter = %d\n",
              (int)ekk_instance_.iteration_count_);
   }
 

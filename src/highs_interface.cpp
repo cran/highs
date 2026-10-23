@@ -16,17 +16,27 @@ class HighsR: public Highs {
 };
 */
 
-static void R_message_handler(HighsLogType type, const char* message, void* log_callback_data) {
-    // Only print if log_callback_data is valid and output_flag is true
-    if (log_callback_data) {
-        Highs* highs = static_cast<Highs*>(log_callback_data);
-        const HighsOptions& options = highs->getOptions();
-        if (options.log_options.output_flag &&
-            *options.log_options.output_flag) {
-            Rcpp::Rcout << message << std::endl;
-        }
-    }
-}
+// No log callback anymore: the compliance shim (src/hi_shim.h, force-included
+// into every HiGHS TU by inst/build_highs.sh) routes HiGHS's own console path
+// (vfprintf(stdout, ...) in io/HighsIO.cpp) into Rvprintf, so solver output is
+// natively sink()/capture.output()-capturable and remains gated by the
+// standard HiGHS options (output_flag, log_to_console).  This also retires
+// the setLogCallback API, deprecated upstream in HiGHS 1.15.1, and the
+// 1024-byte kIoBufferSize truncation of the callback path.
+//
+// hi_shim_drain() flushes messages queued by HiGHS worker threads (the R API
+// is main-thread-only); implemented in hi_shim.cpp.
+extern "C" void hi_shim_drain(void);
+extern "C" int hi_shim_set_quiet(int on);
+
+// RAII guard: mute the shim's console output on THIS (main) thread for the
+// enclosing scope -- used around Highs construction whose banner prints
+// before options can gate it.  Worker-thread messages are unaffected.
+struct HiShimQuiet {
+    int prev;
+    HiShimQuiet() : prev(hi_shim_set_quiet(1)) {}
+    ~HiShimQuiet() { hi_shim_set_quiet(prev); }
+};
 
 
 std::vector<HighsVarType> to_vartype(std::vector<int32_t> type) {
@@ -204,7 +214,6 @@ RCPP_MODULE(RcppHighs) {
 // [[Rcpp::export]]
 SEXP new_solver(SEXP mpt) {
     Rcpp::XPtr<Highs> highs(new Highs(), true);
-    highs->setLogCallback(R_message_handler, highs.get());
 
     if (Rf_isNull(mpt)) {
         return Rcpp::List::create(
@@ -589,6 +598,7 @@ int32_t solver_clear_solver(SEXP hi) {
 int32_t solver_run(SEXP hi) {
     Rcpp::XPtr<Highs>highs(hi);
     HighsStatus return_status = highs->run();
+    hi_shim_drain();  // flush any worker-thread log messages
     return static_cast<int32_t>(return_status);
 }
 
@@ -1173,4 +1183,50 @@ int32_t solver_read_model(SEXP hi, std::string filename) {
         Rcpp::stop("HiGHS readModel failed for file: %s", filename.c_str());
     }
     return static_cast<int32_t>(return_status);
+}
+
+
+// Enumerate the bundled library's option registry: name + type + advanced
+// flag for every registered option.  This is the authoritative successor to
+// the static HIGHS_OPTIONS table that inst/parse_highs_options.R used to
+// scrape out of HighsOptions.h with regexes -- it cannot drift from the
+// bundled solver.
+//
+// Enumeration detail: Highs::getNumOptions() returns only the USER-SETTABLE
+// count (num_user_settable_options_), but getOptionName(index) accepts any
+// index below records.size() -- and HighsOptions registers all user-settable
+// options first, then the advanced ones (HighsOptions.h: "// Advanced
+// options" immediately after num_user_settable_options_ is fixed).  So we
+// walk until getOptionName errors, and advanced == (index >= getNumOptions()).
+// [[Rcpp::export]]
+Rcpp::DataFrame solver_option_registry() {
+    HiShimQuiet guard;  // the Highs constructor emits its banner before
+                        // options can gate it; mute this thread for the scope
+    Highs h;
+    const HighsInt n_user = h.getNumOptions();
+    std::vector<std::string> names;
+    std::vector<std::string> types;
+    std::vector<int> advanced;
+    std::string name;
+    for (HighsInt i = 0; h.getOptionName(i, &name) == HighsStatus::kOk; i++) {
+        HighsOptionType type;
+        if (h.getOptionType(name, &type) != HighsStatus::kOk) {
+            Rcpp::stop("HiGHS getOptionType failed for option '%s'", name.c_str());
+        }
+        names.push_back(name);
+        types.push_back(
+            (type == HighsOptionType::kBool)   ? "bool"
+          : (type == HighsOptionType::kInt)    ? "integer"
+          : (type == HighsOptionType::kDouble) ? "double"
+          :                                      "string");
+        advanced.push_back(i >= n_user ? 1 : 0);
+    }
+    if (static_cast<HighsInt>(names.size()) < n_user) {
+        Rcpp::stop("HiGHS option registry enumeration stopped short (%d < %d)",
+                   (int)names.size(), (int)n_user);
+    }
+    return Rcpp::DataFrame::create(Rcpp::Named("option") = names,
+                                   Rcpp::Named("type") = types,
+                                   Rcpp::Named("advanced") = advanced,
+                                   Rcpp::Named("stringsAsFactors") = false);
 }

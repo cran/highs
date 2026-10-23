@@ -1,11 +1,9 @@
-#include <Rcpp.h>
 #include "KrylovMethods.h"
 
 #include <cmath>
 #include <iostream>
 
 #include "VectorOperations.h"
-#include "ipm/hipo/auxiliary/Log.h"
 
 namespace hipo {
 
@@ -110,7 +108,7 @@ Int Gmres(const AbstractMatrix* M, const AbstractMatrix* P,
 
     // re-orthogonalize
     // if (norm2(V.back()) / norm2(w) < 1e-6) {
-    // Rprintf("Re-orthogonalize============\n");
+    // printf("Re-orthogonalize============\n");
     for (Int k = 0; k <= i; ++k) {
       double temp = dotProd(V.back(), V[k]);
       H[k + ldh * i] += temp;
@@ -183,7 +181,6 @@ Int Cg(const AbstractMatrix* M, const AbstractMatrix* P,
     ++iter;
 
     if (isNanVector(x)) {
-      // log->printDevInfo("CG: x is nan at iter %d\n", (int)iter);
       break;
     }
   }

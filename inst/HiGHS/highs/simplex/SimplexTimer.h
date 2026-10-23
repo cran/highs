@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -249,7 +248,7 @@ class SimplexTimer {
       clockList[en] = clock[simplex_clock_list[en]];
     }
     const double ideal_sum_time = timer_pointer->read(clock[Chuzc4Clock]);
-    Rprintf("reportChuzc4ClockList: ideal_sum_time = %g\n", ideal_sum_time);
+    printf("reportChuzc4ClockList: ideal_sum_time = %g\n", ideal_sum_time);
     timer_pointer->reportOnTolerance("CHUZC4:", clockList, ideal_sum_time,
                                      1e-8);
   };

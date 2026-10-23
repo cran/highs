@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 #include "ipm/ipx/basis.h"
 
 #include <algorithm>
@@ -951,17 +950,17 @@ Vector CopyBasic(const Vector& x, const Basis& basis) {
 }
 
 void Basis::reportBasisData() const {
-  Rprintf("\nBasis data\n");
-  Rprintf("    Num factorizations = %d\n", (int)this->factorizations());
-  Rprintf("    Num updates = %d\n", (int)updates_total());
+  printf("\nBasis data\n");
+  printf("    Num factorizations = %d\n", (int)this->factorizations());
+  printf("    Num updates = %d\n", (int)updates_total());
   if (this->num_ftran_) 
-    Rprintf("    Average density of %7d FTRANs is %6.4f; sparse proportion = %6.4f\n",
+    printf("    Average density of %7d FTRANs is %6.4f; sparse proportion = %6.4f\n",
 	   (int)this->num_ftran_, this->sum_ftran_density_ / this->num_ftran_, frac_ftran_sparse());
   if (this->num_btran_) 
-    Rprintf("    Average density of %7d BTRANs is %6.4f; sparse proportion = %6.4f\n",
+    printf("    Average density of %7d BTRANs is %6.4f; sparse proportion = %6.4f\n",
 	   (int)this->num_btran_, this->sum_btran_density_ / this->num_btran_, frac_btran_sparse());
-  Rprintf("    Mean fill-in %11.4g\n", mean_fill());
-  Rprintf("    Max  fill-in %11.4g\n", max_fill());
+  printf("    Mean fill-in %11.4g\n", mean_fill());
+  printf("    Max  fill-in %11.4g\n", max_fill());
 
 }
 }  // namespace ipx

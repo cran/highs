@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -144,29 +143,29 @@ HighsInt HighsHessian::numNz() const {
   return this->start_[this->dim_];
 }
 
-void HighsHessian::print() const {
+void HighsHessian::print(const std::string& message) const {
   HighsInt num_nz = this->numNz();
-  Rprintf("%s Hessian of dimension %" HIGHSINT_FORMAT " and %" HIGHSINT_FORMAT
-         " entries\n",
+  printf("%s Hessian of dimension %" HIGHSINT_FORMAT " and %" HIGHSINT_FORMAT
+         " entries: %s\n",
          this->format_ == HessianFormat::kTriangular ? "Triangular" : "Square",
-         dim_, num_nz);
-  Rprintf("Start; Index; Value of sizes %d; %d; %d\n", (int)this->start_.size(),
+         dim_, num_nz, message.c_str());
+  printf("Start; Index; Value of sizes %d; %d; %d\n", (int)this->start_.size(),
          (int)this->index_.size(), (int)this->value_.size());
   if (dim_ <= 0) return;
-  Rprintf(" Row|");
-  for (int iCol = 0; iCol < dim_; iCol++) Rprintf(" %4d", iCol);
-  Rprintf("\n");
-  Rprintf("-----");
-  for (int iCol = 0; iCol < dim_; iCol++) Rprintf("-----");
-  Rprintf("\n");
+  printf(" Row|");
+  for (int iCol = 0; iCol < dim_; iCol++) printf(" %4d", iCol);
+  printf("\n");
+  printf("-----");
+  for (int iCol = 0; iCol < dim_; iCol++) printf("-----");
+  printf("\n");
   std::vector<std::string> col;
   col.assign(dim_, "");
   for (HighsInt iCol = 0; iCol < dim_; iCol++) {
     for (HighsInt iEl = this->start_[iCol]; iEl < this->start_[iCol + 1]; iEl++)
       col[this->index_[iEl]] = highsFormatToString("%4g", this->value_[iEl]);
-    Rprintf("%4d|", (int)iCol);
-    for (int iRow = 0; iRow < dim_; iRow++) Rprintf(" %4s", col[iRow].c_str());
-    Rprintf("\n");
+    printf("%4d|", (int)iCol);
+    for (int iRow = 0; iRow < dim_; iRow++) printf(" %4s", col[iRow].c_str());
+    printf("\n");
     for (HighsInt iEl = this->start_[iCol]; iEl < this->start_[iCol + 1]; iEl++)
       col[this->index_[iEl]] = "";
   }
@@ -257,8 +256,64 @@ bool HighsHessian::isDiagonal() const {
   }
   return true;
 }
+
 double HighsHessian::diag(HighsInt i) const {
   assert(i < dim_);
   assert(index_[start_[i]] == i);
   return value_[start_[i]];
+}
+
+HighsHessian HighsHessian::toSquare() const {
+  if (this->format_ == HessianFormat::kSquare) return *this;
+  assert(this->format_ == HessianFormat::kTriangular);
+  std::vector<HighsInt> iwork(this->dim_, 0);
+  for (HighsInt iCol = 0; iCol < this->dim_; iCol++) {
+    HighsInt iEl = this->start_[iCol];
+    HighsInt iRow = this->index_[iEl];
+    assert(iRow == iCol);
+    iEl++;
+    for (; iEl < this->start_[iCol + 1]; iEl++) {
+      HighsInt iRow = this->index_[iEl];
+      assert(iRow > iCol);
+      iwork[iRow]++;
+    }
+  }
+  HighsInt triangular_hessian_off_diagonal = this->numNz() - this->dim_;
+  HighsHessian square_hessian;
+  square_hessian.format_ = HessianFormat::kSquare;
+  square_hessian.dim_ = this->dim_;
+  square_hessian.start_[0] = 0;
+  for (HighsInt iCol = 0; iCol < this->dim_; iCol++) {
+    HighsInt square_hessian_col_nnz =
+        iwork[iCol] + this->start_[iCol + 1] - this->start_[iCol];
+    square_hessian.start_.push_back(square_hessian.start_[iCol] +
+                                    square_hessian_col_nnz);
+    iwork[iCol] = square_hessian.start_[iCol] + 1;
+  }
+  HighsInt square_hessian_nnz = square_hessian.numNz();
+  assert(square_hessian_nnz ==
+         this->dim_ + 2 * triangular_hessian_off_diagonal);
+  square_hessian.index_.resize(square_hessian_nnz);
+  square_hessian.value_.resize(square_hessian_nnz);
+  for (HighsInt iCol = 0; iCol < this->dim_; iCol++) {
+    HighsInt iEl = this->start_[iCol];
+    HighsInt iRow = this->index_[iEl];
+    HighsInt square_iEl = square_hessian.start_[iCol];
+    square_hessian.index_[square_iEl] = iCol;
+    square_hessian.value_[square_iEl] = this->value_[iEl];
+    iEl++;
+    for (; iEl < this->start_[iCol + 1]; iEl++) {
+      HighsInt iRow = this->index_[iEl];
+      double value = this->value_[iEl];
+      HighsInt square_iEl = iwork[iCol];
+      square_hessian.index_[square_iEl] = iRow;
+      square_hessian.value_[square_iEl] = value;
+      iwork[iCol]++;
+      square_iEl = iwork[iRow];
+      square_hessian.index_[square_iEl] = iCol;
+      square_hessian.value_[square_iEl] = value;
+      iwork[iRow]++;
+    }
+  }
+  return square_hessian;
 }

@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -94,20 +93,20 @@ bool ok(const HighsIndexCollection& index_collection) {
     // Changing by interval: check the parameters and that check set and mask
     // are false
     if (index_collection.is_set_) {
-      Rprintf("Index collection is both interval and set\n");
+      printf("Index collection is both interval and set\n");
       return false;
     }
     if (index_collection.is_mask_) {
-      Rprintf("Index collection is both interval and mask\n");
+      printf("Index collection is both interval and mask\n");
       return false;
     }
     if (index_collection.from_ < 0) {
-      Rprintf("Index interval lower limit is %" HIGHSINT_FORMAT " < 0\n",
+      printf("Index interval lower limit is %" HIGHSINT_FORMAT " < 0\n",
              index_collection.from_);
       return false;
     }
     if (index_collection.to_ > index_collection.dimension_ - 1) {
-      Rprintf("Index interval upper limit is %" HIGHSINT_FORMAT
+      printf("Index interval upper limit is %" HIGHSINT_FORMAT
              " > %" HIGHSINT_FORMAT "\n",
              index_collection.to_, index_collection.dimension_ - 1);
       return false;
@@ -116,15 +115,15 @@ bool ok(const HighsIndexCollection& index_collection) {
     // Changing by set: check the parameters and check that interval and mask
     // are false
     if (index_collection.is_interval_) {
-      Rprintf("Index collection is both set and interval\n");
+      printf("Index collection is both set and interval\n");
       return false;
     }
     if (index_collection.is_mask_) {
-      Rprintf("Index collection is both set and mask\n");
+      printf("Index collection is both set and mask\n");
       return false;
     }
     if (index_collection.set_.empty()) {
-      Rprintf("Index set is NULL\n");
+      printf("Index set is NULL\n");
       return false;
     }
     // Check that the values in the vector of integers are ascending
@@ -134,13 +133,13 @@ bool ok(const HighsIndexCollection& index_collection) {
     HighsInt prev_set_entry = -1;
     for (HighsInt k = 0; k < num_entries; k++) {
       if (set[k] < 0 || set[k] > entry_upper) {
-        Rprintf("Index set entry set[%" HIGHSINT_FORMAT "] = %" HIGHSINT_FORMAT
+        printf("Index set entry set[%" HIGHSINT_FORMAT "] = %" HIGHSINT_FORMAT
                " is out of bounds [0, %" HIGHSINT_FORMAT "]\n",
                k, set[k], entry_upper);
         return false;
       }
       if (set[k] <= prev_set_entry) {
-        Rprintf("Index set entry set[%" HIGHSINT_FORMAT "] = %" HIGHSINT_FORMAT
+        printf("Index set entry set[%" HIGHSINT_FORMAT "] = %" HIGHSINT_FORMAT
                " is not greater than "
                "previous entry %" HIGHSINT_FORMAT "\n",
                k, set[k], prev_set_entry);
@@ -155,20 +154,20 @@ bool ok(const HighsIndexCollection& index_collection) {
     // Changing by mask: check the parameters and check that set and interval
     // are false
     if (index_collection.mask_.empty()) {
-      Rprintf("Index mask is NULL\n");
+      printf("Index mask is NULL\n");
       return false;
     }
     if (index_collection.is_interval_) {
-      Rprintf("Index collection is both mask and interval\n");
+      printf("Index collection is both mask and interval\n");
       return false;
     }
     if (index_collection.is_set_) {
-      Rprintf("Index collection is both mask and set\n");
+      printf("Index collection is both mask and set\n");
       return false;
     }
   } else {
     // No method defined
-    Rprintf("Undefined index collection\n");
+    printf("Undefined index collection\n");
     return false;
   }
   return true;
@@ -718,25 +717,25 @@ bool initialiseValueDistribution(const std::string& distribution_name,
     if (base_value_limit <= 0) return false;
     const double log_ratio = log(max_value_limit / min_value_limit);
     const double log_base_value_limit = log(base_value_limit);
-    //    Rprintf("initialiseValueDistribution: log_ratio = %g;
+    //    printf("initialiseValueDistribution: log_ratio = %g;
     //    log_base_value_limit = %g; log_ratio/log_base_value_limit = %g\n",
     //	   log_ratio, log_base_value_limit, log_ratio/log_base_value_limit);
     num_count = log_ratio / log_base_value_limit + 1;
   }
-  //  Rprintf("initialiseValueDistribution: num_count = %" HIGHSINT_FORMAT "\n",
+  //  printf("initialiseValueDistribution: num_count = %" HIGHSINT_FORMAT "\n",
   //  num_count);
   value_distribution.count_.assign(num_count + 1, 0);
   value_distribution.limit_.assign(num_count, 0);
   value_distribution.limit_[0] = min_value_limit;
-  //  Rprintf("Interval  0 is [%10.4g, %10.4g)\n", 0.0,
+  //  printf("Interval  0 is [%10.4g, %10.4g)\n", 0.0,
   //  value_distribution.limit_[0]);
   for (HighsInt i = 1; i < num_count; i++) {
     value_distribution.limit_[i] =
         base_value_limit * value_distribution.limit_[i - 1];
-    //    Rprintf("Interval %2" HIGHSINT_FORMAT " is [%10.4g, %10.4g)\n", i,
+    //    printf("Interval %2" HIGHSINT_FORMAT " is [%10.4g, %10.4g)\n", i,
     //    value_distribution.limit_[i-1], value_distribution.limit_[i]);
   }
-  //  Rprintf("Interval %2" HIGHSINT_FORMAT " is [%10.4g, inf)\n", num_count,
+  //  printf("Interval %2" HIGHSINT_FORMAT " is [%10.4g, inf)\n", num_count,
   //  value_distribution.limit_[num_count-1]);
   value_distribution.num_count_ = num_count;
   value_distribution.num_zero_ = 0;
@@ -1065,12 +1064,12 @@ bool regressScatterData(HighsScatterData& scatter_data) {
     if (linear_error > awful_regression_error) {
       scatter_data.num_awful_linear_++;
       if (report_awful_error)
-        Rprintf("Awful linear regression error = %g\n", linear_error);
+        printf("Awful linear regression error = %g\n", linear_error);
     }
     if (log_error > awful_regression_error) {
       scatter_data.num_awful_log_++;
       if (report_awful_error)
-        Rprintf("Awful log regression error = %g\n", log_error);
+        printf("Awful log regression error = %g\n", log_error);
     }
     if (report_awful_error)
       computeScatterDataRegressionError(scatter_data, true);
@@ -1084,8 +1083,8 @@ bool regressScatterData(HighsScatterData& scatter_data) {
   } else if (linear_error > log_error) {
     scatter_data.num_better_log_++;
   }
-  //  Rprintf("Linear regression error = %g\n", linear_error);
-  //  Rprintf("Log    regression error = %g\n", log_error);
+  //  printf("Linear regression error = %g\n", linear_error);
+  //  printf("Log    regression error = %g\n", log_error);
   return true;
 }
 
@@ -1110,7 +1109,7 @@ bool computeScatterDataRegressionError(HighsScatterData& scatter_data,
   if (scatter_data.num_point_ < scatter_data.max_num_point_) return false;
   double sum_log_error = 0;
   if (print)
-    Rprintf(
+    printf(
         "Log regression\nPoint     Value0     Value1 PredValue1      Error\n");
   for (HighsInt point = 0; point < scatter_data.max_num_point_; point++) {
     double value0 = scatter_data.value0_[point];
@@ -1121,16 +1120,16 @@ bool computeScatterDataRegressionError(HighsScatterData& scatter_data,
       if (
           //	10*error > awful_regression_error &&
           print)
-        Rprintf("%5" HIGHSINT_FORMAT " %10.4g %10.4g %10.4g %10.4g\n", point,
+        printf("%5" HIGHSINT_FORMAT " %10.4g %10.4g %10.4g %10.4g\n", point,
                value0, value1, predicted_value1, error);
       sum_log_error += error;
     }
   }
   if (print)
-    Rprintf("                                       %10.4g\n", sum_log_error);
+    printf("                                       %10.4g\n", sum_log_error);
   double sum_linear_error = 0;
   if (print)
-    Rprintf(
+    printf(
         "Linear regression\nPoint     Value0     Value1 PredValue1      "
         "Error\n");
   for (HighsInt point = 0; point < scatter_data.max_num_point_; point++) {
@@ -1142,13 +1141,13 @@ bool computeScatterDataRegressionError(HighsScatterData& scatter_data,
       if (
           //	10*error > awful_regression_error &&
           print)
-        Rprintf("%5" HIGHSINT_FORMAT " %10.4g %10.4g %10.4g %10.4g\n", point,
+        printf("%5" HIGHSINT_FORMAT " %10.4g %10.4g %10.4g %10.4g\n", point,
                value0, value1, predicted_value1, error);
       sum_linear_error += error;
     }
   }
   if (print)
-    Rprintf("                                       %10.4g\n", sum_linear_error);
+    printf("                                       %10.4g\n", sum_linear_error);
   scatter_data.log_regression_error_ = sum_log_error;
   scatter_data.linear_regression_error_ = sum_linear_error;
   return true;
@@ -1160,7 +1159,7 @@ bool printScatterData(const std::string& name,
   double x;
   double y;
   HighsInt point_num = 0;
-  Rprintf("%s scatter data\n", name.c_str());
+  printf("%s scatter data\n", name.c_str());
   const HighsInt to_point =
       std::min(scatter_data.num_point_, scatter_data.max_num_point_);
   for (HighsInt point = scatter_data.last_point_ + 1; point < to_point;
@@ -1168,19 +1167,19 @@ bool printScatterData(const std::string& name,
     point_num++;
     x = scatter_data.value0_[point];
     y = scatter_data.value1_[point];
-    Rprintf("%" HIGHSINT_FORMAT ",%10.4g,%10.4g,%" HIGHSINT_FORMAT "\n", point,
+    printf("%" HIGHSINT_FORMAT ",%10.4g,%10.4g,%" HIGHSINT_FORMAT "\n", point,
            x, y, point_num);
   }
   for (HighsInt point = 0; point <= scatter_data.last_point_; point++) {
     point_num++;
     x = scatter_data.value0_[point];
     y = scatter_data.value1_[point];
-    Rprintf("%" HIGHSINT_FORMAT ",%10.4g,%10.4g,%" HIGHSINT_FORMAT "\n", point,
+    printf("%" HIGHSINT_FORMAT ",%10.4g,%10.4g,%" HIGHSINT_FORMAT "\n", point,
            x, y, point_num);
   }
-  Rprintf("Linear regression coefficients,%10.4g,%10.4g\n",
+  printf("Linear regression coefficients,%10.4g,%10.4g\n",
          scatter_data.linear_coeff0_, scatter_data.linear_coeff1_);
-  Rprintf("Log    regression coefficients,%10.4g,%10.4g\n",
+  printf("Log    regression coefficients,%10.4g,%10.4g\n",
          scatter_data.log_coeff0_, scatter_data.log_coeff1_);
   return true;
 }
@@ -1188,24 +1187,24 @@ bool printScatterData(const std::string& name,
 void printScatterDataRegressionComparison(
     const std::string& name, const HighsScatterData& scatter_data) {
   if (!scatter_data.num_error_comparison_) return;
-  Rprintf("\n%s scatter data regression\n", name.c_str());
-  Rprintf("%10" HIGHSINT_FORMAT " regression error comparisons\n",
+  printf("\n%s scatter data regression\n", name.c_str());
+  printf("%10" HIGHSINT_FORMAT " regression error comparisons\n",
          scatter_data.num_error_comparison_);
-  Rprintf("%10" HIGHSINT_FORMAT " regression awful  linear (>%10.4g)\n",
+  printf("%10" HIGHSINT_FORMAT " regression awful  linear (>%10.4g)\n",
          scatter_data.num_awful_linear_, awful_regression_error);
-  Rprintf("%10" HIGHSINT_FORMAT " regression awful  log    (>%10.4g)\n",
+  printf("%10" HIGHSINT_FORMAT " regression awful  log    (>%10.4g)\n",
          scatter_data.num_awful_log_, awful_regression_error);
-  Rprintf("%10" HIGHSINT_FORMAT " regression bad    linear (>%10.4g)\n",
+  printf("%10" HIGHSINT_FORMAT " regression bad    linear (>%10.4g)\n",
          scatter_data.num_bad_linear_, bad_regression_error);
-  Rprintf("%10" HIGHSINT_FORMAT " regression bad    log    (>%10.4g)\n",
+  printf("%10" HIGHSINT_FORMAT " regression bad    log    (>%10.4g)\n",
          scatter_data.num_bad_log_, bad_regression_error);
-  Rprintf("%10" HIGHSINT_FORMAT " regression fair   linear (>%10.4g)\n",
+  printf("%10" HIGHSINT_FORMAT " regression fair   linear (>%10.4g)\n",
          scatter_data.num_fair_linear_, fair_regression_error);
-  Rprintf("%10" HIGHSINT_FORMAT " regression fair   log    (>%10.4g)\n",
+  printf("%10" HIGHSINT_FORMAT " regression fair   log    (>%10.4g)\n",
          scatter_data.num_fair_log_, fair_regression_error);
-  Rprintf("%10" HIGHSINT_FORMAT " regression better linear\n",
+  printf("%10" HIGHSINT_FORMAT " regression better linear\n",
          scatter_data.num_better_linear_);
-  Rprintf("%10" HIGHSINT_FORMAT " regression better log\n",
+  printf("%10" HIGHSINT_FORMAT " regression better log\n",
          scatter_data.num_better_log_);
 }
 
@@ -1234,12 +1233,12 @@ double nearestPowerOfTwoScale(const double value) {
 
 void highsAssert(const bool assert_condition, const std::string& message) {
   if (assert_condition) return;
-  Rprintf("Failing highsAssert(\"%s\")\n", message.c_str());
+  printf("Failing highsAssert(\"%s\")\n", message.c_str());
 #ifdef NDEBUG
   // Standard assert won't trigger abort, so do it explicitly
-  Rprintf("assert(%s) failed ...\n", message.c_str());
-  NULL;
-  ;
+  printf("assert(%s) failed ...\n", message.c_str());
+  fflush(stdout);
+  abort();
 #else
   // Standard assert
   assert(assert_condition);
@@ -1248,13 +1247,13 @@ void highsAssert(const bool assert_condition, const std::string& message) {
 
 bool highsPause(const bool pause_condition, const std::string& message) {
   if (!pause_condition) return pause_condition;
-  Rprintf("Satisfying highsPause(\"%s\")\n", message.c_str());
+  printf("Satisfying highsPause(\"%s\")\n", message.c_str());
   char str[100];
-  Rprintf("Enter any value to continue:");
-  NULL;
+  printf("Enter any value to continue:");
+  fflush(stdout);
   if (fgets(str, 100, stdin) != nullptr) {
-    Rprintf("You entered: \"%s\"\n", str);
-    NULL;
+    printf("You entered: \"%s\"\n", str);
+    fflush(stdout);
   }
   return pause_condition;
 }

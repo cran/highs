@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -76,7 +75,7 @@ bool HighsLp::equalButForScalingAndNames(const HighsLp& lp) const {
   const bool equal_vectors = equalVectors(lp);
   const bool equal_matrix = this->a_matrix_ == lp.a_matrix_;
 #ifndef NDEBUG
-  if (!equal_matrix) Rprintf("HighsLp::equalButForNames: Unequal matrix\n");
+  if (!equal_matrix) printf("HighsLp::equalButForNames: Unequal matrix\n");
 #endif
   return equal_vectors && equal_matrix;
 }
@@ -94,7 +93,7 @@ bool HighsLp::equalVectors(const HighsLp& lp) const {
   equal_vectors = this->row_upper_ == lp.row_upper_ && equal_vectors;
   equal_vectors = this->row_lower_ == lp.row_lower_ && equal_vectors;
 #ifndef NDEBUG
-  if (!equal_vectors) Rprintf("HighsLp::equalButForNames: Unequal vectors\n");
+  if (!equal_vectors) printf("HighsLp::equalButForNames: Unequal vectors\n");
 #endif
   return equal_vectors;
 }
@@ -117,7 +116,7 @@ bool HighsLp::equalScaling(const HighsLp& lp) const {
   equal = this->scale_.col == lp.scale_.col && equal;
   equal = this->scale_.row == lp.scale_.row && equal;
 #ifndef NDEBUG
-  if (!equal) Rprintf("HighsLp::equalScaling: Unequal scaling\n");
+  if (!equal) printf("HighsLp::equalScaling: Unequal scaling\n");
 #endif
   return equal;
 }
@@ -135,7 +134,8 @@ HighsCDouble HighsLp::objectiveCDoubleValue(
   assert((int)solution.size() >= this->num_col_);
   HighsCDouble objective_function_value = this->offset_;
   for (HighsInt iCol = 0; iCol < this->num_col_; iCol++)
-    objective_function_value += this->col_cost_[iCol] * solution[iCol];
+    objective_function_value +=
+        static_cast<HighsCDouble>(this->col_cost_[iCol]) * solution[iCol];
   return objective_function_value;
 }
 
@@ -516,7 +516,7 @@ bool HighsLpMods::isClear() {
   if (this->save_inconsistent_semi_variable_upper_bound_value.size())
     return false;
   if (this->save_inconsistent_semi_variable_type.size()) return false;
-  if (this->save_relaxed_semi_variable_lower_bound_value.size()) return false;
+  if (this->save_relaxed_semi_variable_lower_bound_index.size()) return false;
   if (this->save_relaxed_semi_variable_lower_bound_value.size()) return false;
   if (this->save_tightened_semi_variable_upper_bound_index.size()) return false;
   if (this->save_tightened_semi_variable_upper_bound_value.size()) return false;

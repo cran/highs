@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -268,12 +267,12 @@ class HighsPostsolveStack {
   const HighsInt* getOrigColsIndex() const { return origColIndex.data(); }
 
   HighsInt getOrigRowIndex(HighsInt row) const {
-    assert(row < (HighsInt)origRowIndex.size());
+    assert(static_cast<size_t>(row) < origRowIndex.size());
     return origRowIndex[row];
   }
 
   HighsInt getOrigColIndex(HighsInt col) const {
-    assert(col < (HighsInt)origColIndex.size());
+    assert(static_cast<size_t>(col) < origColIndex.size());
     return origColIndex[col];
   }
 
@@ -610,8 +609,23 @@ class HighsPostsolveStack {
 
   /// undo presolve steps for primal dual solution and basis
   void undo(const HighsOptions& options, HighsSolution& solution,
-            HighsBasis& basis, const HighsInt report_col = -1) {
-    reductionValues.resetPosition();
+            HighsBasis& basis, const HighsInt report_col = -1,
+            const bool thread_safe = false) {
+    HighsDataStack reductionValuesCopy;
+    std::vector<Nonzero> colValuesCopy;
+    std::vector<Nonzero> rowValuesCopy;
+    if (!thread_safe) {
+      reductionValues.resetPosition();
+    } else {
+      reductionValuesCopy = reductionValues;
+      reductionValuesCopy.resetPosition();
+      colValuesCopy = colValues;
+      rowValuesCopy = rowValues;
+    }
+    HighsDataStack& reductionValues_ =
+        thread_safe ? reductionValuesCopy : reductionValues;
+    std::vector<Nonzero>& colValues_ = thread_safe ? colValuesCopy : colValues;
+    std::vector<Nonzero>& rowValues_ = thread_safe ? rowValuesCopy : rowValues;
 
     // Verify that undo can be performed
     assert(solution.value_valid);
@@ -643,113 +657,113 @@ class HighsPostsolveStack {
     // now undo the changes
     for (size_t i = reductions.size(); i > 0; --i) {
       if (report_col >= 0)
-        Rprintf("Before  reduction %2d (type %2d): col_value[%2d] = %g\n",
+        printf("Before  reduction %2d (type %2d): col_value[%2d] = %g\n",
                int(i - 1), int(reductions[i - 1].first), int(report_col),
                solution.col_value[report_col]);
       switch (reductions[i - 1].first) {
         case ReductionType::kLinearTransform: {
           LinearTransform reduction;
-          reductionValues.pop(reduction);
+          reductionValues_.pop(reduction);
           reduction.undo(options, solution);
           break;
         }
         case ReductionType::kFreeColSubstitution: {
           FreeColSubstitution reduction;
-          reductionValues.pop(colValues);
-          reductionValues.pop(rowValues);
-          reductionValues.pop(reduction);
-          reduction.undo(options, rowValues, colValues, solution, basis);
+          reductionValues_.pop(colValues_);
+          reductionValues_.pop(rowValues_);
+          reductionValues_.pop(reduction);
+          reduction.undo(options, rowValues_, colValues_, solution, basis);
           break;
         }
         case ReductionType::kDoubletonEquation: {
           DoubletonEquation reduction;
-          reductionValues.pop(colValues);
-          reductionValues.pop(reduction);
-          reduction.undo(options, colValues, solution, basis);
+          reductionValues_.pop(colValues_);
+          reductionValues_.pop(reduction);
+          reduction.undo(options, colValues_, solution, basis);
           break;
         }
         case ReductionType::kEqualityRowAddition: {
           EqualityRowAddition reduction;
-          reductionValues.pop(rowValues);
-          reductionValues.pop(reduction);
-          reduction.undo(options, rowValues, solution, basis);
+          reductionValues_.pop(rowValues_);
+          reductionValues_.pop(reduction);
+          reduction.undo(options, rowValues_, solution, basis);
           break;
         }
         case ReductionType::kEqualityRowAdditions: {
           EqualityRowAdditions reduction;
-          reductionValues.pop(colValues);
-          reductionValues.pop(rowValues);
-          reductionValues.pop(reduction);
-          reduction.undo(options, rowValues, colValues, solution, basis);
+          reductionValues_.pop(colValues_);
+          reductionValues_.pop(rowValues_);
+          reductionValues_.pop(reduction);
+          reduction.undo(options, rowValues_, colValues_, solution, basis);
           break;
         }
         case ReductionType::kSingletonRow: {
           SingletonRow reduction;
-          reductionValues.pop(reduction);
+          reductionValues_.pop(reduction);
           reduction.undo(options, solution, basis);
           break;
         }
         case ReductionType::kFixedCol: {
           FixedCol reduction;
-          reductionValues.pop(colValues);
-          reductionValues.pop(reduction);
-          reduction.undo(options, colValues, solution, basis);
+          reductionValues_.pop(colValues_);
+          reductionValues_.pop(reduction);
+          reduction.undo(options, colValues_, solution, basis);
           break;
         }
         case ReductionType::kRedundantRow: {
           RedundantRow reduction;
-          reductionValues.pop(reduction);
+          reductionValues_.pop(reduction);
           reduction.undo(options, solution, basis);
           break;
         }
         case ReductionType::kForcingRow: {
           ForcingRow reduction;
-          reductionValues.pop(rowValues);
-          reductionValues.pop(reduction);
-          reduction.undo(options, rowValues, solution, basis);
+          reductionValues_.pop(rowValues_);
+          reductionValues_.pop(reduction);
+          reduction.undo(options, rowValues_, solution, basis);
           break;
         }
         case ReductionType::kForcingColumn: {
           ForcingColumn reduction;
-          reductionValues.pop(colValues);
-          reductionValues.pop(reduction);
-          reduction.undo(options, colValues, solution, basis);
+          reductionValues_.pop(colValues_);
+          reductionValues_.pop(reduction);
+          reduction.undo(options, colValues_, solution, basis);
           break;
         }
         case ReductionType::kForcingColumnRemovedRow: {
           ForcingColumnRemovedRow reduction;
-          reductionValues.pop(rowValues);
-          reductionValues.pop(reduction);
-          reduction.undo(options, rowValues, solution, basis);
+          reductionValues_.pop(rowValues_);
+          reductionValues_.pop(reduction);
+          reduction.undo(options, rowValues_, solution, basis);
           break;
         }
         case ReductionType::kDuplicateRow: {
           DuplicateRow reduction;
-          reductionValues.pop(reduction);
+          reductionValues_.pop(reduction);
           reduction.undo(options, solution, basis);
           break;
         }
         case ReductionType::kDuplicateColumn: {
           DuplicateColumn reduction;
-          reductionValues.pop(reduction);
+          reductionValues_.pop(reduction);
           reduction.undo(options, solution, basis);
           break;
         }
         case ReductionType::kSlackColSubstitution: {
           SlackColSubstitution reduction;
-          reductionValues.pop(rowValues);
-          reductionValues.pop(reduction);
-          reduction.undo(options, rowValues, solution, basis);
+          reductionValues_.pop(rowValues_);
+          reductionValues_.pop(reduction);
+          reduction.undo(options, rowValues_, solution, basis);
           break;
         }
         default:
-          Rprintf("Reduction case %d not handled\n",
+          printf("Reduction case %d not handled\n",
                  int(reductions[i - 1].first));
           if (kAllowDeveloperAssert) assert(1 == 0);
       }
     }
     if (report_col >= 0)
-      Rprintf("After last reduction: col_value[%2d] = %g\n", int(report_col),
+      printf("After last reduction: col_value[%2d] = %g\n", int(report_col),
              solution.col_value[report_col]);
 
 #ifdef DEBUG_EXTRA
@@ -764,14 +778,15 @@ class HighsPostsolveStack {
 
   /// undo presolve steps for primal solution
   void undoPrimal(const HighsOptions& options, HighsSolution& solution,
-                  const HighsInt report_col = -1) {
+                  const HighsInt report_col = -1,
+                  const bool thread_safe = false) {
     // Call to reductionValues.resetPosition(); seems unnecessary as
     // it's the first thing done in undo
-    reductionValues.resetPosition();
+    if (!thread_safe) reductionValues.resetPosition();
     HighsBasis basis;
     basis.valid = false;
     solution.dual_valid = false;
-    undo(options, solution, basis, report_col);
+    undo(options, solution, basis, report_col, thread_safe);
   }
 
   /*
@@ -916,6 +931,7 @@ class HighsPostsolveStack {
           DuplicateColumn reduction;
           reductionValues.pop(reduction);
           reduction.undo(options, solution, basis);
+          break;
         }
         case ReductionType::kSlackColSubstitution: {
           SlackColSubstitution reduction;

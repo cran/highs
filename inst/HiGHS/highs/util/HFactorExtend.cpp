@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -31,7 +30,7 @@ void HFactor::addRows(const HighsSparseMatrix* ar_matrix) {
   assert(kExtendInvertWhenAddingRows);
   HighsInt num_new_row = ar_matrix->num_row_;
   HighsInt new_num_row = num_row + num_new_row;
-  Rprintf("Adding %" HIGHSINT_FORMAT
+  printf("Adding %" HIGHSINT_FORMAT
          " new rows to HFactor instance: increasing dimension from "
          "%" HIGHSINT_FORMAT " to %" HIGHSINT_FORMAT " \n",
          num_new_row, num_row, new_num_row);
@@ -62,7 +61,7 @@ void HFactor::addRows(const HighsSparseMatrix* ar_matrix) {
   rhs.setup(num_row);
   this->lr_start.reserve(new_num_row + 1);
   for (HighsInt inewRow = 0; inewRow < num_new_row; inewRow++) {
-    //    Rprintf("\nFor new row %" HIGHSINT_FORMAT "\n", inewRow);
+    //    printf("\nFor new row %" HIGHSINT_FORMAT "\n", inewRow);
     // Prepare RHS for system U^T.v = r
     rhs.clear();
     rhs.packFlag = true;
@@ -80,18 +79,18 @@ void HFactor::addRows(const HighsSparseMatrix* ar_matrix) {
     double local_density = (1.0 * rhs.count) / num_row;
     expected_density = kRunningAverageMultiplier * local_density +
                        (1 - kRunningAverageMultiplier) * expected_density;
-    //    Rprintf("New row btranU density: local = %11.4g; expected =  %11.4g\n",
+    //    printf("New row btranU density: local = %11.4g; expected =  %11.4g\n",
     //    local_density, expected_density);
     rhs.tight();
     //
     // Append v to the matrix containing the new rows of L
     HighsInt rhs_num_nz = rhs.count;
-    //    Rprintf("New row has entries:\n");
+    //    printf("New row has entries:\n");
     for (HighsInt iX = 0; iX < rhs_num_nz; iX++) {
       HighsInt iCol = rhs.index[iX];
       new_lr_rows.index_.push_back(iCol);
       new_lr_rows.value_.push_back(rhs.array[iCol]);
-      //      Rprintf("   %4d, %11.4g\n", (int)iCol, rhs.array[iCol]);
+      //      printf("   %4d, %11.4g\n", (int)iCol, rhs.array[iCol]);
     }
     new_lr_rows.start_.push_back(new_lr_rows.index_.size());
     new_lr_rows.num_row_++;
@@ -184,7 +183,7 @@ void HFactor::addRows(const HighsSparseMatrix* ar_matrix) {
   // Need to refer to just the new UR vectors
   HighsInt ur_cur_num_vec = ur_start.size();
   HighsInt ur_new_num_vec = ur_cur_num_vec + num_new_row;
-  Rprintf("\nUpdating UR vectors %d - %d\n", (int)ur_cur_num_vec,
+  printf("\nUpdating UR vectors %d - %d\n", (int)ur_cur_num_vec,
          (int)ur_new_num_vec - 1);
   // UR pointer
   //
@@ -212,10 +211,10 @@ void HFactor::addRows(const HighsSparseMatrix* ar_matrix) {
     HighsInt gap = ur_temp[iRow - 1] + ur_stuff_size;
     ur_start[iRow] = iStart + gap;
     iStart += gap;
-    Rprintf("ur_start[%d] = %d; gap = %d; iStart = %d\n", (int)iRow,
+    printf("ur_start[%d] = %d; gap = %d; iStart = %d\n", (int)iRow,
            (int)ur_start[iRow], (int)gap, (int)iStart);
   }
-  Rprintf("ur_count_size = %d; iStart%d\n", (int)ur_count_size, (int)iStart);
+  printf("ur_count_size = %d; iStart%d\n", (int)ur_count_size, (int)iStart);
   // Lose the start for the fictitious ur_new_num_vec'th row
   ur_start.resize(ur_new_num_vec);
   // Resize ur_lastp and initialise its new entries to be the ur_start

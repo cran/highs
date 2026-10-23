@@ -1,4 +1,3 @@
-#include <Rcpp.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
@@ -103,7 +102,7 @@ class HighsTimer {
     for (HighsInt i = 0; i < num_clock; i++)
       if (clock_num_call[i])
         if (printf_flag)
-          Rprintf("Time %7.5f for %9d calls of clock %3d: %s\n", clock_time[i],
+          printf("Time %7.5f for %9d calls of clock %3d: %s\n", clock_time[i],
                  int(clock_num_call[i]), int(i), clock_names[i].c_str());
   }
 
@@ -125,7 +124,7 @@ class HighsTimer {
       // has stopped
       if (!clock_stopped) {
         if (printf_flag)
-          Rprintf("Clock %d - %s - still running\n", int(i_clock),
+          printf("Clock %d - %s - still running\n", int(i_clock),
                  clock_names[i_clock].c_str());
       }
       assert(clock_stopped);
@@ -134,7 +133,7 @@ class HighsTimer {
     // the clock's been started when it's next stopped
     if (i_clock == check_clock) {
       if (printf_flag)
-        Rprintf("HighsTimer: starting clock %d: %s\n", int(check_clock),
+        printf("HighsTimer: starting clock %d: %s\n", int(check_clock),
                this->clock_names[check_clock].c_str());
     }
     clock_start[i_clock] = -getWallTime();
@@ -152,7 +151,7 @@ class HighsTimer {
     const bool clock_stopped = clock_start[i_clock] > 0;
     if (clock_stopped) {
       if (printf_flag)
-        Rprintf("Clock %d - %s - not running\n", int(i_clock),
+        printf("Clock %d - %s - not running\n", int(i_clock),
                clock_names[i_clock].c_str());
     }
     assert(!clock_stopped);
@@ -164,7 +163,7 @@ class HighsTimer {
     // stopped when it's next started
     if (i_clock == check_clock) {
       if (printf_flag)
-        Rprintf("HighsTimer: stopping clock %d: %s\n", int(check_clock),
+        printf("HighsTimer: stopping clock %d: %s\n", int(check_clock),
                this->clock_names[check_clock].c_str());
     }
     clock_start[i_clock] = wall_time;
@@ -180,7 +179,7 @@ class HighsTimer {
     if (i_clock == check_clock) {
       std::string clock_name = this->clock_names[check_clock];
       if (printf_flag)
-        Rprintf("HighsTimer: reading clock %d: %s\n", int(check_clock),
+        printf("HighsTimer: reading clock %d: %s\n", int(check_clock),
                clock_name.c_str());
     }
     double read_time;
@@ -204,7 +203,7 @@ class HighsTimer {
     assert(i_clock < num_clock);
     if (i_clock == check_clock) {
       if (printf_flag)
-        Rprintf("HighsTimer: querying clock %d: %s - with start record %g\n",
+        printf("HighsTimer: querying clock %d: %s - with start record %g\n",
                int(check_clock), this->clock_names[check_clock].c_str(),
                clock_start[i_clock]);
     }
@@ -278,7 +277,7 @@ class HighsTimer {
         // understand this better, for now don't assert that this clock
         // has stopped
         if (!clock_stopped) {
-          Rprintf("Clock %d - %s - still running\n", int(iClock),
+          printf("Clock %d - %s - still running\n", int(iClock),
                  clock_names[iClock].c_str());
         }
         assert(clock_stopped);
@@ -303,10 +302,10 @@ class HighsTimer {
     non_null_report = true;
 
     // Report one line per clock, the time, number of calls and time per call
-    Rprintf("\n%s-time  Operation                       :    Time     ( Total",
+    printf("\n%s-time  Operation                       :    Time     ( Total",
            grep_stamp);
-    if (ideal_sum_time > 0) Rprintf(";  Ideal");
-    Rprintf(";  Local):    Calls  Time/Call\n");
+    if (ideal_sum_time > 0) printf(";  Ideal");
+    printf(";  Local):    Calls  Time/Call\n");
     // Convert approximate seconds
     double sum_time = 0;
     for (size_t i = 0; i < num_clock_list_entries; i++) {
@@ -321,13 +320,13 @@ class HighsTimer {
                 ? percent_sum_clock_times[i] >= tolerance_percent_report
                 : clock_num_call[iClock] > 0;
         if (report_time) {
-          Rprintf("%s-time  %-32s: %11.4e (%5.1f%%", grep_stamp,
+          printf("%s-time  %-32s: %11.4e (%5.1f%%", grep_stamp,
                  clock_names[iClock].c_str(), time, percent_run_highs);
           if (ideal_sum_time > 0) {
             double percent_ideal = 100.0 * time / ideal_sum_time;
-            Rprintf("; %5.1f%%", percent_ideal);
+            printf("; %5.1f%%", percent_ideal);
           }
-          Rprintf("; %5.1f%%):%9ld %11.4e\n", percent_sum_clock_times[i],
+          printf("; %5.1f%%):%9ld %11.4e\n", percent_sum_clock_times[i],
                  static_cast<long int>(clock_num_call[iClock]), time_per_call);
         }
       }
@@ -336,14 +335,14 @@ class HighsTimer {
     double percent_sum_clock_times_all = 100.0;
     assert(sum_time == sum_clock_times);
     double percent_run_highs = 100.0 * sum_time / current_run_highs_time;
-    Rprintf("%s-time  SUM                             : %11.4e (%5.1f%%",
+    printf("%s-time  SUM                             : %11.4e (%5.1f%%",
            grep_stamp, sum_time, percent_run_highs);
     if (ideal_sum_time > 0) {
       double percent_ideal = 100.0 * sum_time / ideal_sum_time;
-      Rprintf("; %5.1f%%", percent_ideal);
+      printf("; %5.1f%%", percent_ideal);
     }
-    Rprintf("; %5.1f%%)\n", percent_sum_clock_times_all);
-    Rprintf("%s-time  TOTAL                           : %11.4e\n", grep_stamp,
+    printf("; %5.1f%%)\n", percent_sum_clock_times_all);
+    printf("%s-time  TOTAL                           : %11.4e\n", grep_stamp,
            current_run_highs_time);
     return non_null_report;
   }

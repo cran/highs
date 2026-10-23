@@ -357,3 +357,7 @@ solver_read_model <- function(hi, filename) {
     .Call(`_highs_solver_read_model`, hi, filename)
 }
 
+solver_option_registry <- function() {
+    .Call(`_highs_solver_option_registry`)
+}
+
