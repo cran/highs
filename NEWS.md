@@ -1,6 +1,42 @@
 # **R** HIGHS Interface
 
-## 1.15.1 (development)
+## 1.15.1-2
+- other packages can now use HiGHS from their compiled code through this
+  package: `src/highs_ccallable.cpp` registers every function of the HiGHS C
+  API (177 at v1.15.1, callbacks included) with `R_RegisterCCallable()`, and
+  the new header `inst/include/highs_ccallable.h` provides them under the C
+  API's own names and signatures, with its constants and callback structs,
+  resolving each through `R_GetCCallable()` on first use.  The list and the
+  header are generated from the bundled `highs_c_api.h` by
+  `tools/gen_ccallable.R` (rerun at each HiGHS bump; `--check` and the tests
+  detect drift).  A consumer declares `Imports: highs` and `LinkingTo: highs`
+  and includes the header; nothing is linked and the installed size of highs
+  is unchanged.  `interfaces/highs_c_api.{h,cpp}` now ship and build (they
+  were `.Rbuildignore`d; `patch_min.R` P5 asserts their presence instead of
+  scrubbing them), `.Rinstignore` is anchored to `^inst/HiGHS(/|$)` (the
+  unanchored pattern also dropped `inst/include/highs_ccallable.h`).
+  Tests in `inst/tinytest/test_ccallable.R`, including an opt-in
+  (`R_HIGHS_LINK_TEST=1`) C consumer compiled against the header alone that
+  solves an LP with a logging callback attached
+- bundled 'HiGHS': apply ERGO-Code/HiGHS#3430 (fix for #3419) through
+  `inst/patch_min.R`: `HVectorBase::packFlag`, `Highs::standard_form_valid_`
+  and `HighsInfoStruct::valid` were never initialized; CRAN's gcc-UBSAN check
+  reports the read of `packFlag` on every QP solve ("load of value <n>, which
+  is not a valid value for type 'bool'").  Not yet in a HiGHS release
+- bundled 'HiGHS': apply ERGO-Code/HiGHS#3472 through `inst/patch_min.R`:
+  presolve's dominated-columns pass iterated a row while fixing columns in it,
+  a container overflow that AddressSanitizer reports during MIP presolve.
+  Upstream's edit, moved to the 1.15.1 location (`HPresolve.cpp`).  Not yet
+  in a HiGHS release
+- fix installation failure on CRAN's r-release-macos-x86_64, r-oldrel-macos-arm64
+  and r-oldrel-macos-x86_64 (Apple clang 14): cmake's compiler sanity test is
+  compiled with the force-included `src/hi_shim.h` but without `-std=`, and
+  that compiler defaults to gnu++98, where the `[[noreturn]]` attribute does
+  not parse ("expected expression"); `HI_SHIM_NORETURN` now expands to
+  `[[noreturn]]` only for `__cplusplus >= 201103L` and to
+  `__attribute__((noreturn))` otherwise
+
+## 1.15.1-1
 - `highs_available_solver_options()` now enumerates the bundled library's own
   option registry at runtime (`Highs::getOptionName()`/`getOptionType()` over
   all option records via new internal `solver_option_registry()`) instead of a

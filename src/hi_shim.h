@@ -69,8 +69,18 @@ char* hi_shim_fgets(char* s, int n, FILE* f);
 /* noreturn (they throw): without this, replacing libc's noreturn exit()/
  * abort() makes gcc emit -Wreturn-type at vendored call sites where the
  * original terminator was the last statement (observed on win-builder:
- * HighsCliqueTable.cpp separateCliques, whose body starts with exit(0)). */
-#if defined(__cplusplus)
+ * HighsCliqueTable.cpp separateCliques, whose body starts with exit(0)).
+ *
+ * [[noreturn]] only where the compiler is in C++11 mode or later.  This
+ * header is force-included into cmake's own compiler sanity test
+ * (CMakeTestCXXCompiler), which is compiled with the environment CXXFLAGS
+ * and NO -std= flag -- CMAKE_CXX_STANDARD applies to project targets only.
+ * Apple clang 14 (Xcode 14, CRAN's r-oldrel and x86_64 macOS builders)
+ * defaults to gnu++98 there and rejects the C++11 attribute syntax
+ * ("expected expression"), so cmake declared the compiler broken and the
+ * install failed.  __attribute__((noreturn)) is accepted by every gcc and
+ * clang in any C or C++ mode and satisfies gcc's -Wreturn-type analysis. */
+#if defined(__cplusplus) && __cplusplus >= 201103L
 #  define HI_SHIM_NORETURN [[noreturn]]
 #elif defined(__GNUC__)
 #  define HI_SHIM_NORETURN __attribute__((noreturn))

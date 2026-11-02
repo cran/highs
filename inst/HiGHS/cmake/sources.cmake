@@ -341,7 +341,7 @@ set(hipo_util_headers
 set_source_files_properties (io/filereaderlp/reader.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 
 set(highs_sources
-
+    interfaces/highs_c_api.cpp
     io/Filereader.cpp
     io/FilereaderLp.cpp
     io/FilereaderMps.cpp
@@ -466,7 +466,7 @@ set(highs_headers
     ../extern/pdqsort/pdqsort.h
     ../extern/zstr/strict_fstream.hpp
     ../extern/zstr/zstr.hpp
-
+    interfaces/highs_c_api.h
     io/Filereader.h
     io/FilereaderLp.h
     io/FilereaderMps.h

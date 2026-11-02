@@ -1,7 +1,7 @@
 **R** HIGHS Interface
 ================
 Florian Schwendinger</br>
-Updated: 2026-10-22
+Updated: 2026-10-30
 
 This repository contains an **R** interface to the
 [**HiGHS**](https://github.com/ERGO-Code/HiGHS) solver. The
@@ -370,161 +370,163 @@ d[["option"]] <- sprintf("`%s`", d[["option"]])
 knitr::kable(d, row.names = FALSE)
 ```
 
-| option                                          | type    |
-|:------------------------------------------------|:--------|
-| `presolve`                                      | string  |
-| `solver`                                        | string  |
-| `parallel`                                      | string  |
-| `run_crossover`                                 | string  |
-| `time_limit`                                    | double  |
-| `read_solution_file`                            | string  |
-| `read_basis_file`                               | string  |
-| `write_model_file`                              | string  |
-| `solution_file`                                 | string  |
-| `write_basis_file`                              | string  |
-| `random_seed`                                   | integer |
-| `ranging`                                       | string  |
-| `infinite_cost`                                 | double  |
-| `infinite_bound`                                | double  |
-| `small_matrix_value`                            | double  |
-| `large_matrix_value`                            | double  |
-| `kkt_tolerance`                                 | double  |
-| `primal_feasibility_tolerance`                  | double  |
-| `dual_feasibility_tolerance`                    | double  |
-| `primal_residual_tolerance`                     | double  |
-| `dual_residual_tolerance`                       | double  |
-| `optimality_tolerance`                          | double  |
-| `objective_bound`                               | double  |
-| `objective_target`                              | double  |
-| `threads`                                       | integer |
-| `user_objective_scale`                          | integer |
-| `user_bound_scale`                              | integer |
-| `highs_debug_level`                             | integer |
-| `highs_analysis_level`                          | integer |
-| `simplex_strategy`                              | integer |
-| `simplex_scale_strategy`                        | integer |
-| `simplex_crash_strategy`                        | integer |
-| `simplex_dual_edge_weight_strategy`             | integer |
-| `simplex_primal_edge_weight_strategy`           | integer |
-| `simplex_iteration_limit`                       | integer |
-| `simplex_update_limit`                          | integer |
-| `simplex_min_concurrency`                       | integer |
-| `simplex_max_concurrency`                       | integer |
-| `log_file`                                      | string  |
-| `write_model_to_file`                           | bool    |
-| `write_presolved_model_to_file`                 | bool    |
-| `write_solution_to_file`                        | bool    |
-| `write_solution_style`                          | integer |
-| `glpsol_cost_row_location`                      | integer |
-| `write_presolved_model_file`                    | string  |
-| `write_iis_model_file`                          | string  |
-| `output_flag`                                   | bool    |
-| `log_to_console`                                | bool    |
-| `timeless_log`                                  | bool    |
-| `ipm_optimality_tolerance`                      | double  |
-| `ipm_iteration_limit`                           | integer |
-| `hipo_system`                                   | string  |
-| `hipo_parallel_type`                            | string  |
-| `hipo_ordering`                                 | string  |
-| `hipo_block_size`                               | integer |
-| `pdlp_features_off`                             | integer |
-| `pdlp_iteration_limit`                          | integer |
-| `pdlp_scaling_mode`                             | integer |
-| `pdlp_ruiz_iterations`                          | integer |
-| `pdlp_restart_strategy`                         | integer |
-| `pdlp_cupdlpc_restart_method`                   | integer |
-| `pdlp_step_size_strategy`                       | integer |
-| `pdlp_optimality_tolerance`                     | double  |
-| `qp_iteration_limit`                            | integer |
-| `qp_nullspace_limit`                            | integer |
-| `qp_regularization_value`                       | double  |
-| `iis_strategy`                                  | integer |
-| `iis_time_limit`                                | double  |
-| `blend_multi_objectives`                        | bool    |
-| `log_dev_level`                                 | integer |
-| `log_githash`                                   | bool    |
-| `solve_relaxation`                              | bool    |
-| `allow_unbounded_or_infeasible`                 | bool    |
-| `use_implied_bounds_from_presolve`              | bool    |
-| `lp_presolve_requires_basis_postsolve`          | bool    |
-| `mps_parser_type_free`                          | bool    |
-| `use_warm_start`                                | bool    |
-| `keep_n_rows`                                   | integer |
-| `cost_scale_factor`                             | integer |
-| `allowed_matrix_scale_factor`                   | integer |
-| `allowed_cost_scale_factor`                     | integer |
-| `ipx_dualize_strategy`                          | integer |
-| `simplex_dualize_strategy`                      | integer |
-| `simplex_permute_strategy`                      | integer |
-| `max_dual_simplex_cleanup_level`                | integer |
-| `max_dual_simplex_phase1_cleanup_level`         | integer |
-| `simplex_price_strategy`                        | integer |
-| `simplex_unscaled_solution_strategy`            | integer |
-| `presolve_reduction_limit`                      | integer |
-| `restart_presolve_reduction_limit`              | integer |
-| `presolve_substitution_maxfillin`               | integer |
-| `presolve_rule_off`                             | integer |
-| `presolve_rule_logging`                         | bool    |
-| `presolve_remove_slacks`                        | bool    |
-| `simplex_initial_condition_check`               | bool    |
-| `no_unnecessary_rebuild_refactor`               | bool    |
-| `simplex_initial_condition_tolerance`           | double  |
-| `rebuild_refactor_solution_error_tolerance`     | double  |
-| `dual_steepest_edge_weight_error_tolerance`     | double  |
-| `dual_steepest_edge_weight_log_error_threshold` | double  |
-| `dual_simplex_cost_perturbation_multiplier`     | double  |
-| `primal_simplex_bound_perturbation_multiplier`  | double  |
-| `dual_simplex_pivot_growth_tolerance`           | double  |
-| `presolve_pivot_threshold`                      | double  |
-| `factor_pivot_threshold`                        | double  |
-| `factor_pivot_tolerance`                        | double  |
-| `start_crossover_tolerance`                     | double  |
-| `less_infeasible_DSE_check`                     | bool    |
-| `less_infeasible_DSE_choose_row`                | bool    |
-| `use_original_HFactor_logic`                    | bool    |
-| `run_centring`                                  | bool    |
-| `max_centring_steps`                            | integer |
-| `centring_ratio_tolerance`                      | double  |
-| `icrash`                                        | bool    |
-| `icrash_dualize`                                | bool    |
-| `icrash_strategy`                               | string  |
-| `icrash_starting_weight`                        | double  |
-| `icrash_iterations`                             | integer |
-| `icrash_approx_iter`                            | integer |
-| `icrash_exact`                                  | bool    |
-| `icrash_breakpoints`                            | bool    |
-| `mip_detect_symmetry`                           | bool    |
-| `mip_allow_restart`                             | bool    |
-| `mip_max_nodes`                                 | integer |
-| `mip_max_stall_nodes`                           | integer |
-| `mip_max_start_nodes`                           | integer |
-| `mip_max_leaves`                                | integer |
-| `mip_max_improving_sols`                        | integer |
-| `mip_lp_age_limit`                              | integer |
-| `mip_pool_age_limit`                            | integer |
-| `mip_pool_soft_limit`                           | integer |
-| `mip_pscost_minreliable`                        | integer |
-| `mip_min_cliquetable_entries_for_parallelism`   | integer |
-| `mip_report_level`                              | integer |
-| `mip_feasibility_tolerance`                     | double  |
-| `mip_rel_gap`                                   | double  |
-| `mip_abs_gap`                                   | double  |
-| `mip_heuristic_effort`                          | double  |
-| `mip_heuristic_run_feasibility_jump`            | bool    |
-| `mip_heuristic_run_rins`                        | bool    |
-| `mip_heuristic_run_rens`                        | bool    |
-| `mip_heuristic_run_root_reduced_cost`           | bool    |
-| `mip_heuristic_run_zi_round`                    | bool    |
-| `mip_heuristic_run_shifting`                    | bool    |
-| `mip_min_logging_interval`                      | double  |
-| `mip_lp_solver`                                 | string  |
-| `mip_ipm_solver`                                | string  |
-| `mip_improving_solution_save`                   | bool    |
-| `mip_improving_solution_report_sparse`          | bool    |
-| `mip_improving_solution_file`                   | string  |
-| `mip_root_presolve_only`                        | bool    |
-| `mip_lifting_for_probing`                       | integer |
-| `mip_allow_cut_separation_at_nodes`             | bool    |
+| option                                          | type    | advanced |
+|:------------------------------------------------|:--------|---------:|
+| `presolve`                                      | string  |        0 |
+| `solver`                                        | string  |        0 |
+| `parallel`                                      | string  |        0 |
+| `threads`                                       | integer |        0 |
+| `run_crossover`                                 | string  |        0 |
+| `time_limit`                                    | double  |        0 |
+| `ranging`                                       | string  |        0 |
+| `infinite_cost`                                 | double  |        0 |
+| `infinite_bound`                                | double  |        0 |
+| `small_matrix_value`                            | double  |        0 |
+| `large_matrix_value`                            | double  |        0 |
+| `kkt_tolerance`                                 | double  |        0 |
+| `primal_feasibility_tolerance`                  | double  |        0 |
+| `dual_feasibility_tolerance`                    | double  |        0 |
+| `primal_residual_tolerance`                     | double  |        0 |
+| `dual_residual_tolerance`                       | double  |        0 |
+| `optimality_tolerance`                          | double  |        0 |
+| `objective_bound`                               | double  |        0 |
+| `objective_target`                              | double  |        0 |
+| `random_seed`                                   | integer |        0 |
+| `user_objective_scale`                          | integer |        0 |
+| `user_bound_scale`                              | integer |        0 |
+| `highs_debug_level`                             | integer |        0 |
+| `highs_analysis_level`                          | integer |        0 |
+| `simplex_strategy`                              | integer |        0 |
+| `simplex_scale_strategy`                        | integer |        0 |
+| `simplex_crash_strategy`                        | integer |        0 |
+| `simplex_dual_edge_weight_strategy`             | integer |        0 |
+| `simplex_primal_edge_weight_strategy`           | integer |        0 |
+| `simplex_iteration_limit`                       | integer |        0 |
+| `simplex_update_limit`                          | integer |        0 |
+| `simplex_min_concurrency`                       | integer |        0 |
+| `simplex_max_concurrency`                       | integer |        0 |
+| `output_flag`                                   | bool    |        0 |
+| `log_to_console`                                | bool    |        0 |
+| `timeless_log`                                  | bool    |        0 |
+| `log_file`                                      | string  |        0 |
+| `write_model_to_file`                           | bool    |        0 |
+| `write_presolved_model_to_file`                 | bool    |        0 |
+| `write_solution_to_file`                        | bool    |        0 |
+| `write_solution_style`                          | integer |        0 |
+| `glpsol_cost_row_location`                      | integer |        0 |
+| `icrash`                                        | bool    |        0 |
+| `icrash_dualize`                                | bool    |        0 |
+| `icrash_strategy`                               | string  |        0 |
+| `icrash_starting_weight`                        | double  |        0 |
+| `icrash_iterations`                             | integer |        0 |
+| `icrash_approx_iter`                            | integer |        0 |
+| `icrash_exact`                                  | bool    |        0 |
+| `icrash_breakpoints`                            | bool    |        0 |
+| `read_solution_file`                            | string  |        0 |
+| `read_basis_file`                               | string  |        0 |
+| `write_model_file`                              | string  |        0 |
+| `solution_file`                                 | string  |        0 |
+| `write_basis_file`                              | string  |        0 |
+| `write_presolved_model_file`                    | string  |        0 |
+| `write_iis_model_file`                          | string  |        0 |
+| `mip_detect_symmetry`                           | bool    |        0 |
+| `mip_allow_restart`                             | bool    |        0 |
+| `mip_max_nodes`                                 | integer |        0 |
+| `mip_max_stall_nodes`                           | integer |        0 |
+| `mip_max_start_nodes`                           | integer |        0 |
+| `mip_improving_solution_save`                   | bool    |        0 |
+| `mip_improving_solution_report_sparse`          | bool    |        0 |
+| `mip_improving_solution_file`                   | string  |        0 |
+| `mip_root_presolve_only`                        | bool    |        0 |
+| `mip_lifting_for_probing`                       | integer |        0 |
+| `mip_max_leaves`                                | integer |        0 |
+| `mip_max_improving_sols`                        | integer |        0 |
+| `mip_lp_age_limit`                              | integer |        0 |
+| `mip_pool_age_limit`                            | integer |        0 |
+| `mip_pool_soft_limit`                           | integer |        0 |
+| `mip_pscost_minreliable`                        | integer |        0 |
+| `mip_min_cliquetable_entries_for_parallelism`   | integer |        0 |
+| `mip_report_level`                              | integer |        0 |
+| `mip_feasibility_tolerance`                     | double  |        0 |
+| `mip_heuristic_effort`                          | double  |        0 |
+| `mip_heuristic_run_feasibility_jump`            | bool    |        0 |
+| `mip_heuristic_run_rins`                        | bool    |        0 |
+| `mip_heuristic_run_rens`                        | bool    |        0 |
+| `mip_heuristic_run_root_reduced_cost`           | bool    |        0 |
+| `mip_heuristic_run_zi_round`                    | bool    |        0 |
+| `mip_heuristic_run_shifting`                    | bool    |        0 |
+| `mip_allow_cut_separation_at_nodes`             | bool    |        0 |
+| `mip_rel_gap`                                   | double  |        0 |
+| `mip_abs_gap`                                   | double  |        0 |
+| `mip_min_logging_interval`                      | double  |        0 |
+| `mip_lp_solver`                                 | string  |        0 |
+| `mip_ipm_solver`                                | string  |        0 |
+| `ipm_optimality_tolerance`                      | double  |        0 |
+| `mip_search_simulate_concurrency`               | bool    |        0 |
+| `ipm_iteration_limit`                           | integer |        0 |
+| `hipo_system`                                   | string  |        0 |
+| `hipo_parallel_type`                            | string  |        0 |
+| `hipo_ordering`                                 | string  |        0 |
+| `hipo_block_size`                               | integer |        0 |
+| `pdlp_iteration_limit`                          | integer |        0 |
+| `pdlp_scaling_mode`                             | integer |        0 |
+| `pdlp_ruiz_iterations`                          | integer |        0 |
+| `pdlp_restart_strategy`                         | integer |        0 |
+| `pdlp_cupdlpc_restart_method`                   | integer |        0 |
+| `pdlp_step_size_strategy`                       | integer |        0 |
+| `pdlp_optimality_tolerance`                     | double  |        0 |
+| `qp_allow_hot_start`                            | bool    |        0 |
+| `qp_iteration_limit`                            | integer |        0 |
+| `qp_nullspace_limit`                            | integer |        0 |
+| `qp_regularization_value`                       | double  |        0 |
+| `iis_strategy`                                  | integer |        0 |
+| `iis_time_limit`                                | double  |        0 |
+| `blend_multi_objectives`                        | bool    |        0 |
+| `log_dev_level`                                 | integer |        1 |
+| `log_githash`                                   | bool    |        1 |
+| `solve_relaxation`                              | bool    |        1 |
+| `allow_unbounded_or_infeasible`                 | bool    |        1 |
+| `use_implied_bounds_from_presolve`              | bool    |        1 |
+| `lp_presolve_requires_basis_postsolve`          | bool    |        1 |
+| `mps_parser_type_free`                          | bool    |        1 |
+| `use_warm_start`                                | bool    |        1 |
+| `write_matrix_image`                            | bool    |        1 |
+| `write_hessian_image`                           | bool    |        1 |
+| `keep_n_rows`                                   | integer |        1 |
+| `cost_scale_factor`                             | integer |        1 |
+| `allowed_matrix_scale_factor`                   | integer |        1 |
+| `allowed_cost_scale_factor`                     | integer |        1 |
+| `ipx_dualize_strategy`                          | integer |        1 |
+| `simplex_dualize_strategy`                      | integer |        1 |
+| `simplex_permute_strategy`                      | integer |        1 |
+| `max_dual_simplex_cleanup_level`                | integer |        1 |
+| `max_dual_simplex_phase1_cleanup_level`         | integer |        1 |
+| `simplex_price_strategy`                        | integer |        1 |
+| `simplex_unscaled_solution_strategy`            | integer |        1 |
+| `no_unnecessary_rebuild_refactor`               | bool    |        1 |
+| `rebuild_refactor_solution_error_tolerance`     | double  |        1 |
+| `dual_steepest_edge_weight_error_tolerance`     | double  |        1 |
+| `dual_steepest_edge_weight_log_error_threshold` | double  |        1 |
+| `dual_simplex_cost_perturbation_multiplier`     | double  |        1 |
+| `primal_simplex_bound_perturbation_multiplier`  | double  |        1 |
+| `dual_simplex_pivot_growth_tolerance`           | double  |        1 |
+| `presolve_pivot_threshold`                      | double  |        1 |
+| `presolve_reduction_limit`                      | integer |        1 |
+| `restart_presolve_reduction_limit`              | integer |        1 |
+| `presolve_rule_off`                             | integer |        1 |
+| `presolve_rule_test`                            | integer |        1 |
+| `presolve_rule_logging`                         | bool    |        1 |
+| `presolve_remove_slacks`                        | bool    |        1 |
+| `presolve_substitution_maxfillin`               | integer |        1 |
+| `factor_pivot_threshold`                        | double  |        1 |
+| `factor_pivot_tolerance`                        | double  |        1 |
+| `start_crossover_tolerance`                     | double  |        1 |
+| `use_original_HFactor_logic`                    | bool    |        1 |
+| `less_infeasible_DSE_check`                     | bool    |        1 |
+| `less_infeasible_DSE_choose_row`                | bool    |        1 |
+| `run_centring`                                  | bool    |        1 |
+| `max_centring_steps`                            | integer |        1 |
+| `centring_ratio_tolerance`                      | double  |        1 |
 
 for additional information see the [HiGHS homepage](https://highs.dev/).
 

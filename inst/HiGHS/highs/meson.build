@@ -230,7 +230,7 @@ _srcs = [
     'HighsExternalApi.cpp',
     'HighsExternalDeps.cpp',
     'io/filereaderlp/reader.cpp',
-
+    'interfaces/highs_c_api.cpp',
     'io/Filereader.cpp',
     'io/FilereaderLp.cpp',
     'io/FilereaderMps.cpp',

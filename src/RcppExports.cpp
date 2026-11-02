@@ -10,6 +10,26 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// hi_ccallable_names_r
+Rcpp::CharacterVector hi_ccallable_names_r();
+RcppExport SEXP _highs_hi_ccallable_names_r() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(hi_ccallable_names_r());
+    return rcpp_result_gen;
+END_RCPP
+}
+// hi_ccallable_check
+Rcpp::LogicalVector hi_ccallable_check();
+RcppExport SEXP _highs_hi_ccallable_check() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(hi_ccallable_check());
+    return rcpp_result_gen;
+END_RCPP
+}
 // new_model
 SEXP new_model();
 RcppExport SEXP _highs_new_model() {
@@ -1106,6 +1126,8 @@ END_RCPP
 RcppExport SEXP _rcpp_module_boot_RcppHighs();
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_highs_hi_ccallable_names_r", (DL_FUNC) &_highs_hi_ccallable_names_r, 0},
+    {"_highs_hi_ccallable_check", (DL_FUNC) &_highs_hi_ccallable_check, 0},
     {"_highs_new_model", (DL_FUNC) &_highs_new_model, 0},
     {"_highs_model_set_ncol", (DL_FUNC) &_highs_model_set_ncol, 2},
     {"_highs_model_set_nrow", (DL_FUNC) &_highs_model_set_nrow, 2},
@@ -1200,7 +1222,9 @@ static const R_CallMethodDef CallEntries[] = {
     {NULL, NULL, 0}
 };
 
+void hi_register_ccallable(DllInfo* dll);
 RcppExport void R_init_highs(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
+    hi_register_ccallable(dll);
 }
